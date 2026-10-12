@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <rect width="192" height="192" rx="38" fill="#007460"/>
+  <circle cx="96" cy="96" r="68" fill="#005a4a"/>
+  <!-- Bag handle -->
+  <path d="M72 74 C72 58, 120 58, 120 74" fill="none" stroke="#ffc800" stroke-width="8" stroke-linecap="round"/>
+  <!-- Shopping Bag body -->
+  <path d="M56 74 L136 74 L126 138 L66 138 Z" fill="#ffc800" rx="6"/>
+  <!-- Check / Sparkle -->
+  <path d="M82 106 L92 116 L112 94" fill="none" stroke="#007460" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
