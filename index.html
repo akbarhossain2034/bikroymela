@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="bn">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BikroyMela – বাংলাদেশের সবচেয়ে বড় অনলাইন কেনাবেচার প্ল্যাটফর্ম</title>
+    <meta name="description" content="মোবাইল, ল্যাপটপ, মোটরবাইক, গাড়ি, প্রোপার্টি সহ সব ধরনের নতুন ও ব্যবহৃত পণ্য বেচাকেনার বিশ্বস্ত মাধ্যম। আজই আপনার বিজ্ঞাপন দিন।" />
+    <meta name="keywords" content="বিক্রয়, Bikroy, classifieds, buy sell Bangladesh, mobile, electronics, vehicles, property, online shopping Dhaka" />
+    
+    <!-- OpenGraph Tags -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="BikroyMela – বাংলাদেশের সবচেয়ে বড় অনলাইন কেনাবেচার প্ল্যাটফর্ম" />
+    <meta property="og:description" content="মোবাইল, ল্যাপটপ, মোটরবাইক, গাড়ি, প্রোপার্টি সহ সব ধরনের নতুন ও ব্যবহৃত পণ্য বেচাকেনার বিশ্বস্ত মাধ্যম।" />
+    <meta property="og:site_name" content="BikroyMela" />
+    
+    <!-- Twitter Cards -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="BikroyMela – বাংলাদেশের সবচেয়ে বড় অনলাইন কেনাবেচার প্ল্যাটফর্ম" />
+    <meta name="twitter:description" content="মোবাইল, ল্যাপটপ, মোটরবাইক, গাড়ি, প্রোপার্টি সহ সব ধরনের নতুন ও ব্যবহৃত পণ্য বেচাকেনার বিশ্বস্ত মাধ্যম।" />
+
+    <!-- Progressive Web App (PWA) Manifest & Meta -->
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#007460" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="BikroyMela" />
+    <link rel="apple-touch-icon" href="/icon-192.svg" />
+    <link rel="icon" type="image/svg+xml" href="/icon-192.svg" />
+
+    <!-- Google Fonts for Bengali and Latin script -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "BikroyMela",
+      "applicationCategory": "E-CommerceApplication",
+      "operatingSystem": "All",
+      "description": "বাংলাদেশের নির্ভরযোগ্য অনলাইন মার্কেটপ্লেস ও ব্যবহৃত পণ্য বেচাকেনা প্ল্যাটফর্ম।",
+      "offers": {
+        "@type": "AggregateOffer",
+        "priceCurrency": "BDT",
+        "lowPrice": "500",
+        "highPrice": "50000000"
+      },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+  </head>
+  <body class="font-sans antialiased text-slate-800 bg-[#f4f7f6]">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch((err) => {
+            console.warn('Service worker registration note:', err);
+          });
+        });
+      }
+    </script>
+  </body>
+</html>
+

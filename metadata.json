@@ -1,0 +1,6 @@
+{
+  "name": "BikroyMela - অনলাইন মার্কেটপ্লেস ও কেনাবেচা",
+  "description": "বাংলাদেশের নির্ভরযোগ্য অনলাইন মার্কেটপ্লেস। ব্যবহৃত ও নতুন মোবাইল, গ্যাজেট, গাড়ি, প্রোপার্টি কিনুন বা বিক্রির বিজ্ঞাপন দিন।",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
