@@ -64,6 +64,36 @@ export interface Ad {
   isExpired?: boolean;
   deletionReason?: string;
   deletedAt?: string;
+  moderationLogs?: AdModerationLog[];
+  lastModeratedBy?: {
+    adminId: string;
+    adminName: string;
+    action: string;
+    timestamp: string;
+  };
+}
+
+export interface AdModerationLog {
+  id: string;
+  adId: string;
+  adTitle: string;
+  adminId: string; // e.g. "ADM-101"
+  adminName: string; // e.g. "Md. Akbar Hossain"
+  adminRole?: string; // e.g. "Super Admin"
+  action: 'Received' | 'Verified' | 'Processed' | 'Approved' | 'Rejected' | 'Deleted' | 'StatusChanged';
+  previousStatus?: string;
+  newStatus: string;
+  timestamp: string;
+  note?: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  role: 'Super Admin' | 'Moderator' | 'Quality Officer';
+  phone: string;
+  email: string;
+  department?: string;
 }
 
 export interface User {
@@ -256,4 +286,5 @@ export interface SystemBackup {
   offerSettings?: BonusOfferSettings;
   withdrawalRequests?: WithdrawalRequest[];
   adminDeletionLogs?: AdminAdDeletionLog[];
+  adModerationLogs?: AdModerationLog[];
 }

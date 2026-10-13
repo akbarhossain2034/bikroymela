@@ -787,8 +787,8 @@ export const PostAdModal: React.FC = () => {
                 </h4>
                 <p className="text-[11px] text-rose-900 mt-0.5 leading-relaxed font-medium">
                   {lang === 'bn' 
-                    ? 'অবৈধ পণ্য ক্রয়-বিক্রয় থেকে বিরত থাকুন। এতে কর্তৃপক্ষ কোনো ভাবেই দায়ী থাকবে না। সকল ব্যবহারকারীকে প্রচলিত আইন মেনে কেনাবেচার অনুরোধ করা হচ্ছে।' 
-                    : 'Refrain from buying/selling any illegal items. The platform authority shall not be held liable in any way.'}
+                    ? 'অবৈধ পণ্য ক্রয়-বিক্রয় থেকে বিরত থাকুন। লোক সমাগম স্থানে টাকা-পয়সা লেনদেন করুন এবং নিজ দায়িত্বে দেখে-শুনে পণ্য কেনাবেচা করুন। নিজ দায়িত্বে লেনদেন করে প্রতারিত হলে কর্তৃপক্ষ কোনো ভাবেই দায়ী থাকবে না।' 
+                    : 'Refrain from illegal items. Meet in public places and trade on your own responsibility. The authority shall not be held liable.'}
                 </p>
               </div>
             </div>

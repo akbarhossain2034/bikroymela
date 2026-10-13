@@ -11,7 +11,14 @@ import {
   ChevronDown,
   Menu,
   X,
-  Gift
+  Gift,
+  Heart,
+  Headphones,
+  Crown,
+  Coins,
+  CreditCard,
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -20,21 +27,23 @@ export const Header: React.FC = () => {
     setLang, 
     t, 
     currentUser, 
+    setCurrentUser,
     isAdminMode, 
     setIsAdminMode, 
     notifications, 
     markNotificationRead,
     markAllNotificationsRead,
     setActiveModal,
+    setActiveProfileTab,
     setChatRecipient,
     resetFilters,
     siteName,
     offerSettings,
-    setIsOffersModalOpen,
-    setIsPolicyModalOpen
+    setIsOffersModalOpen
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
@@ -119,19 +128,11 @@ export const Header: React.FC = () => {
 
             <button
               onClick={() => setIsOffersModalOpen(true)}
-              className="hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1.5 font-bold text-amber-300 bg-emerald-800/60 px-2 py-1 rounded-md"
-              title="নতুন বিজনেসের আকর্ষণীয় ৬টি গ্রোথ অফার দেখুন"
+              className="hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1.5 font-bold text-amber-300 bg-emerald-800/60 px-2.5 py-1 rounded-md"
+              title="দ্রুত পয়েন্ট অর্জন ও বিশেষ গ্রাহক সুবিধা দেখুন"
             >
               <Gift className="w-3.5 h-3.5 text-amber-300" />
-              <span>{lang === 'bn' ? 'অফার ও বোনাস' : 'Offers & Bonus'}</span>
-            </button>
-
-            <button
-              onClick={() => setIsPolicyModalOpen(true)}
-              className="hover:text-white transition-colors cursor-pointer text-[11px] text-emerald-200"
-              title="বিজনেস পলিসি ও আইনি দায়মুক্তি"
-            >
-              <span>{lang === 'bn' ? 'পলিসি' : 'Policy'}</span>
+              <span>{lang === 'bn' ? 'পয়েন্ট ও অফার' : 'Points & Rewards'}</span>
             </button>
 
             {/* Admin Switcher - ONLY visible when in admin mode */}

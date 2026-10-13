@@ -3,7 +3,17 @@ import { useApp } from '../context/AppContext';
 import { ShieldCheck, Truck, Headphones, Lock } from 'lucide-react';
 
 export const Footer: React.FC = () => {
-  const { lang, t, resetFilters, setIsAdminMode, setActiveModal, siteName, setIsPolicyModalOpen, setIsOffersModalOpen } = useApp();
+  const { 
+    lang, 
+    t, 
+    resetFilters, 
+    setIsAdminMode, 
+    setActiveModal, 
+    siteName, 
+    setIsPolicyModalOpen, 
+    setIsOffersModalOpen,
+    setPolicyModalTab 
+  } = useApp();
   const clickCountRef = React.useRef(0);
   const clickTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -86,42 +96,6 @@ export const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* Requirement 03: Highlighted Business Policy & Liability Disclaimer Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8">
-        <div className="p-4 bg-gradient-to-r from-rose-950/80 via-red-950/90 to-amber-950/80 border border-rose-800/80 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="bg-rose-600 text-white font-bold text-[10px] px-2 py-0.5 rounded uppercase tracking-wider">
-                আইনি নোটিশ
-              </span>
-              <h5 className="font-bold text-white text-xs sm:text-sm">
-                {lang === 'bn' ? '⚠️ বিজনেস পলিসি ও নিরাপত্তা ঘোষণা:' : '⚠️ Business Policy & Liability Disclaimer:'}
-              </h5>
-            </div>
-            <p className="text-slate-300 text-[11px] leading-relaxed max-w-4xl">
-              {lang === 'bn' 
-                ? 'অবৈধ ও নিষিদ্ধ পণ্য (অস্ত্র, মাদক, চোরাই পণ্য, নকল সামগ্রী ইত্যাদি) ক্রয়-বিক্রয় থেকে সম্পূর্ণ বিরত থাকুন। প্ল্যাটফর্মের কোনো ব্যবহারকারী অবৈধ কর্মকাণ্ডে লিপ্ত হলে— এতে কর্তৃপক্ষ কোনো ভাবেই দায়ী থাকবে না। ক্রেতা-বিক্রেতা সম্পূর্ণ নিজ দায়িত্বে আইন মেনে কেনাবেচা সম্পন্ন করবেন।'
-                : 'Refrain from buying/selling any illegal or prohibited items. The platform authority shall not be held liable in any way.'}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setIsPolicyModalOpen(true)}
-              className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-xs font-bold transition-colors whitespace-nowrap shadow-xs"
-            >
-              {lang === 'bn' ? 'সম্পূর্ণ বিজনেস পলিসি' : 'Business Policy'}
-            </button>
-            <button
-              onClick={() => setIsOffersModalOpen(true)}
-              className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-lg text-xs font-bold transition-colors whitespace-nowrap shadow-xs"
-            >
-              {lang === 'bn' ? '🎁 ৬টি আকর্ষণীয় অফার' : '6 Growth Offers'}
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Links & Information */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
         <div>
@@ -159,17 +133,37 @@ export const Footer: React.FC = () => {
           </h5>
           <ul className="space-y-2 text-slate-400">
             <li>
-              <button onClick={() => setIsPolicyModalOpen(true)} className="hover:text-rose-400 transition-colors text-left">
+              <button 
+                onClick={() => { setPolicyModalTab('safety'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-rose-400 transition-colors text-left cursor-pointer"
+              >
                 আইনি দায়মুক্তি ও নিরাপত্তা গাইড
               </button>
             </li>
             <li>
-              <button onClick={() => setIsOffersModalOpen(true)} className="hover:text-amber-400 transition-colors text-left">
+              <button 
+                onClick={() => setIsOffersModalOpen(true)} 
+                className="hover:text-amber-400 transition-colors text-left cursor-pointer"
+              >
                 🎁 অফার ও ওয়েলকাম বোনাস শর্তাবলী
               </button>
             </li>
-            <li>এসক্রো রিফান্ড পলিসি (১০০% সুরক্ষা)</li>
-            <li>৩ মাস অবিক্রিত পণ্যের মেয়াদোত্তীর্ণ পলিসি</li>
+            <li>
+              <button 
+                onClick={() => { setPolicyModalTab('payment'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-emerald-400 transition-colors text-left cursor-pointer"
+              >
+                এসক্রো রিফান্ড পলিসি (১০০% সুরক্ষা)
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setPolicyModalTab('moderation'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-amber-300 transition-colors text-left cursor-pointer"
+              >
+                ৩ মাস অবিক্রিত পণ্যের মেয়াদোত্তীর্ণ পলিসি
+              </button>
+            </li>
           </ul>
         </div>
 
@@ -179,13 +173,37 @@ export const Footer: React.FC = () => {
           </h5>
           <ul className="space-y-2 text-slate-400">
             <li>
-              <button onClick={() => setIsPolicyModalOpen(true)} className="hover:text-white transition-colors text-left">
+              <button 
+                onClick={() => { setPolicyModalTab('all'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-white transition-colors text-left cursor-pointer"
+              >
                 বিজনেস পলিসি ও শর্তাবলী
               </button>
             </li>
-            <li>আমাদের লক্ষ্য ও পরিচিতি</li>
-            <li>২৪/৭ কাস্টমার হেল্পডেস্ক</li>
-            <li>গোপনীয়তা নীতি (Privacy Policy)</li>
+            <li>
+              <button 
+                onClick={() => { setPolicyModalTab('about'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-white transition-colors text-left cursor-pointer font-medium text-emerald-300"
+              >
+                আমাদের লক্ষ্য ও পরিচিতি (About Us)
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setPolicyModalTab('support'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-white transition-colors text-left cursor-pointer"
+              >
+                ২৪/৭ কাস্টমার হেল্পডেস্ক
+              </button>
+            </li>
+            <li>
+              <button 
+                onClick={() => { setPolicyModalTab('legal'); setIsPolicyModalOpen(true); }} 
+                className="hover:text-white transition-colors text-left cursor-pointer"
+              >
+                গোপনীয়তা নীতি (Privacy Policy)
+              </button>
+            </li>
           </ul>
         </div>
       </div>

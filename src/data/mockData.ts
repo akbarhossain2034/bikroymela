@@ -1,4 +1,4 @@
-import { Ad, Category, Order, Transaction, User, NotificationItem, Review, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog } from '../types';
+import { Ad, Category, Order, Transaction, User, NotificationItem, Review, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog, AdminUser, AdModerationLog } from '../types';
 
 export const LOCATIONS = [
   { 
@@ -502,24 +502,24 @@ export const INITIAL_ADS: Ad[] = [
 
 export const INITIAL_USER: User = {
   id: 'user-001',
-  name: 'Md. Hossain',
+  name: 'Md. Akbar Hossain',
   firstName: 'Md.',
   lastName: 'Hossain',
   email: 'akbar.office10@gmail.com',
   phone: '01332520826',
   avatar: '',
-  address: 'বাসা-২৪, রোড-৭, ব্লক-ডি, মিরপুর-১০, ঢাকা-১২১৬',
+  address: 'মিরপুর-১০, ঢাকা-১২১৬',
   permanentAddress: 'গ্রাম: রামকৃষ্ণপুর, ডাকঘর: হরিপুর, থানা: বোয়ালমারী, জেলা: ফরিদপুর',
-  dob: '1995-10-14',
-  gender: 'Male',
+  dob: '1995-05-12',
+  gender: 'পুরুষ (Male)',
   role: 'user',
   isPhoneVerified: true,
   isNidVerified: true,
   nidNumber: '19952671829000123',
   memberSince: '2023',
   district: 'Dhaka',
-  walletBalance: 50, // ৳ ৫০ রেজিস্ট্রেশন ওয়েলকাম বোনাস
-  rewardPoints: 120 // কেনাবেচা থেকে প্রাপ্ত রিওয়ার্ড পয়েন্ট
+  walletBalance: 3500, // Pickloo Credit ৳৩৫০০
+  rewardPoints: 100 // Pickloo Point 100 Pts
 };
 
 export const INITIAL_REVIEWS: Review[] = [
@@ -719,5 +719,74 @@ export const INITIAL_ADMIN_DELETION_LOGS: AdminAdDeletionLog[] = [
     reason: '৩ মাস (৯০ দিন) অতিক্রান্ত অবিক্রিত বিজ্ঞাপন অটো-ক্লিনআপ পলিসি',
     deletedAt: '০৯ অক্টোবর ২০২৬, বিকাল ০৫:১৫',
     deletedBy: 'সিস্টেম অটো-ক্লিনআপ (৯০ দিন মেয়াদোত্তীর্ণ)'
+  }
+];
+
+export const INITIAL_ADMIN_USERS: AdminUser[] = [
+  {
+    id: 'ADM-101',
+    name: 'Md. Akbar Hossain',
+    role: 'Super Admin',
+    phone: '01332520826',
+    email: 'akbar.office10@gmail.com',
+    department: 'ম্যানেজমেন্ট ও পলিসি'
+  },
+  {
+    id: 'ADM-102',
+    name: 'কায়সার আহমেদ',
+    role: 'Moderator',
+    phone: '01712-334455',
+    email: 'kaysar.moderator@bikroymela.com',
+    department: 'বিজ্ঞাপন যাচাই ও কোয়ালিটি'
+  },
+  {
+    id: 'ADM-103',
+    name: 'সুমাইয়া আক্তার',
+    role: 'Quality Officer',
+    phone: '01822-445566',
+    email: 'sumaiya.qa@bikroymela.com',
+    department: 'এসক্রো নিরাপত্তা ও গ্রাহক সেবা'
+  }
+];
+
+export const INITIAL_AD_MODERATION_LOGS: AdModerationLog[] = [
+  {
+    id: 'MOD-LOG-01',
+    adId: 'ad-101',
+    adTitle: 'iPhone 14 Pro Max 256GB Deep Purple',
+    adminId: 'ADM-101',
+    adminName: 'Md. Akbar Hossain',
+    adminRole: 'Super Admin',
+    action: 'Approved',
+    previousStatus: 'Processed',
+    newStatus: 'Approved',
+    timestamp: '১৩ অক্টোবর ২০২৬, সকাল ১০:১৫',
+    note: 'কাগজপত্র, ক্যাবল ও অরিজিনাল ক্যাশমেমো ছবি যাচাইপূর্বক অনুমোদন দেওয়া হলো।'
+  },
+  {
+    id: 'MOD-LOG-02',
+    adId: 'ad-102',
+    adTitle: 'Yamaha FZ-S Version 3.0 ABS 2023',
+    adminId: 'ADM-102',
+    adminName: 'কায়সার আহমেদ',
+    adminRole: 'Moderator',
+    action: 'Verified',
+    previousStatus: 'Received',
+    newStatus: 'Verified',
+    timestamp: '১২ অক্টোবর ২০২৬, বিকাল ০৪:২০',
+    note: 'সেলার মোবাইল নম্বরে কল করে বাইকের রেজিস্ট্রেশন ও ট্যাক্স টোকেন মেয়াদ যাচাই করা হয়েছে।'
+  },
+  {
+    id: 'MOD-LOG-03',
+    adId: 'ad-103',
+    adTitle: 'সোনারগাঁও আবাসিক এলাকায় ৩ কাঠা রেডি প্লট',
+    adminId: 'ADM-101',
+    adminName: 'Md. Akbar Hossain',
+    adminRole: 'Super Admin',
+    action: 'Approved',
+    previousStatus: 'Processed',
+    newStatus: 'Approved',
+    timestamp: '১১ অক্টোবর ২০২৬, দুপুর ১২:০০',
+    note: 'জমির কাগজপত্র ও খতিয়ান নম্বর প্রাথমিক রিভিউতে সঠিক পাওয়া গেছে।'
   }
 ];

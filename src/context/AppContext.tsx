@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Ad, Language, Order, Transaction, User, NotificationItem, ChatMessage, Review, SystemBackup, ValidationStatus, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog } from '../types';
-import { INITIAL_ADS, INITIAL_NOTIFICATIONS, INITIAL_ORDERS, INITIAL_TRANSACTIONS, INITIAL_USER, INITIAL_REVIEWS, INITIAL_OFFER_SETTINGS, INITIAL_WITHDRAWAL_REQUESTS, INITIAL_ADMIN_DELETION_LOGS } from '../data/mockData';
+import { Ad, Language, Order, Transaction, User, NotificationItem, ChatMessage, Review, SystemBackup, ValidationStatus, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog, AdminUser, AdModerationLog } from '../types';
+import { INITIAL_ADS, INITIAL_NOTIFICATIONS, INITIAL_ORDERS, INITIAL_TRANSACTIONS, INITIAL_USER, INITIAL_REVIEWS, INITIAL_OFFER_SETTINGS, INITIAL_WITHDRAWAL_REQUESTS, INITIAL_ADMIN_DELETION_LOGS, INITIAL_ADMIN_USERS, INITIAL_AD_MODERATION_LOGS } from '../data/mockData';
 import { translations } from '../data/translations';
 
 interface AppContextType {
@@ -81,11 +81,19 @@ interface AppContextType {
   setAdminAdToDelete: (ad: Ad | null) => void;
   deleteAdWithAdminReason: (adId: string, reason: string, adminNote?: string) => void;
   pruneExpiredAds: () => { prunedCount: number; message: string };
-  // Modals for Policy and 6 Growth Strategies
+  // Modals for Policy, About Us, and 6 Growth Strategies
   isPolicyModalOpen: boolean;
   setIsPolicyModalOpen: (open: boolean) => void;
+  policyModalTab: string;
+  setPolicyModalTab: (tab: string) => void;
   isOffersModalOpen: boolean;
   setIsOffersModalOpen: (open: boolean) => void;
+  // Multi-Admin Identity & Audit Logging (Requirement 04 & 05)
+  activeAdmin: AdminUser;
+  setActiveAdmin: (admin: AdminUser) => void;
+  adminList: AdminUser[];
+  adModerationLogs: AdModerationLog[];
+  logAdminModerationAction: (adId: string, action: AdModerationLog['action'], note?: string, newStatus?: string) => void;
   // Data Backup & Restore
   exportBackupData: () => SystemBackup;
   importBackupData: (backup: SystemBackup) => { success: boolean; message: string; counts?: { ads: number; orders: number; transactions: number } };
@@ -400,7 +408,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_ADMIN_DELETION_LOGS;
   });
   const [adminAdToDelete, setAdminAdToDelete] = useState<Ad | null>(null);
+  const [adminList] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
+  const [activeAdmin, setActiveAdmin] = useState<AdminUser>(() => {
+    const saved = localStorage.getItem('bikroy_active_admin');
+    return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS[0];
+  });
+  const [adModerationLogs, setAdModerationLogs] = useState<AdModerationLog[]>(() => {
+    const saved = localStorage.getItem('bikroy_ad_moderation_logs');
+    return saved ? JSON.parse(saved) : INITIAL_AD_MODERATION_LOGS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('bikroy_active_admin', JSON.stringify(activeAdmin));
+  }, [activeAdmin]);
+
+  useEffect(() => {
+    localStorage.setItem('bikroy_ad_moderation_logs', JSON.stringify(adModerationLogs));
+  }, [adModerationLogs]);
+
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [policyModalTab, setPolicyModalTab] = useState<string>('all');
   const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
 
   const [activeModal, setActiveModal] = useState<string | null>(() => {
@@ -703,6 +730,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAds(prev => prev.map(a => a.id === adId ? { ...a, status } : a));
   };
 
+  const logAdminModerationAction = (adId: string, action: AdModerationLog['action'], note?: string, newStatus?: string) => {
+    const targetAd = ads.find(a => a.id === adId);
+    const timeStr = new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' });
+    const logItem: AdModerationLog = {
+      id: `MOD-LOG-${Date.now()}`,
+      adId,
+      adTitle: targetAd?.titleBn || targetAd?.titleEn || 'বিজ্ঞাপন',
+      adminId: activeAdmin.id,
+      adminName: activeAdmin.name,
+      adminRole: activeAdmin.role,
+      action,
+      previousStatus: targetAd?.validationStatus || targetAd?.status || 'Received',
+      newStatus: newStatus || action,
+      timestamp: timeStr,
+      note: note || `এডমিন স্ট্যাটাস অ্যাকশন: ${action}`
+    };
+
+    setAdModerationLogs(prev => [logItem, ...prev]);
+
+    setAds(prev => prev.map(a => {
+      if (a.id === adId) {
+        return {
+          ...a,
+          lastModeratedBy: {
+            adminId: activeAdmin.id,
+            adminName: activeAdmin.name,
+            action,
+            timestamp: timeStr
+          },
+          moderationLogs: [logItem, ...(a.moderationLogs || [])]
+        };
+      }
+      return a;
+    }));
+  };
+
   const updateAdValidationStatus = (adId: string, validationStatus: ValidationStatus, rejectionReason?: string) => {
     let newStatus: 'active' | 'pending' | 'sold' | 'rejected' = 'pending';
     if (validationStatus === 'Approved') {
@@ -713,19 +776,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       newStatus = 'pending';
     }
 
+    const targetAd = ads.find(a => a.id === adId);
+    const timeStr = new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' });
+    const logItem: AdModerationLog = {
+      id: `MOD-LOG-${Date.now()}`,
+      adId,
+      adTitle: targetAd?.titleBn || targetAd?.titleEn || 'বিজ্ঞাপন',
+      adminId: activeAdmin.id,
+      adminName: activeAdmin.name,
+      adminRole: activeAdmin.role,
+      action: validationStatus,
+      previousStatus: targetAd?.validationStatus || targetAd?.status || 'Received',
+      newStatus: validationStatus,
+      timestamp: timeStr,
+      note: rejectionReason ? `বাতিলের কারণ: ${rejectionReason}` : `স্ট্যাটাস পরিবর্তিত হয়েছে: ${validationStatus}`
+    };
+
+    setAdModerationLogs(prev => [logItem, ...prev]);
+
     setAds(prev => prev.map(a => {
       if (a.id === adId) {
         return {
           ...a,
           validationStatus,
           status: newStatus,
-          rejectionReason: rejectionReason !== undefined ? rejectionReason : a.rejectionReason
+          rejectionReason: rejectionReason !== undefined ? rejectionReason : a.rejectionReason,
+          lastModeratedBy: {
+            adminId: activeAdmin.id,
+            adminName: activeAdmin.name,
+            action: validationStatus,
+            timestamp: timeStr
+          },
+          moderationLogs: [logItem, ...(a.moderationLogs || [])]
         };
       }
       return a;
     }));
 
-    const targetAd = ads.find(a => a.id === adId);
     const statusLabels: Record<ValidationStatus, { bn: string; en: string }> = {
       'Received': { bn: 'প্রাপ্ত (Received) - সিস্টেম প্রাথমিক যাচাইয়ে আছে', en: 'Received - Initial system review' },
       'Verified': { bn: 'যাচাইকৃত (Verified) - বিক্রেতা ও বিবরণ ভেরিফাইড', en: 'Verified - Seller & details confirmed' },
@@ -736,10 +823,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
-      titleBn: `বিজ্ঞাপন ডাটা ভেলিডেশন: ${validationStatus}`,
-      titleEn: `Ad Data Validation: ${validationStatus}`,
-      descriptionBn: `"${targetAd?.titleBn || 'বিজ্ঞাপন'}" স্ট্যাটাস পরিবর্তিত হয়েছে: ${statusLabels[validationStatus].bn}`,
-      descriptionEn: `"${targetAd?.titleEn || 'Ad'}" status updated to: ${statusLabels[validationStatus].en}`,
+      titleBn: `বিজ্ঞাপন ডাটা ভেলিডেশন: ${validationStatus} (বাই ${activeAdmin.id})`,
+      titleEn: `Ad Data Validation: ${validationStatus} (by ${activeAdmin.id})`,
+      descriptionBn: `"${targetAd?.titleBn || 'বিজ্ঞাপন'}" স্ট্যাটাস পরিবর্তিত হয়েছে: ${statusLabels[validationStatus].bn} (যাচাইকারী: ${activeAdmin.name})`,
+      descriptionEn: `"${targetAd?.titleEn || 'Ad'}" status updated to: ${statusLabels[validationStatus].en} (Moderator: ${activeAdmin.name})`,
       time: 'এইমাত্র',
       read: false,
       type: 'ad'
@@ -822,10 +909,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sellerPhone: targetAd.sellerPhone,
       reason: fullReason,
       deletedAt: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
-      deletedBy: `${currentUser?.name || 'এডমিন'} (এডমিন অ্যাকশন)`
+      deletedBy: `${activeAdmin.id} (${activeAdmin.name})`
     };
 
     setAdminDeletionLogs(prev => [newLog, ...prev]);
+
+    // Also add to global moderation log
+    const delModLog: AdModerationLog = {
+      id: `MOD-LOG-${Date.now()}`,
+      adId: targetAd.id,
+      adTitle: targetAd.titleBn || targetAd.titleEn,
+      adminId: activeAdmin.id,
+      adminName: activeAdmin.name,
+      adminRole: activeAdmin.role,
+      action: 'Deleted',
+      previousStatus: targetAd.status,
+      newStatus: 'Deleted',
+      timestamp: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
+      note: fullReason
+    };
+    setAdModerationLogs(prev => [delModLog, ...prev]);
+
     setAds(prev => prev.filter(a => a.id !== adId));
     setAdminAdToDelete(null);
 
@@ -924,6 +1028,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       offerSettings,
       withdrawalRequests,
       adminDeletionLogs,
+      adModerationLogs,
     };
   };
 
@@ -987,6 +1092,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAdminDeletionLogs(backup.adminDeletionLogs);
         localStorage.setItem('bikroy_admin_del_logs', JSON.stringify(backup.adminDeletionLogs));
       }
+      if (Array.isArray(backup.adModerationLogs)) {
+        setAdModerationLogs(backup.adModerationLogs);
+        localStorage.setItem('bikroy_ad_moderation_logs', JSON.stringify(backup.adModerationLogs));
+      }
 
       return {
         success: true,
@@ -1014,6 +1123,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('bikroy_offer_settings');
     localStorage.removeItem('bikroy_withdrawals');
     localStorage.removeItem('bikroy_admin_del_logs');
+    localStorage.removeItem('bikroy_ad_moderation_logs');
+    localStorage.removeItem('bikroy_active_admin');
     setAds(INITIAL_ADS);
     setOrders(INITIAL_ORDERS);
     setTransactions(INITIAL_TRANSACTIONS);
@@ -1024,6 +1135,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setOfferSettings(INITIAL_OFFER_SETTINGS);
     setWithdrawalRequests(INITIAL_WITHDRAWAL_REQUESTS);
     setAdminDeletionLogs(INITIAL_ADMIN_DELETION_LOGS);
+    setAdModerationLogs(INITIAL_AD_MODERATION_LOGS);
+    setActiveAdmin(INITIAL_ADMIN_USERS[0]);
   };
 
   const t = translations[lang];
@@ -1075,9 +1188,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setAdminAdToDelete,
         deleteAdWithAdminReason,
         pruneExpiredAds,
-        // Modals for Business Policy and Growth Offers
+        // Modals for Business Policy, About Us, and Growth Offers
         isPolicyModalOpen,
         setIsPolicyModalOpen,
+        policyModalTab,
+        setPolicyModalTab,
         isOffersModalOpen,
         setIsOffersModalOpen,
         // Profile Tab Navigation
@@ -1112,6 +1227,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestWithdrawal,
         updateWithdrawalStatus,
         grantCustomBonus,
+        // Multi-Admin Identity & Audit Logging (Requirement 04 & 05)
+        activeAdmin,
+        setActiveAdmin,
+        adminList,
+        adModerationLogs,
+        logAdminModerationAction,
         // Data Backup & Restore
         exportBackupData,
         importBackupData,
