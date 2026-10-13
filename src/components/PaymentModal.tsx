@@ -42,8 +42,8 @@ export const PaymentModal: React.FC = () => {
   if (!selectedAd) return null;
 
   const deliveryFee = 120;
-  const userWalletBalance = currentUser?.walletBalance ?? 50;
-  const walletDiscountAmount = applyWalletDiscount ? Math.min(userWalletBalance, 50) : 0;
+  const userWalletBalance = currentUser?.walletBalance ?? 0;
+  const walletDiscountAmount = applyWalletDiscount ? Math.min(userWalletBalance, selectedAd.price) : 0;
   const totalAmount = Math.max(0, selectedAd.price + deliveryFee - walletDiscountAmount);
 
   const handleProceedToPayment = (e: React.FormEvent) => {
@@ -319,17 +319,17 @@ export const PaymentModal: React.FC = () => {
                   <span className="font-mono tabular-nums">৳ {deliveryFee}</span>
                 </div>
 
-                {/* 50 Tk Welcome Bonus Discount Option */}
+                {/* Welcome Bonus / Wallet Balance Discount Option */}
                 {userWalletBalance > 0 && (
-                  <div className="p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer text-emerald-950 font-semibold">
+                  <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between">
+                    <label className="flex items-center gap-2 cursor-pointer text-emerald-950 font-semibold text-xs">
                       <input
                         type="checkbox"
                         checked={applyWalletDiscount}
                         onChange={(e) => setApplyWalletDiscount(e.target.checked)}
                         className="text-[#007460] rounded focus:ring-[#007460]"
                       />
-                      <span>🎁 ওয়ালেট ব্যালেন্স থেকে ৫০ টাকা ছাড় ব্যবহার করুন</span>
+                      <span>🎁 ওয়ালেট ক্যাশ বোনাস ব্যবহার করুন (ব্যালেন্স: ৳ {userWalletBalance})</span>
                     </label>
                     <span className="font-mono font-bold text-emerald-700">- ৳ {walletDiscountAmount}</span>
                   </div>

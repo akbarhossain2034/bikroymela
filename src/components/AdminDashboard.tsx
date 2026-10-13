@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { SystemBackup, ValidationStatus } from '../types';
+import { AdminDeleteAdModal } from './AdminDeleteAdModal';
+import { BusinessPolicyModal } from './BusinessPolicyModal';
+import { OffersShowcaseModal } from './OffersShowcaseModal';
 import { 
   ShieldCheck, 
   Layers, 
@@ -42,10 +45,17 @@ import {
   Clock,
   DownloadCloud,
   ChevronDown,
+  FileText,
   BookOpen,
   CheckSquare,
   ListFilter,
-  X
+  X,
+  Gift,
+  BadgePercent,
+  ArrowDownToLine,
+  Send,
+  Megaphone,
+  Coins
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -68,10 +78,21 @@ export const AdminDashboard: React.FC = () => {
     updateDomainName,
     exportBackupData,
     importBackupData,
-    resetToFactoryData
+    resetToFactoryData,
+    offerSettings,
+    updateOfferSettings,
+    withdrawalRequests,
+    updateWithdrawalStatus,
+    grantCustomBonus,
+    setAdminAdToDelete,
+    adminAdToDelete,
+    adminDeletionLogs,
+    pruneExpiredAds,
+    setIsOffersModalOpen,
+    setIsPolicyModalOpen
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup'>('ads');
+  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers'>('ads');
   const [filterAdStatus, setFilterAdStatus] = useState<string>('all');
   const [adminSearch, setAdminSearch] = useState<string>('');
   const [copiedCustomerLink, setCopiedCustomerLink] = useState(false);
@@ -81,10 +102,33 @@ export const AdminDashboard: React.FC = () => {
   const [withdrawNumber, setWithdrawNumber] = useState('01855-667788');
   const [withdrawSuccess, setWithdrawSuccess] = useState(false);
 
+  // Offers & Welcome Bonus State
+  const [bonusAmountInput, setBonusAmountInput] = useState<number>(offerSettings?.signupBonusAmount || 100);
+  const [bonusEnabledInput, setBonusEnabledInput] = useState<boolean>(offerSettings?.isBonusEnabled ?? true);
+  const [minWithdrawInput, setMinWithdrawInput] = useState<number>(offerSettings?.minWithdrawLimit || 100);
+  const [bannerActiveInput, setBannerActiveInput] = useState<boolean>(offerSettings?.isBannerActive ?? true);
+  const [campaignTitleInput, setCampaignTitleInput] = useState<string>(offerSettings?.campaignTitleBn || '');
+  const [campaignDescInput, setCampaignDescInput] = useState<string>(offerSettings?.campaignDescriptionBn || '');
+  const [offerSavedMsg, setOfferSavedMsg] = useState(false);
+
+  // Withdrawal Filter & Action State
+  const [withdrawFilterStatus, setWithdrawFilterStatus] = useState<string>('all');
+  const [payingRequestId, setPayingRequestId] = useState<string | null>(null);
+  const [inputTrxId, setInputTrxId] = useState('');
+  const [trxActionMsg, setTrxActionMsg] = useState<string | null>(null);
+
+  // Custom Bonus Grant State
+  const [grantPhone, setGrantPhone] = useState(currentUser?.phone || '01332520826');
+  const [grantAmount, setGrantAmount] = useState<number>(100);
+  const [grantNote, setGrantNote] = useState('নতুন বিক্রেতা ওয়েলকাম বোনাস');
+  const [grantSuccessMsg, setGrantSuccessMsg] = useState('');
+
   // Dynamic Site & Domain Settings State
   const [inputSiteName, setInputSiteName] = useState(siteName);
-  const [inputDomainName, setInputDomainName] = useState(domainName);
+  const [inputDomainName, setInputDomainName] = useState(domainName || 'bikroymela.com');
   const [siteSettingsSaved, setSiteSettingsSaved] = useState(false);
+  const [pruneResultMsg, setPruneResultMsg] = useState<string | null>(null);
+  const [showAuditLogsModal, setShowAuditLogsModal] = useState<boolean>(false);
 
   // Backup & Restore State (ডাটা ব্যাকআপ ও রিস্টোর)
   const [backupDownloadSuccess, setBackupDownloadSuccess] = useState<string | null>(null);
@@ -530,6 +574,21 @@ export const AdminDashboard: React.FC = () => {
             </button>
 
             <button
+              onClick={() => setActiveTab('offers')}
+              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
+                activeTab === 'offers' ? 'border-[#007460] text-[#007460] font-bold bg-white shadow-2xs' : 'border-transparent text-amber-700 hover:text-amber-900'
+              }`}
+            >
+              <Gift className="w-4 h-4 text-amber-600" />
+              <span>🎁 অফার ও ওয়েলকাম বোনাস (Offers & Bonus)</span>
+              {withdrawalRequests.filter(w => w.status === 'Pending').length > 0 && (
+                <span className="bg-amber-500 text-slate-950 font-mono font-bold text-[10px] px-1.5 py-0.2 rounded-full">
+                  {withdrawalRequests.filter(w => w.status === 'Pending').length}
+                </span>
+              )}
+            </button>
+
+            <button
               onClick={() => setActiveTab('settings')}
               className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
                 activeTab === 'settings' ? 'border-[#007460] text-[#007460] font-bold bg-white' : 'border-transparent text-indigo-700 hover:text-indigo-900'
@@ -576,14 +635,57 @@ export const AdminDashboard: React.FC = () => {
                 </button>
               </div>
 
-              {/* Toast message if status updated */}
-              {validationToast && (
-                <div className="p-2.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-lg text-xs font-semibold flex items-center justify-between animate-fade-in">
+              {/* Requirement 02: ৩ মাসের অটো-ডিলিট ও বিজ্ঞাপন পরিচ্ছন্নতা পলিসি বার */}
+              <div className="p-3.5 bg-gradient-to-r from-amber-50 via-slate-50 to-rose-50 border border-amber-200 rounded-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs shadow-2xs">
+                <div className="space-y-0.5">
                   <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
-                    <span>{validationToast}</span>
+                    <span className="bg-amber-500 text-slate-950 font-black text-[10px] px-2 py-0.5 rounded-full uppercase">
+                      পলিসি ০২
+                    </span>
+                    <h4 className="font-bold text-slate-900 text-xs sm:text-[13px] flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-amber-700" />
+                      <span>৩ মাস (৯০ দিন) অবিক্রিত বিজ্ঞাপন অটো-ডিলিট ও পরিচ্ছন্নতা পলিসি</span>
+                    </h4>
                   </div>
-                  <button onClick={() => setValidationToast(null)} className="text-slate-400 hover:text-slate-600">
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    পণ্য বিক্রয় না হয়ে ৩ মাস অতিক্রম করলে প্ল্যাটফর্ম থেকে বিজ্ঞাপন স্বয়ংক্রিয়ভাবে মুছে ফেলা হয়। এছাড়াও এডমিন যেকোনো সময় কারণ উল্লেখ করে বিজ্ঞাপন বাতিল করতে পারেন।
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const res = pruneExpiredAds();
+                      setPruneResultMsg(res.message);
+                      setTimeout(() => setPruneResultMsg(null), 5000);
+                    }}
+                    className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                    title="৯০ দিনের বেশি পুরানো অবিক্রিত বিজ্ঞাপন ক্লিন করুন"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>🧹 ৯০ দিনের পুরানো এড ক্লিন করুন</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowAuditLogsModal(true)}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 border border-slate-300 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-600" />
+                    <span>📋 ডিলিট অডিট লগ ({adminDeletionLogs.length})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Prune Result Notification */}
+              {pruneResultMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-emerald-900 text-xs font-semibold flex items-center justify-between animate-fadeIn">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{pruneResultMsg}</span>
+                  </div>
+                  <button onClick={() => setPruneResultMsg(null)} className="text-slate-400 hover:text-slate-600">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
@@ -946,6 +1048,14 @@ export const AdminDashboard: React.FC = () => {
                               >
                                 প্রিভিউ
                               </button>
+                              <button
+                                onClick={() => setAdminAdToDelete(ad)}
+                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 hover:text-rose-900 border border-rose-200 rounded text-[11px] font-bold transition-colors flex items-center gap-1 shadow-2xs"
+                                title="কারণ উল্লেখ করে বিজ্ঞাপন ডিলিট করুন"
+                              >
+                                <Trash2 className="w-3 h-3 text-rose-600" />
+                                <span>মুছুন</span>
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -1070,6 +1180,93 @@ export const AdminDashboard: React.FC = () => {
                         className="px-4 py-2 bg-[#007460] text-white rounded-lg text-xs font-bold hover:bg-[#005f4e] transition-colors"
                       >
                         বুঝেছি ও বন্ধ করুন
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* Audit Deletion Logs Modal (Requirement 02) */}
+              {showAuditLogsModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto">
+                  <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full text-slate-800 overflow-hidden my-auto max-h-[92vh] flex flex-col animate-in fade-in border border-rose-200">
+                    
+                    {/* Modal Header */}
+                    <div className="p-4 bg-gradient-to-r from-rose-900 to-slate-900 text-white flex items-center justify-between shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <FileText className="w-5 h-5 text-rose-300" />
+                        <div>
+                          <h3 className="font-bold text-base sm:text-lg">
+                            বিজ্ঞাপন ডিলিট অডিট হিস্ট্রি ও কারণ লগ ({adminDeletionLogs.length}টি রেকর্ড)
+                          </h3>
+                          <p className="text-[11px] text-rose-200">
+                            কোন বিজ্ঞাপন কি কারণে এবং কখন ডিলিট করা হয়েছে তার সম্পূর্ণ আইনি ও প্রশাসনিক রেকর্ড
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowAuditLogsModal(false)}
+                        className="text-white hover:text-rose-200 p-1 rounded-md"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Modal Content */}
+                    <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
+                      {adminDeletionLogs.length === 0 ? (
+                        <div className="p-12 text-center text-slate-500">
+                          এখনো কোনো বিজ্ঞাপন ডিলিট করা হয়নি। অডিট হিস্ট্রি সম্পূর্ণ পরিষ্কার।
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto border border-slate-200 rounded-lg">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-100 text-slate-700 uppercase font-bold border-b border-slate-200">
+                              <tr>
+                                <th className="p-2.5">লগ আইডি</th>
+                                <th className="p-2.5">বিজ্ঞাপন শিরোনাম</th>
+                                <th className="p-2.5">বিক্রেতা ও মোবাইল</th>
+                                <th className="p-2.5">ডিলিট করার সুনির্দিষ্ট কারণ</th>
+                                <th className="p-2.5">তারিখ ও সময়</th>
+                                <th className="p-2.5">কর্তৃপক্ষ</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {adminDeletionLogs.map((log) => (
+                                <tr key={log.id} className="hover:bg-slate-50">
+                                  <td className="p-2.5 font-mono font-bold text-slate-700">{log.id}</td>
+                                  <td className="p-2.5">
+                                    <div className="font-bold text-slate-900 line-clamp-1">{log.adTitle}</div>
+                                    <div className="text-[10px] text-slate-400 font-mono">আইডি: {log.adId}</div>
+                                  </td>
+                                  <td className="p-2.5">
+                                    <div className="font-semibold text-slate-800">{log.sellerName}</div>
+                                    <div className="text-[10px] text-slate-500 font-mono">{log.sellerPhone}</div>
+                                  </td>
+                                  <td className="p-2.5">
+                                    <span className="px-2 py-1 rounded bg-rose-50 text-rose-800 border border-rose-200 font-medium inline-block leading-tight">
+                                      {log.reason}
+                                    </span>
+                                  </td>
+                                  <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">{log.deletedAt}</td>
+                                  <td className="p-2.5 text-slate-600 font-medium">{log.deletedBy}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setShowAuditLogsModal(false)}
+                        className="px-4 py-2 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition-colors"
+                      >
+                        বন্ধ করুন
                       </button>
                     </div>
 
@@ -2164,9 +2361,642 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
+          {/* TAB 8: OFFERS & WELCOME BONUS (অফার ও ওয়েলকাম বোনাস ব্যবস্থাপনা) */}
+          {activeTab === 'offers' && (
+            <div className="p-4 sm:p-6 space-y-6">
+              
+              {/* Header Info */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base sm:text-lg flex items-center gap-2">
+                    <Gift className="w-5 h-5 text-amber-600" />
+                    <span>অফার, ওয়েলকাম ক্যাশ বোনাস ও উইথড্রয়াল কন্ট্রোল</span>
+                    <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                      প্রমোশন ইঞ্জিন
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">
+                    নতুন একাউন্ট খোলার সাইনআপ বোনাসের পরিমাণ (৫০-৫০০ টাকা) সেট করুন, টাকা তোলার আবেদন অনুমোদন করুন এবং মার্কেটিং ক্যাম্পেইন পরিচালনা করুন।
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-slate-600 font-semibold bg-emerald-50 text-emerald-800 px-3 py-1.5 rounded-lg border border-emerald-200">
+                    বর্তমান বোনাস: <b>৳ {offerSettings?.signupBonusAmount || 100}</b> ({offerSettings?.isBonusEnabled ? 'সক্রিয়' : 'নিষ্ক্রিয়'})
+                  </span>
+                </div>
+              </div>
+
+              {/* Status Action Notification Banner */}
+              {trxActionMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-emerald-900 font-semibold flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>{trxActionMsg}</span>
+                  </div>
+                  <button onClick={() => setTrxActionMsg(null)} className="text-emerald-700 hover:text-emerald-900">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              {/* ======================================================== */}
+              {/* SECTION 1: ওয়েলকাম সাইনআপ বোনাস কনফিগারেশন */}
+              {/* ======================================================== */}
+              <div className="bg-gradient-to-br from-amber-50/60 via-white to-slate-50 p-5 rounded-xl border border-amber-200/90 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-amber-500 text-slate-950 font-black flex items-center justify-center text-sm shadow-xs">
+                      ৳
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900">
+                        ০১. ওয়েলকাম সাইনআপ বোনাস সেটিংস (Welcome Bonus Configuration)
+                      </h4>
+                      <span className="text-[11px] text-slate-500">
+                        নতুন কাস্টমার একাউন্ট খোলার সাথে সাথে কত টাকা ফ্রি পাবে তা এখান থেকে সেট করুন
+                      </span>
+                    </div>
+                  </div>
+
+                  {offerSavedMsg && (
+                    <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full flex items-center gap-1 shadow-2xs animate-fadeIn">
+                      <Check className="w-3.5 h-3.5" />
+                      <span>সেটিংস সফলভাবে সংরক্ষিত হয়েছে!</span>
+                    </span>
+                  )}
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  updateOfferSettings({
+                    signupBonusAmount: Number(bonusAmountInput),
+                    isBonusEnabled: bonusEnabledInput,
+                    minWithdrawLimit: Number(minWithdrawInput),
+                    isBannerActive: bannerActiveInput,
+                    campaignTitleBn: campaignTitleInput.trim() || `নতুন অ্যাকাউন্ট খুললেই পাচ্ছেন ${bonusAmountInput} টাকা ফ্রি ওয়েলকাম ক্যাশ বোনাস!`,
+                    campaignDescriptionBn: campaignDescInput.trim() || 'এই বোনাস ব্যালেন্স দিয়ে সাইটে যেকোনো পণ্য কিনতে পারবেন অথবা সরাসরি বিকাশ ও নগদে ক্যাশ আউট করতে পারবেন!'
+                  });
+                  setOfferSavedMsg(true);
+                  setTimeout(() => setOfferSavedMsg(false), 3000);
+                }} className="space-y-4 text-xs">
+                  
+                  {/* বোনাস অন/অফ সুইচ এবং টাকার পরিমাণ */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    
+                    {/* অপশন ১: বোনাস স্ট্যাটাস */}
+                    <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2">
+                      <label className="block font-bold text-slate-800">
+                        সাইনআপ বোনাস স্ট্যাটাস:
+                      </label>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setBonusEnabledInput(true)}
+                          className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                            bonusEnabledInput
+                              ? 'bg-emerald-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          ✓ বোনাস চালু
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setBonusEnabledInput(false)}
+                          className={`flex-1 py-2 px-3 rounded-lg font-bold text-xs transition-colors cursor-pointer ${
+                            !bonusEnabledInput
+                              ? 'bg-rose-600 text-white shadow-xs'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          ✕ বন্ধ
+                        </button>
+                      </div>
+                      <span className="text-[10px] text-slate-500 block">
+                        চালু থাকলে নতুন রেজিস্টার্ড ইউজাররা স্বয়ংক্রিয়ভাবে ব্যালেন্স পাবে।
+                      </span>
+                    </div>
+
+                    {/* অপশন ২: বোনাসের টাকার পরিমাণ (৫০ - ৫০০) */}
+                    <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-800">
+                          বোনাসের টাকার পরিমাণ:
+                        </label>
+                        <span className="font-mono font-black text-amber-700 text-sm">
+                          ৳ {bonusAmountInput}
+                        </span>
+                      </div>
+                      
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center font-bold text-slate-400">
+                          ৳
+                        </span>
+                        <input
+                          type="number"
+                          min={10}
+                          max={5000}
+                          value={bonusAmountInput || ''}
+                          onChange={(e) => setBonusAmountInput(Number(e.target.value) || 0)}
+                          className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 outline-none focus:ring-2 focus:ring-[#007460]"
+                        />
+                      </div>
+
+                      {/* দ্রুত নির্বাচন বাটন */}
+                      <div className="flex items-center gap-1.5 pt-1">
+                        {[50, 100, 200, 500].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setBonusAmountInput(amt)}
+                            className={`flex-1 py-1 text-[11px] font-bold rounded border transition-colors cursor-pointer ${
+                              bonusAmountInput === amt 
+                                ? 'bg-amber-500 text-slate-950 border-amber-600' 
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            ৳ {amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* অপশন ৩: সর্বনিম্ন ক্যাশ উইথড্র লিমিট */}
+                    <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="font-bold text-slate-800">
+                          সর্বনিম্ন উত্তোলন সীমা (Min Withdraw):
+                        </label>
+                        <span className="font-mono font-black text-emerald-700 text-sm">
+                          ৳ {minWithdrawInput}
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center font-bold text-slate-400">
+                          ৳
+                        </span>
+                        <input
+                          type="number"
+                          min={20}
+                          max={2000}
+                          value={minWithdrawInput || ''}
+                          onChange={(e) => setMinWithdrawInput(Number(e.target.value) || 0)}
+                          className="w-full pl-8 pr-3 py-2 bg-slate-50 border border-slate-300 rounded-lg font-mono font-bold text-slate-900 outline-none focus:ring-2 focus:ring-[#007460]"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 pt-1">
+                        {[50, 100, 200, 500].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setMinWithdrawInput(amt)}
+                            className={`flex-1 py-1 text-[11px] font-bold rounded border transition-colors cursor-pointer ${
+                              minWithdrawInput === amt 
+                                ? 'bg-emerald-600 text-white border-emerald-700' 
+                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                          >
+                            ৳ {amt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* প্রচারণামূলক ব্যানার টেক্সট */}
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-slate-800 flex items-center gap-1.5">
+                        <Megaphone className="w-4 h-4 text-amber-600" />
+                        <span>হোমপেজ ও সাইটের অফার ব্যানার কাস্টমাইজেশন</span>
+                      </div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={bannerActiveInput}
+                          onChange={(e) => setBannerActiveInput(e.target.checked)}
+                          className="rounded text-[#007460] focus:ring-[#007460]"
+                        />
+                        <span className="text-[11px] font-semibold text-slate-700">সাইটের শীর্ষে প্রচার ব্যানার দেখান</span>
+                      </label>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-slate-600 font-semibold mb-1">
+                          অফার ব্যানারের শিরোনাম (Title):
+                        </label>
+                        <input
+                          type="text"
+                          value={campaignTitleInput}
+                          onChange={(e) => setCampaignTitleInput(e.target.value)}
+                          placeholder="উদাঃ নতুন অ্যাকাউন্ট খুললেই পাচ্ছেন ১০০ টাকা ফ্রি ওয়েলকাম ক্যাশ বোনাস!"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-slate-600 font-semibold mb-1">
+                          অফার ব্যানারের বিবরণ (Description):
+                        </label>
+                        <input
+                          type="text"
+                          value={campaignDescInput}
+                          onChange={(e) => setCampaignDescInput(e.target.value)}
+                          placeholder="উদাঃ এই বোনাস ব্যালেন্স দিয়ে সাইটে কেনাকাটা বা বিকাশ/নগদে ক্যাশ নিন!"
+                          className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* সেভ বাটন */}
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="submit"
+                      className="px-6 py-2.5 bg-[#007460] hover:bg-[#005f4e] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95"
+                    >
+                      <Save className="w-4 h-4" />
+                      <span>অফার সেটিংস সংরক্ষণ করুন (Save Settings)</span>
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* ======================================================== */}
+              {/* SECTION 2: কাস্টমারদের টাকা তোলার আবেদন ও অনুমোদন (WITHDRAWALS) */}
+              {/* ======================================================== */}
+              <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-200">
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                      <ArrowDownToLine className="w-4 h-4 text-emerald-700" />
+                      <span>০২. গ্রাহকদের টাকা তোলার আবেদন ও অনুমোদন (Customer Withdrawal Requests)</span>
+                      <span className="bg-emerald-100 text-[#007460] text-[10px] font-black px-2 py-0.5 rounded-full">
+                        মোট: {withdrawalRequests.length}টি
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-500 mt-0.5">
+                      গ্রাহকরা বিকাশ, নগদ বা রকেটে টাকা তোলার যে আবেদন জমা দিয়েছেন তা যাচাই করে এখানে টাকা পাঠিয়ে স্ট্যাটাস আপডেট করুন।
+                    </p>
+                  </div>
+
+                  {/* স্ট্যাটাস ফিল্টার */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-lg text-xs">
+                    {[
+                      { id: 'all', label: 'সকল' },
+                      { id: 'Pending', label: `অপেক্ষমাণ (${withdrawalRequests.filter(w => w.status === 'Pending').length})` },
+                      { id: 'Paid', label: `পেইড (${withdrawalRequests.filter(w => w.status === 'Paid').length})` },
+                      { id: 'Rejected', label: `বাতিল (${withdrawalRequests.filter(w => w.status === 'Rejected').length})` }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setWithdrawFilterStatus(f.id)}
+                        className={`px-3 py-1 rounded-md font-semibold transition-colors cursor-pointer ${
+                          withdrawFilterStatus === f.id
+                            ? 'bg-white text-slate-950 shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* উইথড্রয়াল টেবিল */}
+                {withdrawalRequests.filter(w => withdrawFilterStatus === 'all' || w.status === withdrawFilterStatus).length === 0 ? (
+                  <div className="text-center py-8 text-slate-500 text-xs">
+                    কোনো উইথড্রয়াল রিকোয়েস্ট পাওয়া যায়নি।
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-200 bg-slate-50 text-[11px] text-slate-600 uppercase tracking-wider">
+                          <th className="py-2.5 px-3 font-semibold">আবেদন আইডি</th>
+                          <th className="py-2.5 px-3 font-semibold">গ্রাহকের নাম ও মোবাইল</th>
+                          <th className="py-2.5 px-3 font-semibold">উত্তোলনের মাধ্যম ও নম্বর</th>
+                          <th className="py-2.5 px-3 font-semibold">টাকার পরিমাণ</th>
+                          <th className="py-2.5 px-3 font-semibold">তারিখ</th>
+                          <th className="py-2.5 px-3 font-semibold">স্ট্যাটাস</th>
+                          <th className="py-2.5 px-3 font-semibold text-right">এডমিন অ্যাকশন</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {withdrawalRequests
+                          .filter(w => withdrawFilterStatus === 'all' || w.status === withdrawFilterStatus)
+                          .map(item => (
+                            <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                              <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                                #{item.id}
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-slate-900">{item.userName}</div>
+                                <div className="text-[10px] text-slate-500 font-mono">{item.userPhone}</div>
+                              </td>
+                              <td className="py-3 px-3">
+                                <div className="font-semibold text-slate-800 flex items-center gap-1.5">
+                                  <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    item.gateway === 'bKash' ? 'bg-pink-100 text-pink-800' :
+                                    item.gateway === 'Nagad' ? 'bg-orange-100 text-orange-800' :
+                                    item.gateway === 'Rocket' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'
+                                  }`}>
+                                    {item.gateway}
+                                  </span>
+                                  <span className="font-mono">{item.accountNumber}</span>
+                                </div>
+                                <span className="text-[10px] text-slate-500">
+                                  ধরন: {item.accountType === 'agent' ? 'এজেন্ট (Agent)' : 'ব্যক্তিগত (Personal)'}
+                                </span>
+                              </td>
+                              <td className="py-3 px-3 font-mono font-black text-emerald-700 text-sm">
+                                ৳ {item.amount}
+                              </td>
+                              <td className="py-3 px-3 text-[11px] text-slate-500">
+                                {item.requestedAt}
+                              </td>
+                              <td className="py-3 px-3">
+                                {item.status === 'Pending' && (
+                                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                    <Clock className="w-3 h-3 text-amber-600" />
+                                    <span>অপেক্ষমাণ</span>
+                                  </span>
+                                )}
+                                {item.status === 'Paid' && (
+                                  <div className="inline-flex flex-col">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                      <span>পেইড (পরিশোধিত)</span>
+                                    </span>
+                                    {item.trxId && (
+                                      <span className="text-[9px] font-mono text-slate-500 mt-0.5">Trx: {item.trxId}</span>
+                                    )}
+                                  </div>
+                                )}
+                                {item.status === 'Rejected' && (
+                                  <div className="inline-flex flex-col">
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                      <XCircle className="w-3 h-3 text-rose-600" />
+                                      <span>বাতিল ও রিফান্ডেড</span>
+                                    </span>
+                                    {item.adminNote && (
+                                      <span className="text-[9px] text-slate-500 mt-0.5">{item.adminNote}</span>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-3 px-3 text-right">
+                                {item.status === 'Pending' ? (
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {payingRequestId === item.id ? (
+                                      <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-emerald-400 shadow-sm animate-fadeIn">
+                                        <input
+                                          type="text"
+                                          placeholder="বিকাশ/নগদ TrxID লিখুন"
+                                          value={inputTrxId}
+                                          onChange={(e) => setInputTrxId(e.target.value)}
+                                          className="px-2 py-1 text-xs border border-slate-300 rounded outline-none font-mono font-bold w-36"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (!inputTrxId.trim()) {
+                                              alert('দয়া করে TrxID লিখুন');
+                                              return;
+                                            }
+                                            updateWithdrawalStatus(item.id, 'Paid', inputTrxId.trim(), 'এডমিন দ্বারা অনুমোদিত ও সফলভাবে পাঠানো হয়েছে।');
+                                            setPayingRequestId(null);
+                                            setInputTrxId('');
+                                            setTrxActionMsg('টাকা পাঠানো সম্পন্ন হয়েছে এবং স্ট্যাটাস Paid আপডেট করা হয়েছে!');
+                                            setTimeout(() => setTrxActionMsg(null), 3000);
+                                          }}
+                                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold"
+                                        >
+                                          কনফার্ম
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => { setPayingRequestId(null); setInputTrxId(''); }}
+                                          className="px-2 py-1 bg-slate-200 text-slate-700 rounded text-xs"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPayingRequestId(item.id);
+                                            setInputTrxId(`BK${Date.now().toString().slice(-6)}`);
+                                          }}
+                                          className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                                        >
+                                          <Check className="w-3 h-3" />
+                                          <span>টাকা পাঠানো হয়েছে</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            const reason = prompt('আবেদন বাতিলের কারণ লিখুন (টাকা গ্রাহকের ওয়ালেটে ফেরত যাবে):', 'ভুল অ্যাকাউন্ট নম্বর / নম্বরটি সচল নয়');
+                                            if (reason !== null) {
+                                              updateWithdrawalStatus(item.id, 'Rejected', undefined, reason);
+                                              setTrxActionMsg('আবেদন বাতিল করা হয়েছে এবং গ্রাহকের ওয়ালেটে রিফান্ড করা হয়েছে।');
+                                              setTimeout(() => setTrxActionMsg(null), 3000);
+                                            }
+                                          }}
+                                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded text-xs font-semibold transition-colors cursor-pointer"
+                                        >
+                                          বাতিল
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-[11px] text-slate-400 italic">সম্পন্ন হয়েছে</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* ======================================================== */}
+              {/* SECTION 3: গ্রাহককে সরাসরি বিশেষ বোনাস প্রদান (MANUAL BONUS) */}
+              {/* ======================================================== */}
+              <div className="bg-gradient-to-br from-indigo-50/60 via-white to-slate-50 p-5 rounded-xl border border-indigo-200 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between border-b border-indigo-100 pb-2">
+                  <div className="flex items-center gap-2">
+                    <Send className="w-4 h-4 text-indigo-700" />
+                    <h4 className="text-sm font-bold text-slate-900">
+                      ০৩. যেকোনো গ্রাহককে সরাসরি বিশেষ বোনাস বা ক্যাশ উপহার দিন (Manual Bonus Grant)
+                    </h4>
+                  </div>
+                  {grantSuccessMsg && (
+                    <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full animate-fadeIn">
+                      {grantSuccessMsg}
+                    </span>
+                  )}
+                </div>
+
+                <form onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!grantPhone.trim() || grantAmount <= 0) {
+                    alert('সঠিক তথ্য দিন');
+                    return;
+                  }
+                  grantCustomBonus(currentUser?.id || 'user-001', Number(grantAmount), grantNote);
+                  setGrantSuccessMsg(`🎉 সফলভাবে ${grantPhone} গ্রাহককে ৳ ${grantAmount} বিশেষ বোনাস পাঠানো হয়েছে!`);
+                  setTimeout(() => setGrantSuccessMsg(''), 4000);
+                }} className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs items-end">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      গ্রাহকের মোবাইল নম্বর:
+                    </label>
+                    <input
+                      type="text"
+                      value={grantPhone}
+                      onChange={(e) => setGrantPhone(e.target.value)}
+                      placeholder="01332520826"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      বোনাসের পরিমাণ (টাকা):
+                    </label>
+                    <input
+                      type="number"
+                      min={10}
+                      value={grantAmount || ''}
+                      onChange={(e) => setGrantAmount(Number(e.target.value) || 0)}
+                      placeholder="যেমনঃ ১০০"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono font-bold outline-none focus:ring-2 focus:ring-indigo-500"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      বোনাসের কারণ বা বিবরণ:
+                    </label>
+                    <input
+                      type="text"
+                      value={grantNote}
+                      onChange={(e) => setGrantNote(e.target.value)}
+                      placeholder="যেমনঃ সেরা বিক্রেতা রিওয়ার্ড"
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    className="py-2 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <Send className="w-3.5 h-3.5" />
+                    <span>বোনাস পাঠান</span>
+                  </button>
+                </form>
+              </div>
+
+              {/* ======================================================== */}
+              {/* SECTION 4: নতুন মার্কেটপ্লেসের জন্য সুপার প্রমোশন ও অফার আইডিয়াবক্স */}
+              {/* ======================================================== */}
+              <div className="bg-slate-50 p-5 rounded-xl border border-slate-200 space-y-4">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <Sparkles className="w-4 h-4 text-amber-600" />
+                  <h4 className="text-sm font-bold text-slate-900">
+                    ০৪. নতুন বিজনেসে কাস্টমার ও বিক্রেতা দ্রুত বাড়ানোর ৬টি প্রমাণিত অফার আইডিয়া (Growth Strategies)
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 text-xs">
+                  
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">১</span>
+                      <span>রেফারেল বোনাস (Refer & Earn)</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      যেকোনো ইউজার তার বন্ধুকে সাইটে আনলে এবং সে ১টি বিজ্ঞাপন দিলে উভয়কেই <b>৳ ২৫ বা ৳ ৫০</b> টাকা বোনাস দিন। এটি ফেসবুকে ভাইরাল হতে সাহায্য করে।
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">২</span>
+                      <span>১ম বিজ্ঞাপনে ফ্রি ফিচার্ড / বুস্ট</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      নতুন বিক্রেতাকে প্রথম বিজ্ঞাপনে ৩ দিনের জন্য <b>টপ অ্যাড (Top Ad) বা ফিচার্ড ব্যাজ</b> সম্পূর্ণ ফ্রি দিন। এতে সে বিজ্ঞাপন দিতে অনেক বেশি উৎসাহিত হবে।
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">৩</span>
+                      <span>সেলার মাইলস্টোন ক্যাশব্যাক</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      কোনো বিক্রেতা ৫টি বা ১০টি সক্রিয় বিজ্ঞাপন পোস্ট করলে তার ওয়ালেটে <b>৳ ১০০ টাকা বোনাস</b> যোগ করে দিন, যা সে সরাসরি বিকাশে তুলতে পারবে।
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">৪</span>
+                      <span>১ম কেনাকাটায় ফ্রি কুরিয়ার ডেলিভারি</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      নতুন ক্রেতাদের আস্থা তৈরি করতে প্রথম এসক্রো অর্ডারে <b>১০০% ডেলিভারি চার্জ ফ্রি</b> দিন। এতে দ্বিধা দূর হবে এবং ক্রেতারা দ্রুত অর্ডার করবে।
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">৫</span>
+                      <span>দৈনিক চেক-ইন ও লাকি স্পিন</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      প্রতিদিন সাইটে লগইন করলে ১০-২০ রিওয়ার্ড পয়েন্ট দিন। ১০০ পয়েন্ট হলে ১০ টাকা ডিসকাউন্ট বা বুস্টিং স্লট বিনামূল্যে পাওয়া যাবে।
+                    </p>
+                  </div>
+
+                  <div className="p-3.5 bg-white rounded-xl border border-slate-200 space-y-1.5 shadow-2xs">
+                    <div className="font-bold text-emerald-800 flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold text-[10px]">৬</span>
+                      <span>উৎসব ও মৌসুমভিত্তিক মেগা ড্র</span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">
+                      ঈদ বা নতুন বছর উপলক্ষ্যে প্রতি কেনাবেচায় লটারির টিকিট দিন, যেখানে সেরা বিক্রেতা ও সেরা ক্রেতার জন্য আকর্ষণীয় গ্যাজেট বা ক্যাশ প্রাইজ থাকবে।
+                    </p>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          )}
+
         </div>
 
       </div>
+
+      {/* Admin Specific Modals */}
+      {adminAdToDelete && <AdminDeleteAdModal />}
+      <BusinessPolicyModal />
+      <OffersShowcaseModal />
     </div>
   );
 };

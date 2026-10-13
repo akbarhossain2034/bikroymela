@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Ad, Language, Order, Transaction, User, NotificationItem, ChatMessage, Review, SystemBackup, ValidationStatus } from '../types';
-import { INITIAL_ADS, INITIAL_NOTIFICATIONS, INITIAL_ORDERS, INITIAL_TRANSACTIONS, INITIAL_USER, INITIAL_REVIEWS } from '../data/mockData';
+import { Ad, Language, Order, Transaction, User, NotificationItem, ChatMessage, Review, SystemBackup, ValidationStatus, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog } from '../types';
+import { INITIAL_ADS, INITIAL_NOTIFICATIONS, INITIAL_ORDERS, INITIAL_TRANSACTIONS, INITIAL_USER, INITIAL_REVIEWS, INITIAL_OFFER_SETTINGS, INITIAL_WITHDRAWAL_REQUESTS, INITIAL_ADMIN_DELETION_LOGS } from '../data/mockData';
 import { translations } from '../data/translations';
 
 interface AppContextType {
@@ -68,6 +68,24 @@ interface AppContextType {
   domainName: string;
   setDomainName: (domain: string) => void;
   updateDomainName: (domain: string) => void;
+  // Offers, Welcome Bonus & Withdrawals
+  offerSettings: BonusOfferSettings;
+  updateOfferSettings: (newSettings: Partial<BonusOfferSettings>) => void;
+  withdrawalRequests: WithdrawalRequest[];
+  requestWithdrawal: (req: { amount: number; gateway: 'bKash' | 'Nagad' | 'Rocket' | 'Bank'; accountNumber: string; accountType?: 'personal' | 'agent' }) => { success: boolean; message: string };
+  updateWithdrawalStatus: (requestId: string, status: 'Paid' | 'Rejected', trxId?: string, note?: string) => void;
+  grantCustomBonus: (userId: string, amount: number, note?: string) => void;
+  // Admin Ad Deletion with Mandatory Reason & Auto-Pruning
+  adminDeletionLogs: AdminAdDeletionLog[];
+  adminAdToDelete: Ad | null;
+  setAdminAdToDelete: (ad: Ad | null) => void;
+  deleteAdWithAdminReason: (adId: string, reason: string, adminNote?: string) => void;
+  pruneExpiredAds: () => { prunedCount: number; message: string };
+  // Modals for Policy and 6 Growth Strategies
+  isPolicyModalOpen: boolean;
+  setIsPolicyModalOpen: (open: boolean) => void;
+  isOffersModalOpen: boolean;
+  setIsOffersModalOpen: (open: boolean) => void;
   // Data Backup & Restore
   exportBackupData: () => SystemBackup;
   importBackupData: (backup: SystemBackup) => { success: boolean; message: string; counts?: { ads: number; orders: number; transactions: number } };
@@ -226,6 +244,165 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [siteName]);
 
+  // Offers & Welcome Bonus Settings State
+  const [offerSettings, setOfferSettings] = useState<BonusOfferSettings>(() => {
+    const saved = localStorage.getItem('bikroy_offer_settings');
+    return saved ? JSON.parse(saved) : INITIAL_OFFER_SETTINGS;
+  });
+
+  const updateOfferSettings = (newSettings: Partial<BonusOfferSettings>) => {
+    setOfferSettings(prev => {
+      const updated = { ...prev, ...newSettings };
+      localStorage.setItem('bikroy_offer_settings', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Withdrawal Requests State
+  const [withdrawalRequests, setWithdrawalRequests] = useState<WithdrawalRequest[]>(() => {
+    const saved = localStorage.getItem('bikroy_withdrawals');
+    return saved ? JSON.parse(saved) : INITIAL_WITHDRAWAL_REQUESTS;
+  });
+
+  const requestWithdrawal = (req: {
+    amount: number;
+    gateway: 'bKash' | 'Nagad' | 'Rocket' | 'Bank';
+    accountNumber: string;
+    accountType?: 'personal' | 'agent';
+  }): { success: boolean; message: string } => {
+    if (!currentUser) {
+      return { success: false, message: 'উত্তোলনের জন্য অনুগ্রহ করে প্রথমে লগইন করুন।' };
+    }
+    const currentBal = currentUser.walletBalance ?? 0;
+    if (req.amount <= 0) {
+      return { success: false, message: 'টাকার পরিমাণ সঠিক নয়।' };
+    }
+    if (req.amount < offerSettings.minWithdrawLimit) {
+      return { 
+        success: false, 
+        message: `সর্বনিম্ন উত্তোলনের পরিমাণ ৳ ${offerSettings.minWithdrawLimit} টাকা।` 
+      };
+    }
+    if (req.amount > currentBal) {
+      return { 
+        success: false, 
+        message: `আপনার ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই। বর্তমান ব্যালেন্স: ৳ ${currentBal}` 
+      };
+    }
+    if (!req.accountNumber.trim()) {
+      return { success: false, message: 'মোবাইল বা অ্যাকাউন্ট নম্বর দিন।' };
+    }
+
+    const updatedUser: User = {
+      ...currentUser,
+      walletBalance: Math.max(0, currentBal - req.amount),
+    };
+    setCurrentUser(updatedUser);
+    localStorage.setItem('bikroy_user', JSON.stringify(updatedUser));
+
+    const newReq: WithdrawalRequest = {
+      id: `WDR-${Date.now().toString().slice(-4)}`,
+      userId: currentUser.id,
+      userName: currentUser.name,
+      userPhone: currentUser.phone,
+      amount: req.amount,
+      gateway: req.gateway,
+      accountNumber: req.accountNumber.trim(),
+      accountType: req.accountType || 'personal',
+      status: 'Pending',
+      requestedAt: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
+    };
+
+    setWithdrawalRequests(prev => {
+      const updated = [newReq, ...prev];
+      localStorage.setItem('bikroy_withdrawals', JSON.stringify(updated));
+      return updated;
+    });
+
+    const newNotif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      titleBn: 'উত্তোলন রিকোয়েস্ট গ্রহণ করা হয়েছে',
+      titleEn: 'Withdrawal request received',
+      descriptionBn: `আপনার ৳ ${req.amount} টাকা ${req.gateway} নম্বরে উত্তোলনের আবেদন জমা হয়েছে। এডমিন দ্রুত অনুমোদন করে ক্যাশ পাঠিয়ে দেবে।`,
+      descriptionEn: `Your withdrawal request of ৳ ${req.amount} via ${req.gateway} has been submitted.`,
+      time: 'এইমাত্র',
+      read: false,
+      type: 'payment',
+    };
+    setNotifications(prev => [newNotif, ...prev]);
+
+    return { 
+      success: true, 
+      message: `৳ ${req.amount} টাকা উত্তোলনের আবেদন সফল হয়েছে! এডমিন যাচাই করে আপনার ${req.gateway} অ্যাকাউন্টে টাকা পাঠিয়ে দেবে।` 
+    };
+  };
+
+  const updateWithdrawalStatus = (requestId: string, status: 'Paid' | 'Rejected', trxId?: string, note?: string) => {
+    let refundedAmount = 0;
+    let targetUserId = '';
+
+    setWithdrawalRequests(prev => {
+      const updated = prev.map(req => {
+        if (req.id === requestId) {
+          if (status === 'Rejected' && req.status === 'Pending') {
+            refundedAmount = req.amount;
+            targetUserId = req.userId;
+          }
+          return {
+            ...req,
+            status,
+            trxId: trxId || req.trxId,
+            adminNote: note || req.adminNote,
+            processedAt: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
+          };
+        }
+        return req;
+      });
+      localStorage.setItem('bikroy_withdrawals', JSON.stringify(updated));
+      return updated;
+    });
+
+    if (refundedAmount > 0 && currentUser && (currentUser.id === targetUserId || targetUserId === 'user-001')) {
+      const refundedUser = {
+        ...currentUser,
+        walletBalance: (currentUser.walletBalance ?? 0) + refundedAmount,
+      };
+      setCurrentUser(refundedUser);
+      localStorage.setItem('bikroy_user', JSON.stringify(refundedUser));
+    }
+  };
+
+  const grantCustomBonus = (userId: string, amount: number, note?: string) => {
+    if (amount <= 0) return;
+    if (currentUser && (currentUser.id === userId || userId === 'current' || userId === 'user-001')) {
+      const updated = {
+        ...currentUser,
+        walletBalance: (currentUser.walletBalance ?? 0) + amount,
+      };
+      setCurrentUser(updated);
+      localStorage.setItem('bikroy_user', JSON.stringify(updated));
+    }
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      titleBn: '🎁 বিশেষ বোনাস উপহার পেয়েছেন!',
+      titleEn: 'Special bonus received!',
+      descriptionBn: `অভিনন্দন! আপনার ওয়ালেটে ৳ ${amount} টাকা বিশেষ বোনাস যোগ করা হয়েছে। ${note ? `বিবরণ: ${note}` : ''}`,
+      descriptionEn: `Congratulations! ৳ ${amount} bonus has been credited to your wallet.`,
+      time: 'এইমাত্র',
+      read: false,
+      type: 'payment',
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
+  const [adminDeletionLogs, setAdminDeletionLogs] = useState<AdminAdDeletionLog[]>(() => {
+    const saved = localStorage.getItem('bikroy_admin_del_logs');
+    return saved ? JSON.parse(saved) : INITIAL_ADMIN_DELETION_LOGS;
+  });
+  const [adminAdToDelete, setAdminAdToDelete] = useState<Ad | null>(null);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
+
   const [activeModal, setActiveModal] = useState<string | null>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -362,6 +539,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const initValidationStatus: ValidationStatus = adData.validationStatus || (isApprovedByDefault ? 'Approved' : 'Received');
     const initStatus = isApprovedByDefault ? 'active' : 'pending';
 
+    // Strategy 2: Free 1st Ad Featured/Boost for new sellers
+    const isFirstAdBoostEligible = Boolean(offerSettings.firstAdFreeBoostEnabled && (currentUser?.freeAdsCount || 0) === 0);
+    const finalFeatured = adData.featured || isFirstAdBoostEligible;
+
     const newAd: Ad = {
       id: `ad-${Date.now()}`,
       titleBn: adData.titleBn || adData.titleEn || 'নতুন পণ্য বিক্রয়',
@@ -387,6 +568,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       sellerRating: 5.0,
       sellerMemberSince: '2026',
       createdAt: lang === 'bn' ? 'এইমাত্র' : 'Just now',
+      createdTimestamp: Date.now(),
       status: initStatus,
       validationStatus: initValidationStatus,
       propertyType: adData.propertyType,
@@ -394,7 +576,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       propertyDetails: adData.propertyDetails,
       extraPhotosCount: adData.extraPhotosCount || 0,
       extraPhotoFeePaid: adData.extraPhotoFeePaid || false,
-      featured: adData.featured || false,
+      featured: finalFeatured,
       urgent: adData.urgent || false,
       views: 1,
       specs: adData.specs || {}
@@ -402,20 +584,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setAds(prev => [newAd, ...prev]);
 
-    // Update user free ad count
+    // Update user free ad count & award strategy loyalty points (+15)
     if (currentUser) {
       setCurrentUser(prev => prev ? {
         ...prev,
-        freeAdsCount: (prev.freeAdsCount || 0) + 1
+        freeAdsCount: (prev.freeAdsCount || 0) + 1,
+        rewardPoints: (prev.rewardPoints || 0) + (offerSettings.dailyCheckInPoints || 15)
       } : null);
     }
 
-    // Add notification
+    // Add notification (includes congratulations if free featured boost was awarded)
     const notif: NotificationItem = {
       id: `notif-${Date.now()}`,
-      titleBn: 'আপনার বিজ্ঞাপনটি সফলভাবে জমা হয়েছে!',
-      titleEn: 'Your ad has been successfully submitted!',
-      descriptionBn: `${newAd.titleBn} – স্ট্যাটাস: ${initValidationStatus === 'Approved' ? 'লাইভ ও অনুমোদিত' : 'পর্যালোচনায় আছে (Received)'}`,
+      titleBn: isFirstAdBoostEligible ? '🎉 ১ম বিজ্ঞাপনে ফ্রি ফিচার্ড বুস্টিং সহ বিজ্ঞাপন প্রকাশিত!' : 'আপনার বিজ্ঞাপনটি সফলভাবে জমা হয়েছে!',
+      titleEn: isFirstAdBoostEligible ? 'Free 1st Ad Featured Boost applied & Ad Submitted!' : 'Your ad has been successfully submitted!',
+      descriptionBn: isFirstAdBoostEligible
+        ? `${newAd.titleBn} – নতুন সেলার গ্রোথ অফারে ৩ দিনের ফ্রি টপ ফিচার্ড বুস্ট ও ১৫ রিওয়ার্ড পয়েন্ট যুক্ত হয়েছে!`
+        : `${newAd.titleBn} – স্ট্যাটাস: ${initValidationStatus === 'Approved' ? 'লাইভ ও অনুমোদিত' : 'পর্যালোচনায় আছে (Received)'}`,
       descriptionEn: `${newAd.titleEn} – Status: ${initValidationStatus}`,
       time: 'এখনই',
       read: false,
@@ -618,6 +803,87 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAdToDelete(null);
   };
 
+  useEffect(() => {
+    localStorage.setItem('bikroy_admin_del_logs', JSON.stringify(adminDeletionLogs));
+  }, [adminDeletionLogs]);
+
+  // Requirement 02: Admin deletes ad with mandatory reason
+  const deleteAdWithAdminReason = (adId: string, reason: string, adminNote?: string) => {
+    const targetAd = ads.find(a => a.id === adId);
+    if (!targetAd) return;
+
+    const fullReason = adminNote ? `${reason} — ${adminNote}` : reason;
+
+    const newLog: AdminAdDeletionLog = {
+      id: `DEL-LOG-${Date.now().toString().slice(-4)}`,
+      adId: targetAd.id,
+      adTitle: targetAd.titleBn || targetAd.titleEn,
+      sellerName: targetAd.sellerName,
+      sellerPhone: targetAd.sellerPhone,
+      reason: fullReason,
+      deletedAt: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
+      deletedBy: `${currentUser?.name || 'এডমিন'} (এডমিন অ্যাকশন)`
+    };
+
+    setAdminDeletionLogs(prev => [newLog, ...prev]);
+    setAds(prev => prev.filter(a => a.id !== adId));
+    setAdminAdToDelete(null);
+
+    // Notification for seller / platform
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      titleBn: '⚠️ বিজ্ঞাপন মুছে ফেলা হয়েছে (এডমিন অ্যাকশন)',
+      titleEn: 'Ad deleted by admin',
+      descriptionBn: `"${targetAd.titleBn}" বিজ্ঞাপনটি মুছে ফেলা হয়েছে। কারণ: ${fullReason}`,
+      descriptionEn: `Ad "${targetAd.titleEn}" was removed. Reason: ${fullReason}`,
+      time: 'এইমাত্র',
+      read: false,
+      type: 'ad'
+    };
+    setNotifications(prev => [notif, ...prev]);
+  };
+
+  // Requirement 02: 3 months (90 days) auto-cleanup of unsold ads
+  const pruneExpiredAds = (): { prunedCount: number; message: string } => {
+    const maxDays = offerSettings.autoDeleteUnsoldDays || 90;
+    const now = Date.now();
+    const ninetyDaysMs = maxDays * 24 * 60 * 60 * 1000;
+
+    const expiredAds = ads.filter(a => {
+      if (a.status === 'sold') return false;
+      const adTime = a.createdTimestamp || (a.createdAt && !isNaN(new Date(a.createdAt).getTime()) ? new Date(a.createdAt).getTime() : 0);
+      if (!adTime) return false;
+      return (now - adTime) > ninetyDaysMs;
+    });
+
+    if (expiredAds.length === 0) {
+      return {
+        prunedCount: 0,
+        message: `বর্তমানে ৩ মাস (৯০ দিন) অতিক্রম করা কোনো মেয়াদোত্তীর্ণ অবিক্রিত বিজ্ঞাপন নেই। সব বিজ্ঞাপন সক্রিয় রয়েছে!`
+      };
+    }
+
+    const expiredIds = new Set(expiredAds.map(a => a.id));
+    const newLogs: AdminAdDeletionLog[] = expiredAds.map(a => ({
+      id: `DEL-AUTO-${Date.now().toString().slice(-4)}-${a.id}`,
+      adId: a.id,
+      adTitle: a.titleBn || a.titleEn,
+      sellerName: a.sellerName,
+      sellerPhone: a.sellerPhone,
+      reason: `৩ মাস (৯০ দিন) অতিক্রান্ত অবিক্রিত বিজ্ঞাপন অটো-ডিলিট সিস্টেম পলিসি`,
+      deletedAt: new Date().toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }),
+      deletedBy: 'সিস্টেম অটো-ক্লিনআপ'
+    }));
+
+    setAdminDeletionLogs(prev => [...newLogs, ...prev]);
+    setAds(prev => prev.filter(a => !expiredIds.has(a.id)));
+
+    return {
+      prunedCount: expiredAds.length,
+      message: `৩ মাস অতিক্রান্ত মোট ${expiredAds.length}টি অবিক্রিত বিজ্ঞাপন সফলভাবে ডিলিট ও ক্লিনআপ করা হয়েছে!`
+    };
+  };
+
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedCategory(null);
@@ -655,6 +921,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       notifications,
       chatMessages,
       reviews,
+      offerSettings,
+      withdrawalRequests,
+      adminDeletionLogs,
     };
   };
 
@@ -706,6 +975,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         localStorage.setItem('bikroy_lang', backup.siteSettings.lang);
       }
 
+      if (backup.offerSettings) {
+        setOfferSettings(backup.offerSettings);
+        localStorage.setItem('bikroy_offer_settings', JSON.stringify(backup.offerSettings));
+      }
+      if (Array.isArray(backup.withdrawalRequests)) {
+        setWithdrawalRequests(backup.withdrawalRequests);
+        localStorage.setItem('bikroy_withdrawals', JSON.stringify(backup.withdrawalRequests));
+      }
+      if (Array.isArray(backup.adminDeletionLogs)) {
+        setAdminDeletionLogs(backup.adminDeletionLogs);
+        localStorage.setItem('bikroy_admin_del_logs', JSON.stringify(backup.adminDeletionLogs));
+      }
+
       return {
         success: true,
         message: 'ডাটা ব্যাকআপ সফলভাবে রিস্টোর করা হয়েছে!',
@@ -729,6 +1011,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.removeItem('bikroy_favorites');
     localStorage.removeItem('bikroy_notifications');
     localStorage.removeItem('bikroy_reviews');
+    localStorage.removeItem('bikroy_offer_settings');
+    localStorage.removeItem('bikroy_withdrawals');
+    localStorage.removeItem('bikroy_admin_del_logs');
     setAds(INITIAL_ADS);
     setOrders(INITIAL_ORDERS);
     setTransactions(INITIAL_TRANSACTIONS);
@@ -736,6 +1021,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFavorites(['ad-101']);
     setNotifications(INITIAL_NOTIFICATIONS);
     setReviews(INITIAL_REVIEWS);
+    setOfferSettings(INITIAL_OFFER_SETTINGS);
+    setWithdrawalRequests(INITIAL_WITHDRAWAL_REQUESTS);
+    setAdminDeletionLogs(INITIAL_ADMIN_DELETION_LOGS);
   };
 
   const t = translations[lang];
@@ -781,6 +1069,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         adToDelete,
         setAdToDelete,
         deleteAdWithReason,
+        // Admin Ad Deletion with Mandatory Reason & Auto-Pruning
+        adminDeletionLogs,
+        adminAdToDelete,
+        setAdminAdToDelete,
+        deleteAdWithAdminReason,
+        pruneExpiredAds,
+        // Modals for Business Policy and Growth Offers
+        isPolicyModalOpen,
+        setIsPolicyModalOpen,
+        isOffersModalOpen,
+        setIsOffersModalOpen,
         // Profile Tab Navigation
         activeProfileTab,
         setActiveProfileTab,
@@ -806,6 +1105,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         domainName,
         setDomainName,
         updateDomainName,
+        // Offers, Welcome Bonus & Withdrawals
+        offerSettings,
+        updateOfferSettings,
+        withdrawalRequests,
+        requestWithdrawal,
+        updateWithdrawalStatus,
+        grantCustomBonus,
         // Data Backup & Restore
         exportBackupData,
         importBackupData,

@@ -26,12 +26,13 @@ import {
 } from 'lucide-react';
 
 export const PostAdModal: React.FC = () => {
-  const { lang, t, currentUser, ads, setActiveModal, postNewAd } = useApp();
+  const { lang, t, currentUser, ads, setActiveModal, postNewAd, setIsPolicyModalOpen, offerSettings } = useApp();
 
   const userAdsCount = currentUser?.freeAdsCount ?? ads.filter(a => a.sellerId === currentUser?.id).length;
   const isFreeAdQuotaEligible = userAdsCount < 5;
   const freeAdsRemaining = Math.max(0, 5 - userAdsCount);
 
+  const [policyAgreed, setPolicyAgreed] = useState<boolean>(true);
   const [category, setCategory] = useState('mobiles');
   const [condition, setCondition] = useState<'used' | 'new' | 'reconditioned'>('used');
   const [title, setTitle] = useState('');
@@ -107,6 +108,13 @@ export const PostAdModal: React.FC = () => {
     e.preventDefault();
     if (!title.trim() || !price) {
       alert(lang === 'bn' ? 'বিজ্ঞাপনের শিরোনাম এবং মূল্য লিখুন' : 'Please provide title and price');
+      return;
+    }
+
+    if (!policyAgreed) {
+      alert(lang === 'bn' 
+        ? 'বিজ্ঞাপন প্রকাশ করতে হলে বিজনেস পলিসিতে সম্মতি থাকা আবশ্যক (অবৈধ পণ্য ক্রয়-বিক্রয় নিষিদ্ধ)।' 
+        : 'You must agree to the platform business policy before posting.');
       return;
     }
 
@@ -769,11 +777,54 @@ export const PostAdModal: React.FC = () => {
             </div>
           </div>
 
+          {/* Requirement 03: Prohibited Products & Business Policy Disclaimer */}
+          <div className="p-3.5 bg-rose-50/90 border border-rose-300 rounded-xl space-y-2">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-rose-950 text-xs">
+                  {lang === 'bn' ? '⚠️ কঠোর সতর্কতা ও বিজনেস পলিসি:' : '⚠️ Strict Policy & Legal Notice:'}
+                </h4>
+                <p className="text-[11px] text-rose-900 mt-0.5 leading-relaxed font-medium">
+                  {lang === 'bn' 
+                    ? 'অবৈধ পণ্য ক্রয়-বিক্রয় থেকে বিরত থাকুন। এতে কর্তৃপক্ষ কোনো ভাবেই দায়ী থাকবে না। সকল ব্যবহারকারীকে প্রচলিত আইন মেনে কেনাবেচার অনুরোধ করা হচ্ছে।' 
+                    : 'Refrain from buying/selling any illegal items. The platform authority shall not be held liable in any way.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t border-rose-200/80 text-xs">
+              <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-900 select-none">
+                <input
+                  type="checkbox"
+                  checked={policyAgreed}
+                  onChange={(e) => setPolicyAgreed(e.target.checked)}
+                  className="w-4 h-4 text-rose-600 rounded border-rose-400 focus:ring-rose-500"
+                  required
+                />
+                <span className="text-xs">আমি অঙ্গীকার করছি যে এই বিজ্ঞাপনে কোনো অবৈধ পণ্য নেই *</span>
+              </label>
+
+              <button
+                type="button"
+                onClick={() => setIsPolicyModalOpen(true)}
+                className="text-[11px] text-rose-700 underline font-semibold hover:text-rose-950 text-left shrink-0"
+              >
+                সম্পূর্ণ বিজনেস পলিসি পড়ুন
+              </button>
+            </div>
+          </div>
+
           {/* Submit Button */}
           <div className="pt-2">
             <button
               type="submit"
-              className="w-full py-3 bg-[#ffc800] hover:bg-[#e6b400] text-slate-950 font-bold text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              disabled={!policyAgreed}
+              className={`w-full py-3 text-slate-950 font-bold text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 ${
+                policyAgreed 
+                  ? 'bg-[#ffc800] hover:bg-[#e6b400] cursor-pointer active:scale-[0.99]' 
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
             >
               <PlusCircle className="w-4 h-4 text-slate-950" />
               <span>

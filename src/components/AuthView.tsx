@@ -17,7 +17,8 @@ interface AuthViewProps {
 }
 
 export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
-  const { lang, setCurrentUser, setActiveModal, siteName } = useApp();
+  const { lang, setCurrentUser, setActiveModal, siteName, offerSettings } = useApp();
+  const bonusAmount = offerSettings?.isBonusEnabled ? offerSettings.signupBonusAmount : 0;
 
   // Mode: phone login/signup (default like 1.png), email login, forgot password
   const [authMode, setAuthMode] = useState<'mobile' | 'email' | 'forgot_password'>('mobile');
@@ -57,11 +58,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
       memberSince: '২০২৩',
       district: 'Dhaka',
       loginMethod: 'phone',
-      walletBalance: 50, // ৳ 50 Registration Welcome Bonus
+      walletBalance: bonusAmount, // Configured Welcome Bonus
       rewardPoints: 120
     });
 
-    setFeedbackMsg('🎉 সফলভাবে লগইন হয়েছে! আপনার একাউন্টে ৳ ৫০ বোনাস জমা আছে।');
+    setFeedbackMsg(`🎉 সফলভাবে একাউন্ট খোলা হয়েছে!${bonusAmount > 0 ? ` আপনার ওয়ালেটে ৳ ${bonusAmount} ওয়েলকাম বোনাস জমা হয়েছে।` : ''}`);
     setTimeout(() => {
       setActiveModal('profile');
     }, 700);
@@ -88,11 +89,11 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
       memberSince: '২০২৩',
       district: 'Dhaka',
       loginMethod: 'email',
-      walletBalance: 50,
+      walletBalance: bonusAmount,
       rewardPoints: 120
     });
 
-    setFeedbackMsg('🎉 ইমেইল দিয়ে সফলভাবে লগইন সম্পন্ন হয়েছে!');
+    setFeedbackMsg(`🎉 সফলভাবে লগইন সম্পন্ন হয়েছে!${bonusAmount > 0 ? ` আপনার ওয়ালেটে ৳ ${bonusAmount} বোনাস জমা রয়েছে।` : ''}`);
     setTimeout(() => {
       setActiveModal('profile');
     }, 700);
@@ -113,10 +114,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
       memberSince: '২০২৩',
       district: 'Dhaka',
       loginMethod: 'google',
-      walletBalance: 50,
+      walletBalance: bonusAmount,
       rewardPoints: 120
     });
-    setFeedbackMsg('🎉 Google এর মাধ্যমে সফলভাবে লগইন হয়েছে!');
+    setFeedbackMsg(`🎉 Google এর মাধ্যমে সফলভাবে লগইন হয়েছে!${bonusAmount > 0 ? ` ৳ ${bonusAmount} ওয়েলকাম বোনাস জমা হয়েছে!` : ''}`);
     setTimeout(() => {
       setActiveModal('profile');
     }, 700);
@@ -137,10 +138,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
       memberSince: '২০২৩',
       district: 'Dhaka',
       loginMethod: 'facebook',
-      walletBalance: 50,
+      walletBalance: bonusAmount,
       rewardPoints: 120
     });
-    setFeedbackMsg('🎉 Facebook এর মাধ্যমে সফলভাবে লগইন হয়েছে!');
+    setFeedbackMsg(`🎉 Facebook এর মাধ্যমে সফলভাবে লগইন হয়েছে!${bonusAmount > 0 ? ` ৳ ${bonusAmount} বোনাস যুক্ত হয়েছে!` : ''}`);
     setTimeout(() => {
       setActiveModal('profile');
     }, 700);
@@ -236,6 +237,23 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
           <p className="text-lg sm:text-xl text-[#111827] text-center mt-1 mb-6 font-normal">
             Please login.
           </p>
+
+          {/* Offer Banner if Bonus Enabled */}
+          {offerSettings?.isBonusEnabled && bonusAmount > 0 && (
+            <div className="w-full mb-4 p-3 bg-gradient-to-r from-amber-50 via-emerald-50 to-teal-50 border border-emerald-300 rounded-xl text-xs text-slate-800 flex items-center gap-3 shadow-xs">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 font-black flex items-center justify-center shrink-0 text-base shadow-xs">
+                ৳
+              </div>
+              <div className="text-left">
+                <span className="font-bold text-[#007460] block text-xs sm:text-sm">
+                  🎁 নতুন গ্রাহকদের জন্য বিশেষ উপহার!
+                </span>
+                <span className="text-[11px] text-slate-600 block mt-0.5">
+                  অ্যাকাউন্ট খুললেই পাচ্ছেন <b>৳ {bonusAmount}</b> টাকা ওয়েলকাম ক্যাশ বোনাস। সরাসরি বিকাশ/নগদে উত্তোলন করতে বা কেনাকাটায় খরচ করতে পারবেন!
+                </span>
+              </div>
+            </div>
+          )}
 
           {/* Feedback message banner if any */}
           {feedbackMsg && (

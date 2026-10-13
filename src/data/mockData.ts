@@ -1,14 +1,142 @@
-import { Ad, Category, Order, Transaction, User, NotificationItem, Review } from '../types';
+import { Ad, Category, Order, Transaction, User, NotificationItem, Review, BonusOfferSettings, WithdrawalRequest, AdminAdDeletionLog } from '../types';
 
 export const LOCATIONS = [
-  { division: 'Dhaka', divisionBn: 'ঢাকা', areas: ['Mirpur', 'Uttara', 'Dhanmondi', 'Gulshan', 'Mohammadpur', 'Motijheel', 'Banani', 'Badda'] },
-  { division: 'Chattogram', divisionBn: 'চট্টগ্রাম', areas: ['Agrabad', 'GEC Circle', 'Nasirabad', 'Chawkbazar', 'Halishahar', 'Panchlaish'] },
-  { division: 'Sylhet', divisionBn: 'সিলেট', areas: ['Zindabazar', 'Uposhohor', 'Amberkhana', 'Shibganj', 'Subidbazar'] },
-  { division: 'Rajshahi', divisionBn: 'রাজশাহী', areas: ['Shaheb Bazar', 'Motihar', 'Boalia', 'Kazla', 'Upashahar'] },
-  { division: 'Khulna', divisionBn: 'খুলনা', areas: ['Sonadanga', 'Boyra', 'Khalishpur', 'Daulatpur', 'Shibbari'] },
-  { division: 'Barishal', divisionBn: 'বরিশাল', areas: ['Sadar', 'Natun Bazar', 'Rupatali', 'Amtala'] },
-  { division: 'Rangpur', divisionBn: 'রংপুর', areas: ['Dhap', 'Jahaj Company Mor', 'Modern Mor', 'College Road'] },
-  { division: 'Mymensingh', divisionBn: 'ময়মনসিংহ', areas: ['Ganginar Par', 'Charpara', 'Town Hall', 'Kashor'] }
+  { 
+    division: 'Dhaka', 
+    divisionBn: 'ঢাকা', 
+    districts: [
+      'ঢাকা শহর (Dhaka City)', 'গাজীপুর (Gazipur)', 'নারায়ণগঞ্জ (Narayanganj)', 'নরসিংদী (Narsingdi)', 
+      'মুন্সীগঞ্জ (Munshiganj)', 'মানিকগঞ্জ (Manikganj)', 'টাঙ্গাইল (Tangail)', 'কিশোরগঞ্জ (Kishoreganj)', 
+      'ফরিদপুর (Faridpur)', 'রাজবাড়ী (Rajbari)', 'গোপালগঞ্জ (Gopalganj)', 'মাদারীপুর (Madaripur)', 'শরীয়তপুর (Shariatpur)'
+    ],
+    areas: [
+      'মিরপুর (Mirpur)', 'উত্তরা (Uttara)', 'ধানমন্ডি (Dhanmondi)', 'গুলশান ও বনানী (Gulshan/Banani)', 
+      'মোহাম্মদপুর (Mohammadpur)', 'মতিঝিল ও পল্টন (Motijheel/Paltan)', 'বাড্ডা ও রামপুরা (Badda/Rampura)', 'যাত্রাবাড়ী (Jatrabari)', 
+      'পুরান ঢাকা (Old Dhaka)', 'বসুন্ধরা আ/এ (Bashundhara R/A)', 'ফার্মগেট ও তেজগাঁও (Farmgate/Tejgaon)', 'মগবাজার ও মালিবাগ (Moghbazar)',
+      'সাভার ও ধামরাই (Savar/Dhamrai)', 'টঙ্গী ও জয়দেবপুর (Tongi/Joydebpur)', 'কালিয়াকৈর ও শ্রীপুর (Kaliakair/Sreepur)',
+      'নারায়ণগঞ্জ সদর ও চাষাড়া (Chashara)', 'ফতুল্লা ও সিদ্ধিরগঞ্জ (Fatullah/Siddhirganj)', 'রূপগঞ্জ ও আড়াইহাজার (Rupganj)',
+      'নরসিংদী সদর ও মাধবদী (Narsingdi/Madhabdi)', 'টাঙ্গাইল সদর ও মির্জাপুর (Tangail/Mirzapur)', 'কিশোরগঞ্জ সদর ও ভৈরব (Bhairab)',
+      'মুন্সীগঞ্জ সদর ও শ্রীনগর (Munshiganj/Sreenagar)', 'মানিকগঞ্জ সদর ও সিঙ্গাইর (Manikganj/Singair)', 
+      'ফরিদপুর সদর ও ভাঙ্গা (Faridpur/Bhanga)', 'গোপালগঞ্জ সদর ও টুঙ্গিপাড়া (Gopalganj)', 'মাদারীপুর সদর ও শিবচর (Madaripur/Shivchar)',
+      'রাজবাড়ী সদর ও পাংশা (Rajbari)', 'শরীয়তপুর সদর ও নড়িয়া (Shariatpur)'
+    ] 
+  },
+  { 
+    division: 'Chattogram', 
+    divisionBn: 'চট্টগ্রাম', 
+    districts: [
+      'চট্টগ্রাম শহর ও জেলা (Chattogram)', 'কক্সবাজার (Cox\'s Bazar)', 'কুমিল্লা (Cumilla)', 'নোয়াখালী (Noakhali)', 
+      'ফেনী (Feni)', 'ব্রাহ্মণবাড়িয়া (Brahmanbaria)', 'চাঁদপুর (Chandpur)', 'লক্ষ্মীপুর (Lakshmipur)', 
+      'রাঙ্গামাটি (Rangamati)', 'খাগড়াছড়ি (Khagrachhari)', 'বান্দরবান (Bandarban)'
+    ],
+    areas: [
+      'আগ্রাবাদ ও বাদামতলী (Agrabad)', 'জিইসি ও নাসিরাবাদ (GEC/Nasirabad)', 'হালিশহর ও পতেঙ্গা (Halishahar/Patenga)', 
+      'চকবাজার ও আন্দরকিল্লা (Chawkbazar/Andarkilla)', 'খুলশী ও পাহাড়তলী (Khulshi/Pahartali)', 'বহদ্দারহাট ও মুরাদপুর (Bahaddarhat)',
+      'সীতাকুণ্ড ও মিরসরাই (Sitakunda)', 'হাটহাজারী ও রাউজান (Hathazari)', 'পটিয়া ও আনোয়ারা (Patiya/Anwara)',
+      'কক্সবাজার সদর ও সৈকত (Cox\'s Bazar Sadar/Beach)', 'উখিয়া ও টেকনাফ (Ukhiya/Teknaf)', 'চকরিয়া ও মহেশখালী (Chakaria)',
+      'কুমিল্লা কান্দিরপাড় (Kandirpar)', 'কুমিল্লা সদর ও পদুয়ার বাজার (Cumilla Sadar)', 'লাকসাম ও দাউদকান্দি (Laksam/Daudkandi)',
+      'মাইজদী কোর্ট ও চৌমুহনী (Maijdee/Chowmuhani)', 'বেগমগঞ্জ ও সোনাইমুড়ী (Begumganj)', 'ফেনী সদর ও মহিপাল (Feni Sadar/Mohipal)',
+      'ব্রাহ্মণবাড়িয়া সদর ও আশুগঞ্জ (Brahmanbaria/Ashuganj)', 'চাঁদপুর সদর ও মতলব (Chandpur/Matlab)', 'হাজীগঞ্জ ও শাহরাস্তি (Hajiganj)',
+      'লক্ষ্মীপুর সদর ও রায়পুর (Lakshmipur/Raipur)', 'রাঙ্গামাটি সদর ও কাপ্তাই (Rangamati/Kaptai)', 'খাগড়াছড়ি সদর (Khagrachhari Sadar)', 
+      'বান্দরবান সদর (Bandarban Sadar)'
+    ] 
+  },
+  { 
+    division: 'Rajshahi', 
+    divisionBn: 'রাজশাহী', 
+    districts: [
+      'রাজশাহী শহর ও জেলা (Rajshahi)', 'বগুড়া (Bogura)', 'পাবনা (Pabna)', 'সিরাজগঞ্জ (Sirajganj)', 
+      'নওগাঁ (Naogaon)', 'নাটোর (Natore)', 'চাঁপাইনবাবগঞ্জ (Chapai Nawabganj)', 'জয়পুরহাট (Joypurhat)'
+    ],
+    areas: [
+      'সাহেব বাজার ও বোয়ালিয়া (Shaheb Bazar/Boalia)', 'মতিহার ও কাজলা (Motihar/Kazla)', 'উপশহর ও রাজপাড়া (Upashahar/Rajpara)', 
+      'রাজশাহী কোর্ট এলাকা (Court Area)', 'চারঘাট ও বাঘা (Charghat/Bagha)', 'বগুড়া জলেশ্বরীতলা ও সাতমাথা (Joleswaritola/Satmatha)', 
+      'বগুড়া সদর ও শেরপুর (Bogura Sadar/Sherpur)', 'শিবগঞ্জ ও সান্তাহার (Shibganj/Santahar)', 'পাবনা সদর ও ঈশ্বরদী (Pabna/Ishwardi)', 
+      'রূপপুর ও বেড়া (Rooppur/Bera)', 'সিরাজগঞ্জ সদর ও উল্লাপাড়া (Sirajganj/Ullapara)', 'শাহজাদপুর ও বেলকুচি (Shahjadpur/Belkuchi)',
+      'নওগাঁ সদর ও পত্নীতলা (Naogaon/Patnitala)', 'নাটোর সদর ও বনপাড়া (Natore/Bonpara)', 'বড়াইগ্রাম ও সিংড়া (Baraigram/Singra)',
+      'চাঁপাইনবাবগঞ্জ সদর ও শিবগঞ্জ (Chapai Nawabganj)', 'জয়পুরহাট সদর ও পাঁচবিবি (Joypurhat/Panchbibi)'
+    ] 
+  },
+  { 
+    division: 'Khulna', 
+    divisionBn: 'খুলনা', 
+    districts: [
+      'খুলনা শহর ও জেলা (Khulna)', 'যশোর (Jashore)', 'কুষ্টিয়া (Kushtia)', 'ঝিনাইদহ (Jhenaidah)', 
+      'সাতক্ষীরা (Satkhira)', 'বাগেরহাট (Bagerhat)', 'চুয়াডাঙ্গা (Chuadanga)', 'মেহেরপুর (Meherpur)', 
+      'নড়াইল (Narail)', 'মাগুরা (Magura)'
+    ],
+    areas: [
+      'সোনাডাঙ্গা ও বয়রা (Sonadanga/Boyra)', 'শিববাড়ী ও ডাকবাংলো (Shibbari/Dakbangla)', 'খালিশপুর ও দৌলতপুর (Khalishpur/Daulatpur)', 
+      'রূপসা ও ফুলতলা (Rupsha/Phultala)', 'যশোর সদর ও দড়াটানা (Jashore Sadar/Daratana)', 'মনিহার ও নওয়াপাড়া (Monihar/Nawapara)',
+      'বেনাপোল ও চৌগাছা (Benapole/Chaugachha)', 'কুষ্টিয়া সদর ও মজমপুর (Kushtia Sadar/Mojompur)', 'কুমারখালী ও ভেড়ামারা (Kumarkhali/Bheramara)',
+      'ঝিনাইদহ সদর ও কালীগঞ্জ (Jhenaidah/Kaliganj)', 'শৈলকূপা ও কোটচাঁদপুর (Shailkupa)', 'সাতক্ষীরা সদর ও কলারোয়া (Satkhira/Kalaroa)', 
+      'শ্যামনগর ও তালা (Shyamnagar/Tala)', 'বাগেরহাট সদর ও মোংলা বন্দর (Mongla Port)', 'চুয়াডাঙ্গা সদর ও দর্শনা (Chuadanga/Darsana)', 
+      'মেহেরপুর সদর ও গাংনী (Meherpur/Gangni)', 'নড়াইল সদর ও লোহাগড়া (Narail/Lohagara)', 'মাগুরা সদর ও শ্রীপুর (Magura Sadar)'
+    ] 
+  },
+  { 
+    division: 'Barishal', 
+    divisionBn: 'বরিশাল', 
+    districts: [
+      'বরিশাল শহর ও জেলা (Barishal)', 'পটুয়াখালী (Patuakhali)', 'ভোলা (Bhola)', 'পিরোজপুর (Pirojpur)', 
+      'বরগুনা (Barguna)', 'ঝালকাঠি (Jhalokati)'
+    ],
+    areas: [
+      'বরিশাল সদর ও নতুন বাজার (Barishal Sadar/Natun Bazar)', 'রূপাতলী ও আমতলা (Rupatali/Amtala)', 'নথুল্লাবাদ ও সি অ্যান্ড বি রোড (Nothullabad)', 
+      'বানারীপাড়া ও উজিরপুর (Banaripara/Uzirpur)', 'বাকেরগঞ্জ ও গৌরনদী (Bakerganj/Gournadi)',
+      'পটুয়াখালী সদর ও বাউফল (Patuakhali Sadar/Bauphal)', 'কুয়াকাটা সৈকত ও কলাপাড়া (Kuakata/Kalapara)', 
+      'ভোলা সদর ও লালমোহন (Bhola Sadar/Lalmohan)', 'চরফ্যাশন ও দৌলতখান (Char Fasson/Daulatkhan)', 
+      'পিরোজপুর সদর ও ভান্ডারিয়া (Pirojpur Sadar/Bhandaria)', 'মঠবাড়ীয়া ও স্বরূপকাঠি (Mathbaria/Swarupkathi)', 
+      'বরগুনা সদর ও আমতলী (Barguna Sadar/Amtali)', 'পাথরঘাটা (Patharghata)', 'ঝালকাঠি সদর ও নলছিটি (Jhalokati/Nalchhiti)'
+    ] 
+  },
+  { 
+    division: 'Sylhet', 
+    divisionBn: 'সিলেট', 
+    districts: [
+      'সিলেট শহর ও জেলা (Sylhet)', 'মৌলভীবাজার (Moulvibazar)', 'সুনামগঞ্জ (Sunamganj)', 'হবিগঞ্জ (Habiganj)'
+    ],
+    areas: [
+      'জিন্দাবাজার ও বন্দরবাজার (Zindabazar/Bandarbazar)', 'উপশহর ও সুবিদবাজার (Uposhohor/Subidbazar)', 'আম্বরখানা ও দরগাহ গেট (Amberkhana/Dargah Gate)', 
+      'শিবগঞ্জ ও টিলাগড় (Shibganj/Tilagarh)', 'শাহপরান ও খাদিমপাড়া (Shah Paran)', 'গোলাপগঞ্জ ও বিয়ানীবাজার (Golapganj/Beanibazar)',
+      'শ্রীমঙ্গল ও মৌলভীবাজার সদর (Sreemangal/Moulvibazar Sadar)', 'কুলাউড়া ও বড়লেখা (Kulaura/Barlekha)', 'কমলগঞ্জ (Komolganj)',
+      'সুনামগঞ্জ সদর ও ছাতক (Sunamganj Sadar/Chhatak)', 'জগন্নাথপুর ও তাহিরপুর (Jagannathpur/Tahirpur)', 
+      'হবিগঞ্জ সদর ও মাধবপুর (Habiganj Sadar/Madhabpur)', 'চুনারুঘাট ও নবীগঞ্জ (Chunarughat/Nabiganj)', 'বাহুবল (Bahubal)'
+    ] 
+  },
+  { 
+    division: 'Rangpur', 
+    divisionBn: 'রংপুর', 
+    districts: [
+      'রংপুর শহর ও জেলা (Rangpur)', 'দিনাজপুর (Dinajpur)', 'গাইবান্ধা (Gaibandha)', 'কুড়িগ্রাম (Kurigram)', 
+      'নীলফামারী (Nilphamari)', 'লালমনিরহাট (Lalmonirhat)', 'ঠাকুরগাঁও (Thakurgaon)', 'পঞ্চগড় (Panchagarh)'
+    ],
+    areas: [
+      'ধাপ ও জেল রোড (Dhap/Jail Road)', 'জাহাজ কোম্পানি মোড় ও পায়রা চত্বর (Jahaj Company Mor)', 'মডার্ন মোড় ও লালবাগ (Modern Mor/Lalbagh)', 
+      'কারমাইকেল কলেজ ও পার্কের মোড় (Carmichael)', 'মিঠাপুকুর ও বদরগঞ্জ (Mithapukur/Badarganj)',
+      'দিনাজপুর সদর ও বাহাদুর বাজার (Dinajpur Sadar)', 'ফুলবাড়ী ও বিরামপুর (Fulbari/Birampur)', 'পার্বতীপুর ও বীরগঞ্জ (Parbatipur/Birganj)', 
+      'সৈয়দপুর ও নীলফামারী সদর (Saidpur/Nilphamari Sadar)', 'ডোমার ও ডিমলা (Domar/Dimla)',
+      'গাইবান্ধা সদর ও গোবিন্দগঞ্জ (Gaibandha/Gobindaganj)', 'পলাশবাড়ী ও সাদুল্লাপুর (Palashbari)', 
+      'কুড়িগ্রাম সদর ও উলিপুর (Kurigram Sadar/Ulipur)', 'নাগেশ্বরী ও চিলমারী (Nageshwari/Chilmari)',
+      'লালমনিরহাট সদর ও পাটগ্রাম (Lalmonirhat/Patgram)', 'হাতীবান্ধা ও বুড়িমারী (Burimari)',
+      'ঠাকুরগাঁও সদর ও পীরগঞ্জ (Thakurgaon Sadar/Pirganj)', 'রাণীশংকৈল (Ranisankail)',
+      'পঞ্চগড় সদর ও তেঁতুলিয়া (Panchagarh Sadar/Tetulia)', 'বোদা ও দেবীগঞ্জ (Boda/Debiganj)'
+    ] 
+  },
+  { 
+    division: 'Mymensingh', 
+    divisionBn: 'ময়মনসিংহ', 
+    districts: [
+      'ময়মনসিংহ শহর ও জেলা (Mymensingh)', 'জামালপুর (Jamalpur)', 'নেত্রকোণা (Netrokona)', 'শেরপুর (Sherpur)'
+    ],
+    areas: [
+      'গাঙ্গিনারপাড় ও টাউন হল (Ganginar Par/Town Hall)', 'চরপাড়া ও মেডিকেল মোড় (Charpara/Medical Mor)', 'কাশর ও নতুন বাজার (Kashor/Natun Bazar)', 
+      'কৃষি বিশ্ববিদ্যালয় এলাকা (BAU Area)', 'ভালুকা ও ত্রিশাল (Bhaluka/Trishal)', 'গফরগাঁও ও মুক্তাগাছা (Gafargaon/Muktagacha)', 'ঈশ্বরগঞ্জ ও ফুলপুর (Ishwarganj/Phulpur)',
+      'জামালপুর সদর ও সরিষাবাড়ী (Jamalpur Sadar/Sarishabari)', 'মেলান্দহ ও দেওয়ানগঞ্জ (Melandaha/Dewanganj)', 'ইসলামপুর (Islampur)',
+      'নেত্রকোণা সদর ও দুর্গাপুর (Netrokona Sadar/Durgapur)', 'কেন্দুয়া ও মোহনগঞ্জ (Kendua/Mohanganj)', 
+      'শেরপুর সদর ও নালিতাবাড়ী (Sherpur Sadar/Nalitabari)', 'নকলা ও ঝিনাইগাতী (Nakla/Jhenaigati)'
+    ] 
+  }
 ];
 
 export const CATEGORIES: Category[] = [
@@ -518,5 +646,78 @@ export const INITIAL_NOTIFICATIONS: NotificationItem[] = [
     time: 'গতকাল',
     read: true,
     type: 'payment'
+  }
+];
+
+export const INITIAL_OFFER_SETTINGS: BonusOfferSettings = {
+  isBonusEnabled: true,
+  signupBonusAmount: 100, // ৳ ৫০ - ৫০০ কনফিগারযোগ্য (ডিফল্ট ১০০ টাকা)
+  minWithdrawLimit: 100, // সর্বনিম্ন উত্তোলন সীমা (টাকা)
+  allowedGateways: ['bKash', 'Nagad', 'Rocket'],
+  allowPurchaseWithBonus: true,
+  campaignTitleBn: 'নতুন অ্যাকাউন্ট খুললেই পাচ্ছেন ১০০ টাকা ফ্রি ওয়েলকাম ক্যাশ বোনাস!',
+  campaignTitleEn: 'Get 100 BDT Free Welcome Cash Bonus upon registration!',
+  campaignDescriptionBn: 'এই বোনাস ব্যালেন্স দিয়ে সাইটে যেকোনো পণ্য কিনতে পারবেন অথবা সরাসরি বিকাশ ও নগদে ক্যাশ আউট করতে পারবেন!',
+  isBannerActive: true,
+  // ৬টি কার্যকর গ্রোথ কৌশল সেটিংস
+  referralBonusAmount: 50, // প্রতি সফল বন্ধু আমন্ত্রণে ৫০ টাকা বোনাস
+  dailyCheckInPoints: 15, // দৈনিক চেক-ইন ও রিওয়ার্ড পয়েন্ট
+  firstAdFreeBoostEnabled: true, // ১ম বিজ্ঞাপনে ফ্রি ফিচার্ড / বুস্টিং
+  firstOrderFreeDeliveryEnabled: true, // ১ম ক্রয়ে ফ্রি এসক্রো ডেলিভারি
+  festiveCampaignMode: 'normal',
+  autoDeleteUnsoldDays: 90 // ৩ মাস অবিক্রিত থাকলে অটো ডিলিট পলিসি
+};
+
+export const INITIAL_WITHDRAWAL_REQUESTS: WithdrawalRequest[] = [
+  {
+    id: 'WDR-901',
+    userId: 'user-004',
+    userName: 'আরিফুল ইসলাম',
+    userPhone: '01911-223344',
+    amount: 150,
+    gateway: 'bKash',
+    accountNumber: '01911223344',
+    accountType: 'personal',
+    status: 'Paid',
+    trxId: 'BK9A72MN4',
+    requestedAt: '১০ অক্টোবর ২০২৬, সকাল ১১:২০',
+    processedAt: '১০ অক্টোবর ২০২৬, দুপুর ০১:১৫',
+    adminNote: 'বিকাশ পার্সোনালে সফলভাবে পাঠানো হয়েছে।'
+  },
+  {
+    id: 'WDR-902',
+    userId: 'user-010',
+    userName: 'রাকিবুল হাসান',
+    userPhone: '01511-445566',
+    amount: 100,
+    gateway: 'Nagad',
+    accountNumber: '01511445566',
+    accountType: 'personal',
+    status: 'Pending',
+    requestedAt: '১২ অক্টোবর ২০২৬, বিকাল ০৩:৪০',
+    adminNote: 'অ্যাকাউন্ট ভেরিফিকেশন চলমান।'
+  }
+];
+
+export const INITIAL_ADMIN_DELETION_LOGS: AdminAdDeletionLog[] = [
+  {
+    id: 'DEL-LOG-101',
+    adId: 'ad-098',
+    adTitle: 'অনুমোদনহীন ক্ষতিকর ওষুধ সামগ্রী',
+    sellerName: 'অজানা বিক্রেতা',
+    sellerPhone: '01799-887766',
+    reason: 'অবৈধ ও নিষিদ্ধ পণ্য (বিজনেস পলিসি লঙ্ঘন - ড্রাগ অ্যান্ড কসমেটিকস অ্যাক্ট)',
+    deletedAt: '১১ অক্টোবর ২০২৬, দুপুর ১২:৪০',
+    deletedBy: 'এডমিন (আকবর হোসেন)'
+  },
+  {
+    id: 'DEL-LOG-102',
+    adId: 'ad-087',
+    adTitle: 'পুরাতন ওয়ালটন ফ্রিজ (৩ মাস কোনো রেসপন্স নেই)',
+    sellerName: 'জহিরুল ইসলাম',
+    sellerPhone: '01822-334455',
+    reason: '৩ মাস (৯০ দিন) অতিক্রান্ত অবিক্রিত বিজ্ঞাপন অটো-ক্লিনআপ পলিসি',
+    deletedAt: '০৯ অক্টোবর ২০২৬, বিকাল ০৫:১৫',
+    deletedBy: 'সিস্টেম অটো-ক্লিনআপ (৯০ দিন মেয়াদোত্তীর্ণ)'
   }
 ];

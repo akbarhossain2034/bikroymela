@@ -10,7 +10,8 @@ import {
   Globe, 
   ChevronDown,
   Menu,
-  X
+  X,
+  Gift
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -27,7 +28,10 @@ export const Header: React.FC = () => {
     setActiveModal,
     setChatRecipient,
     resetFilters,
-    siteName
+    siteName,
+    offerSettings,
+    setIsOffersModalOpen,
+    setIsPolicyModalOpen
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -36,9 +40,41 @@ export const Header: React.FC = () => {
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-40 bg-[#007460] text-white shadow-md">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <header className="sticky top-0 z-40 shadow-md">
+      {/* Top Welcome Bonus Promotional Banner */}
+      {offerSettings?.isBannerActive && offerSettings?.isBonusEnabled && !isAdminMode && (
+        <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 py-1 px-4 text-xs font-semibold shadow-inner">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 truncate">
+              <span className="w-4 h-4 rounded-full bg-slate-950 text-amber-300 flex items-center justify-center font-black text-[10px] shrink-0">
+                ৳
+              </span>
+              <span className="truncate text-[11px] sm:text-xs">
+                {lang === 'bn' ? offerSettings.campaignTitleBn : offerSettings.campaignTitleEn}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  if (currentUser) {
+                    setActiveModal('profile');
+                  } else {
+                    setActiveModal('auth');
+                  }
+                }}
+                className="px-2.5 py-0.5 bg-slate-950 hover:bg-slate-800 text-amber-300 hover:text-white rounded-full text-[10px] sm:text-[11px] font-bold transition-colors cursor-pointer shadow-xs whitespace-nowrap"
+              >
+                {currentUser ? 'ক্যাশ তুলুন ➔' : 'বোনাস নিন ➔'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-[#007460] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
           
           {/* Zone 1: Single text element wordmark */}
           <div className="flex items-center gap-3">
@@ -79,6 +115,23 @@ export const Header: React.FC = () => {
             >
               <MessageSquare className="w-4 h-4 text-emerald-200" />
               <span>{t.chatSupport}</span>
+            </button>
+
+            <button
+              onClick={() => setIsOffersModalOpen(true)}
+              className="hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1.5 font-bold text-amber-300 bg-emerald-800/60 px-2 py-1 rounded-md"
+              title="নতুন বিজনেসের আকর্ষণীয় ৬টি গ্রোথ অফার দেখুন"
+            >
+              <Gift className="w-3.5 h-3.5 text-amber-300" />
+              <span>{lang === 'bn' ? 'অফার ও বোনাস' : 'Offers & Bonus'}</span>
+            </button>
+
+            <button
+              onClick={() => setIsPolicyModalOpen(true)}
+              className="hover:text-white transition-colors cursor-pointer text-[11px] text-emerald-200"
+              title="বিজনেস পলিসি ও আইনি দায়মুক্তি"
+            >
+              <span>{lang === 'bn' ? 'পলিসি' : 'Policy'}</span>
             </button>
 
             {/* Admin Switcher - ONLY visible when in admin mode */}
@@ -210,13 +263,10 @@ export const Header: React.FC = () => {
             {/* Post Ad Button - Bikroy Iconic Yellow CTA */}
             <button
               onClick={() => {
-                if (!currentUser) {
-                  setActiveModal('auth');
-                } else {
-                  setActiveModal('postAd');
-                }
+                setActiveModal('postAd');
               }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-[#ffc800] hover:bg-[#e6b400] active:scale-[0.98] rounded shadow transition-all whitespace-nowrap"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-[#ffc800] hover:bg-[#e6b400] active:scale-[0.98] rounded-lg shadow-md transition-all whitespace-nowrap cursor-pointer ring-1 ring-amber-400"
+              title="বিনামূল্যে বিজ্ঞাপন দিন"
             >
               <PlusCircle className="w-4 h-4 text-slate-950" />
               <span>{t.postAd}</span>
@@ -272,6 +322,7 @@ export const Header: React.FC = () => {
           </div>
         )}
 
+        </div>
       </div>
     </header>
   );

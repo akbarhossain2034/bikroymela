@@ -31,7 +31,11 @@ import {
   Square,
   Monitor,
   Tv,
-  Smartphone
+  Smartphone,
+  ArrowDownToLine,
+  Wallet,
+  Send,
+  Clock
 } from 'lucide-react';
 
 type PortalSize = 'compact' | 'standard' | 'large' | 'fullscreen';
@@ -46,7 +50,10 @@ export const ProfileModal: React.FC = () => {
     orders, 
     reviews,
     setAdToDelete,
-    setSelectedOrder 
+    setSelectedOrder,
+    offerSettings,
+    withdrawalRequests,
+    requestWithdrawal
   } = useApp();
 
   // Portal Window Size State (বড় / ছোট / ফুলস্ক্রিন করার অপশন)
@@ -85,6 +92,38 @@ export const ProfileModal: React.FC = () => {
   
   const [copiedId, setCopiedId] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // Withdrawal Form State
+  const [showWithdrawForm, setShowWithdrawForm] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState<number>(() => offerSettings?.minWithdrawLimit || 100);
+  const [withdrawGateway, setWithdrawGateway] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Bank'>('bKash');
+  const [withdrawAccount, setWithdrawAccount] = useState(currentUser?.phone || '');
+  const [withdrawAccountType, setWithdrawAccountType] = useState<'personal' | 'agent'>('personal');
+  const [withdrawFeedback, setWithdrawFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+
+  const handleWithdrawSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setWithdrawFeedback(null);
+    setIsSubmittingWithdraw(true);
+
+    setTimeout(() => {
+      const res = requestWithdrawal({
+        amount: Number(withdrawAmount),
+        gateway: withdrawGateway,
+        accountNumber: withdrawAccount,
+        accountType: withdrawAccountType
+      });
+
+      if (res.success) {
+        setWithdrawFeedback({ type: 'success', message: res.message });
+        setShowWithdrawForm(false);
+      } else {
+        setWithdrawFeedback({ type: 'error', message: res.message });
+      }
+      setIsSubmittingWithdraw(false);
+    }, 300);
+  };
 
   if (!currentUser) return null;
 
@@ -870,92 +909,391 @@ export const ProfileModal: React.FC = () => {
             )}
 
             {/* ------------------------------------------------------------------ */}
-            {/* 3. ওয়ালেট ও রিওয়ার্ড পয়েন্ট (WALLET & POINTS) */}
+            {/* 3. ওয়ালেট ও রিওয়ার্ড পয়েন্ট (WALLET & WITHDRAWAL MANAGEMENT) */}
             {/* ------------------------------------------------------------------ */}
             {activeHeadline === 'wallet' && (
               <div className="space-y-6">
-                <div className="pb-4 border-b border-slate-200">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                    ওয়ালেট ব্যালেন্স ও রিওয়ার্ড পয়েন্ট
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    অ্যাকাউন্ট খোলার ৫০ টাকা বোনাস এবং কেনাবেচা করে অর্জিত পয়েন্টের হিসাব
-                  </p>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                      <span>ওয়ালেট ব্যালেন্স ও ক্যাশ উত্তোলন</span>
+                      <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
+                        ক্যাশ বোনাস
+                      </span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      অ্যাকাউন্ট খোলার ওয়েলকাম উপহার, ক্যাশব্যাক ও কেনাবেচা বোনাস সরাসরি বিকাশ বা নগদে তুলে নিন
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={() => setShowWithdrawForm(!showWithdrawForm)}
+                    className="self-start sm:self-auto flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 rounded-lg shadow-sm transition-all cursor-pointer"
+                  >
+                    <ArrowDownToLine className="w-3.5 h-3.5" />
+                    <span>{showWithdrawForm ? 'ফর্ম বন্ধ করুন' : 'টাকা তুলুন (বিকাশ / নগদ)'}</span>
+                  </button>
                 </div>
 
+                {/* Feedback message banner */}
+                {withdrawFeedback && (
+                  <div className={`p-3.5 rounded-xl border text-xs flex items-center justify-between ${
+                    withdrawFeedback.type === 'success' 
+                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold' 
+                      : 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {withdrawFeedback.type === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      ) : (
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                      )}
+                      <span>{withdrawFeedback.message}</span>
+                    </div>
+                    <button onClick={() => setWithdrawFeedback(null)} className="text-slate-500 hover:text-slate-700">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* ১. প্রধান দুটি ব্যালেন্স কার্ড */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* ৫০ টাকা বোনাস কার্ড */}
-                  <div className="p-5 bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl text-white shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                        <Coins className="w-6 h-6 text-amber-300" />
+                  {/* ওয়ালেট ক্যাশ ব্যালেন্স কার্ড */}
+                  <div className="p-5 bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl text-white shadow-md relative overflow-hidden">
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
+                        <Wallet className="w-6 h-6 text-amber-300" />
                       </div>
-                      <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase">
-                        রেজিস্ট্রেশন বোনাস
+                      <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
+                        সরাসরি ক্যাশ আউটযোগ্য
                       </span>
                     </div>
-                    <div className="mt-4">
-                      <span className="text-xs text-emerald-100 block">বর্তমান ওয়ালেট ব্যালেন্স</span>
-                      <div className="text-3xl font-black font-mono text-white mt-1">
-                        ৳ {(currentUser.walletBalance ?? 50).toLocaleString()}
+
+                    <div className="mt-4 relative z-10">
+                      <span className="text-xs text-emerald-100 block">বর্তমান উত্তোলনযোগ্য ব্যালেন্স</span>
+                      <div className="text-3xl font-black font-mono text-white mt-1 flex items-baseline gap-1.5">
+                        <span>৳ {(currentUser.walletBalance ?? 0).toLocaleString()}</span>
+                        <span className="text-xs font-normal text-emerald-200">টাকা</span>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-emerald-400/40 text-[11px] text-emerald-100 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                      <span>এই ৫০ টাকা দিয়ে সাইটে কেনাকাটা বা সার্ভিস ফি দিতে পারবেন</span>
+
+                    <div className="mt-4 pt-3 border-t border-emerald-400/30 text-[11px] text-emerald-100 flex items-center justify-between relative z-10">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
+                        <span>সর্বনিম্ন উত্তোলন: ৳ {offerSettings?.minWithdrawLimit || 100}</span>
+                      </span>
+                      <button
+                        onClick={() => {
+                          setWithdrawAmount(currentUser.walletBalance ?? (offerSettings?.minWithdrawLimit || 100));
+                          setShowWithdrawForm(true);
+                        }}
+                        className="text-amber-300 hover:text-white font-bold underline underline-offset-2 cursor-pointer"
+                      >
+                        উত্তোলন করুন ➔
+                      </button>
                     </div>
                   </div>
 
                   {/* রিওয়ার্ড পয়েন্ট কার্ড */}
-                  <div className="p-5 bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl text-white shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                  <div className="p-5 bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl text-white shadow-md relative overflow-hidden">
+                    <div className="flex items-center justify-between relative z-10">
+                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
                         <Award className="w-6 h-6 text-white" />
                       </div>
-                      <span className="bg-white text-amber-900 font-bold text-[10px] px-2.5 py-0.5 rounded-full">
+                      <span className="bg-white text-amber-900 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase">
                         লয়্যালটি পয়েন্ট
                       </span>
                     </div>
-                    <div className="mt-4">
+
+                    <div className="mt-4 relative z-10">
                       <span className="text-xs text-amber-100 block">মোট অর্জিত পয়েন্ট</span>
                       <div className="text-3xl font-black font-mono text-white mt-1">
-                        {(currentUser.rewardPoints ?? 120)} <span className="text-lg font-normal">পয়েন্ট</span>
+                        {(currentUser.rewardPoints ?? 120)} <span className="text-sm font-normal text-amber-100">পয়েন্ট</span>
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-amber-400/40 text-[11px] text-amber-100 flex items-center gap-1.5">
+
+                    <div className="mt-4 pt-3 border-t border-amber-400/30 text-[11px] text-amber-100 flex items-center gap-1.5 relative z-10">
                       <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
                       <span>পণ্য কেনাবেচা ও রেটিং দিলে আইডিতে স্বয়ংক্রিয়ভাবে পয়েন্ট যোগ হয়</span>
                     </div>
                   </div>
                 </div>
 
-                {/* ট্রানজেকশন তালিকা */}
+                {/* ২. ইন্টারেক্টিভ উইথড্রয়াল ফর্ম (WITHDRAWAL FORM) */}
+                {showWithdrawForm && (
+                  <form onSubmit={handleWithdrawSubmit} className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50/70 via-white to-slate-50 rounded-2xl border-2 border-emerald-300 shadow-sm space-y-4 animate-fadeIn">
+                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
+                          ৳
+                        </div>
+                        <h4 className="font-bold text-sm text-slate-900">
+                          বিকাশ / নগদ / রকেটে টাকা তোলার আবেদন করুন
+                        </h4>
+                      </div>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        ব্যালেন্স: <b className="text-emerald-700">৳ {currentUser.walletBalance ?? 0}</b>
+                      </span>
+                    </div>
+
+                    {/* গেটওয়ে নির্বাচন */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                        টাকা তোলার মাধ্যম বেছে নিন:
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        {[
+                          { id: 'bKash', label: 'বিকাশ (bKash)', color: 'border-pink-500 text-pink-700 bg-pink-50' },
+                          { id: 'Nagad', label: 'নগদ (Nagad)', color: 'border-orange-500 text-orange-700 bg-orange-50' },
+                          { id: 'Rocket', label: 'রকেট (Rocket)', color: 'border-purple-500 text-purple-700 bg-purple-50' },
+                          { id: 'Bank', label: 'ব্যাংক ট্রান্সফার', color: 'border-blue-500 text-blue-700 bg-blue-50' }
+                        ].map(gw => (
+                          <button
+                            key={gw.id}
+                            type="button"
+                            onClick={() => setWithdrawGateway(gw.id as any)}
+                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
+                              withdrawGateway === gw.id
+                                ? `${gw.color} ring-2 ring-emerald-500 shadow-xs font-black`
+                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                            }`}
+                          >
+                            {gw.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* অ্যাকাউন্ট ও মোবাইল নম্বর */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          {withdrawGateway} মোবাইল বা অ্যাকাউন্ট নম্বর:
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={withdrawAccount}
+                          onChange={(e) => setWithdrawAccount(e.target.value)}
+                          placeholder="উদাঃ 017XXXXXXXX"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          অ্যাকাউন্টের ধরন:
+                        </label>
+                        <select
+                          value={withdrawAccountType}
+                          onChange={(e) => setWithdrawAccountType(e.target.value as any)}
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                        >
+                          <option value="personal">ব্যক্তিগত (Personal)</option>
+                          <option value="agent">এজেন্ট (Agent)</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* টাকার পরিমাণ ও কুইক বাটন */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-xs font-bold text-slate-700">
+                          উত্তোলনের পরিমাণ (টাকা):
+                        </label>
+                        <span className="text-[11px] text-emerald-700 font-semibold">
+                          সর্বনিম্ন: ৳ {offerSettings?.minWithdrawLimit || 100}
+                        </span>
+                      </div>
+
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center font-bold text-slate-500 text-sm">
+                          ৳
+                        </span>
+                        <input
+                          type="number"
+                          min={offerSettings?.minWithdrawLimit || 50}
+                          max={currentUser.walletBalance ?? 0}
+                          required
+                          value={withdrawAmount || ''}
+                          onChange={(e) => setWithdrawAmount(Number(e.target.value) || 0)}
+                          placeholder="টাকার অঙ্ক লিখুন"
+                          className="w-full pl-8 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
+                        />
+                      </div>
+
+                      {/* দ্রুত টাকার অঙ্ক নির্বাচন */}
+                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                        <span className="text-[10px] text-slate-500 font-medium">কুইক সিলেক্ট:</span>
+                        {[50, 100, 200, 500].map(amt => (
+                          <button
+                            key={amt}
+                            type="button"
+                            onClick={() => setWithdrawAmount(amt)}
+                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded-md transition-colors"
+                          >
+                            ৳ {amt}
+                          </button>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => setWithdrawAmount(currentUser.walletBalance ?? 0)}
+                          className="px-2.5 py-1 text-[11px] font-bold bg-amber-100 text-amber-950 hover:bg-amber-200 rounded-md transition-colors ml-auto"
+                        >
+                          সব টাকা (৳ {currentUser.walletBalance ?? 0})
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed flex items-start gap-2">
+                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <b>এডমিন নিশ্চিতকরণ:</b> উইথড্র রিকোয়েস্ট পাঠানোর পর এডমিন প্যানেল থেকে আপনার মোবাইল বা গেটওয়ে নম্বর যাচাই করে ১ থেকে ১২ ঘণ্টার মধ্যে টাকা পাঠানো হবে।
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
+                      <button
+                        type="button"
+                        onClick={() => setShowWithdrawForm(false)}
+                        className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                      >
+                        বাতিল
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isSubmittingWithdraw || (currentUser.walletBalance ?? 0) <= 0}
+                        className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer active:scale-95"
+                      >
+                        <Send className="w-3.5 h-3.5" />
+                        <span>{isSubmittingWithdraw ? 'আবেদন পাঠানো হচ্ছে...' : 'উত্তোলন নিশ্চিত করুন'}</span>
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* ৩. ব্যবহারকারীর উইথড্র রিকোয়েস্ট হিস্ট্রি */}
+                <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
+                      <Clock className="w-4 h-4 text-emerald-600" />
+                      <span>উত্তোলন রিকোয়েস্ট ও পেমেন্ট হিস্ট্রি</span>
+                    </h4>
+                    <span className="text-[11px] text-slate-500">
+                      মোট আবেদন: {withdrawalRequests.filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone).length}টি
+                    </span>
+                  </div>
+
+                  {withdrawalRequests.filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone).length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 text-xs">
+                      আপনার এখনো কোনো ক্যাশ তোলার আবেদন নেই। উপরে &quot;টাকা তুলুন&quot; বাটনে চাপ দিয়ে বিকাশ/নগদে টাকা তুলতে পারেন।
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-600 bg-slate-50 text-[11px]">
+                            <th className="py-2.5 px-3 font-semibold">রিকোয়েস্ট আইডি</th>
+                            <th className="py-2.5 px-3 font-semibold">গেটওয়ে ও নম্বর</th>
+                            <th className="py-2.5 px-3 font-semibold">টাকার অঙ্ক</th>
+                            <th className="py-2.5 px-3 font-semibold">তারিখ</th>
+                            <th className="py-2.5 px-3 font-semibold">স্ট্যাটাস</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {withdrawalRequests
+                            .filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone)
+                            .map(item => (
+                              <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
+                                <td className="py-3 px-3 font-mono font-bold text-slate-800">
+                                  #{item.id}
+                                </td>
+                                <td className="py-3 px-3">
+                                  <div className="font-semibold text-slate-900">{item.gateway}</div>
+                                  <div className="text-[10px] text-slate-500 font-mono">{item.accountNumber} ({item.accountType === 'agent' ? 'এজেন্ট' : 'পার্সোনাল'})</div>
+                                </td>
+                                <td className="py-3 px-3 font-mono font-black text-emerald-700 text-sm">
+                                  ৳ {item.amount}
+                                </td>
+                                <td className="py-3 px-3 text-[11px] text-slate-500">
+                                  {item.requestedAt}
+                                </td>
+                                <td className="py-3 px-3">
+                                  {item.status === 'Pending' && (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      <span>অপেক্ষমাণ (যাচাই চলছে)</span>
+                                    </span>
+                                  )}
+                                  {item.status === 'Paid' && (
+                                    <div className="inline-flex flex-col">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                        <span>টাকা পাঠানো হয়েছে</span>
+                                      </span>
+                                      {item.trxId && (
+                                        <span className="text-[9px] font-mono text-slate-500 mt-0.5">Trx: {item.trxId}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                  {item.status === 'Rejected' && (
+                                    <div className="inline-flex flex-col">
+                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
+                                        <AlertCircle className="w-3 h-3 text-rose-600" />
+                                        <span>বাতিল ও রিফান্ডেড</span>
+                                      </span>
+                                      {item.adminNote && (
+                                        <span className="text-[9px] text-slate-500 mt-0.5">{item.adminNote}</span>
+                                      )}
+                                    </div>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* ৪. বোনাস ব্যালেন্স ব্যবহারের ৩টি উপায় কার্ড */}
                 <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-                  <h4 className="font-bold text-xs text-slate-800 mb-3">সাম্প্রতিক পয়েন্ট ও বোনাস বিবরণী:</h4>
-                  <div className="space-y-2 text-xs">
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                        <span className="font-semibold text-slate-800">নতুন অ্যাকাউন্ট খোলার স্বাগতম উপহার</span>
+                  <h4 className="font-bold text-xs text-slate-800 mb-2.5">
+                    💡 এই বোনাস টাকা আপনি কীভাবে ব্যবহার করতে পারবেন:
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
+                        <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>১. সরাসরি ক্যাশ উত্তোলন</span>
                       </div>
-                      <span className="font-mono font-bold text-emerald-700">+৳ ৫০.০০</span>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        বিকাশ, নগদ বা রকেটে যেকোনো সময় সরাসরি ক্যাশ টাকা তুলে নিজের পকেটে নিতে পারবেন।
+                      </p>
                     </div>
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span className="font-semibold text-slate-800">এনআইডি ও ফোন নম্বর যাচাইকরণ রিওয়ার্ড</span>
+
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
+                        <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>২. কেনাকাটায় ডিসকাউন্ট</span>
                       </div>
-                      <span className="font-mono font-bold text-amber-700">+২০ পয়েন্ট</span>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        মার্কেটপ্লেসে যেকোনো পণ্য অর্ডারের সময় ওয়ালেট ব্যালেন্স দিয়ে মূল্যে সরাসরি ছাড় পাবেন।
+                      </p>
                     </div>
-                    <div className="p-2.5 bg-white rounded-lg border border-slate-200 flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                        <span className="font-semibold text-slate-800">মার্কেটপ্লেসে সফল লেনদেন বোনাস</span>
+
+                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
+                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                        <span>৩. ফ্রি বিজ্ঞাপন বুস্ট</span>
                       </div>
-                      <span className="font-mono font-bold text-amber-700">+১০০ পয়েন্ট</span>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        আপনার পণ্য দ্রুত বিক্রির জন্য ফিচার্ড অ্যাড বা টপ বিজ্ঞাপন স্লট নিতে এই ব্যালেন্স ব্যবহার করা যাবে।
+                      </p>
                     </div>
                   </div>
                 </div>
+
               </div>
             )}
 

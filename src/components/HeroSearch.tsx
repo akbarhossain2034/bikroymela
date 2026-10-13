@@ -19,6 +19,7 @@ export const HeroSearch: React.FC = () => {
   const [locationModalOpen, setLocationModalOpen] = useState(false);
   const [activeDivisionTab, setActiveDivisionTab] = useState<string>('Dhaka');
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [locationSearchQuery, setLocationSearchQuery] = useState('');
 
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
@@ -177,90 +178,139 @@ export const HeroSearch: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+            {/* Search Location Input & Reset Bar */}
+            <div className="p-3 bg-slate-50 border-b border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                <input
+                  type="text"
+                  value={locationSearchQuery}
+                  onChange={(e) => setLocationSearchQuery(e.target.value)}
+                  placeholder={lang === 'bn' ? 'জেলা বা এলাকার নাম লিখে খুঁজুন (উদাঃ মিরপুর, বগুড়া, কুমিল্লা)...' : 'Search district or area...'}
+                  className="w-full pl-9 pr-3 py-1.5 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-emerald-500 text-slate-800"
+                />
+              </div>
+
               <button
                 onClick={() => {
                   setSelectedDivision(null);
                   setSelectedArea(null);
+                  setLocationSearchQuery('');
                   setLocationModalOpen(false);
                 }}
-                className="text-xs font-semibold text-[#007460] hover:underline flex items-center gap-1.5"
+                className="text-xs font-bold text-[#007460] hover:underline flex items-center gap-1.5 shrink-0 self-center"
               >
                 <span>✓</span>
-                <span>{lang === 'bn' ? 'সমগ্র বাংলাদেশ (সকল লোকেশন)' : 'All of Bangladesh (Reset Location)'}</span>
+                <span>{lang === 'bn' ? 'সমগ্র বাংলাদেশ (সকল লোকেশন)' : 'All Bangladesh'}</span>
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 max-h-96 overflow-y-auto">
-              {/* Divisions List */}
-              <div className="border-r border-slate-200 p-2 divide-y divide-slate-100">
-                <div className="px-2 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider">
-                  {lang === 'bn' ? 'বিভাগসমূহ' : 'Divisions'}
+            {/* If search query entered, show filtered list directly across all 8 divisions */}
+            {locationSearchQuery.trim() ? (
+              <div className="p-3 max-h-96 overflow-y-auto space-y-2">
+                <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                  {lang === 'bn' ? 'খুঁজে পাওয়া জেলা ও এলাকাসমূহ:' : 'Matching locations:'}
                 </div>
-                {LOCATIONS.map((loc) => {
-                  const isSelected = activeDivisionTab === loc.division;
-                  return (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                  {LOCATIONS.flatMap(loc => 
+                    loc.areas
+                      .filter(a => a.toLowerCase().includes(locationSearchQuery.toLowerCase()))
+                      .map(area => ({ area, division: loc.division, divisionBn: loc.divisionBn }))
+                  ).map(({ area, division, divisionBn }) => (
                     <button
-                      key={loc.division}
-                      onClick={() => setActiveDivisionTab(loc.division)}
-                      className={`w-full text-left px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between rounded-md transition-colors ${
-                        isSelected 
-                          ? 'bg-emerald-50 text-emerald-800 font-semibold' 
-                          : 'hover:bg-slate-50 text-slate-700'
-                      }`}
+                      key={`${division}-${area}`}
+                      onClick={() => {
+                        setSelectedDivision(division);
+                        setSelectedArea(area);
+                        setLocationSearchQuery('');
+                        setLocationModalOpen(false);
+                      }}
+                      className="text-left px-3 py-2 rounded-lg border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50 text-xs flex items-center justify-between transition-colors"
                     >
-                      <span>{lang === 'bn' ? loc.divisionBn : loc.division}</span>
-                      <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
+                      <span className="font-semibold text-slate-800">{area}</span>
+                      <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-mono">
+                        {divisionBn}
+                      </span>
                     </button>
-                  );
-                })}
-              </div>
-
-              {/* Areas in selected division */}
-              <div className="p-2">
-                <div className="px-2 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
-                  <span>{lang === 'bn' ? `${activeDivisionTab} বিভাগের প্রধান এলাকাসমূহ` : `Areas in ${activeDivisionTab}`}</span>
+                  ))}
                 </div>
-                <div className="divide-y divide-slate-100">
-                  {/* Option to select the entire division */}
-                  <button
-                    onClick={() => {
-                      setSelectedDivision(activeDivisionTab);
-                      setSelectedArea(null);
-                      setLocationModalOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-bold text-[#007460] hover:bg-emerald-50 rounded flex items-center justify-between"
-                  >
-                    <span>{lang === 'bn' ? `সমগ্র ${activeDivisionTab}` : `All of ${activeDivisionTab}`}</span>
-                    {selectedDivision === activeDivisionTab && !selectedArea && (
-                      <Check className="w-4 h-4 text-emerald-600" />
-                    )}
-                  </button>
-
-                  {LOCATIONS.find(l => l.division === activeDivisionTab)?.areas.map((area) => {
-                    const isPicked = selectedDivision === activeDivisionTab && selectedArea === area;
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 max-h-96 overflow-y-auto">
+                {/* Divisions List */}
+                <div className="border-r border-slate-200 p-2 divide-y divide-slate-100">
+                  <div className="px-2 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                    <span>{lang === 'bn' ? '৮টি বিভাগ' : '8 Divisions'}</span>
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-mono px-1 rounded">৬৪ জেলা</span>
+                  </div>
+                  {LOCATIONS.map((loc) => {
+                    const isSelected = activeDivisionTab === loc.division;
                     return (
                       <button
-                        key={area}
-                        onClick={() => {
-                          setSelectedDivision(activeDivisionTab);
-                          setSelectedArea(area);
-                          setLocationModalOpen(false);
-                        }}
-                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm rounded flex items-center justify-between transition-colors ${
-                          isPicked 
-                            ? 'bg-emerald-100/70 font-semibold text-emerald-900' 
+                        key={loc.division}
+                        onClick={() => setActiveDivisionTab(loc.division)}
+                        className={`w-full text-left px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-between rounded-md transition-colors ${
+                          isSelected 
+                            ? 'bg-emerald-50 text-emerald-800 font-semibold' 
                             : 'hover:bg-slate-50 text-slate-700'
                         }`}
                       >
-                        <span>{area}</span>
-                        {isPicked && <Check className="w-4 h-4 text-emerald-600" />}
+                        <div className="flex items-center gap-1.5">
+                          <span>{lang === 'bn' ? loc.divisionBn : loc.division}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">({loc.areas.length})</span>
+                        </div>
+                        <ChevronRight className={`w-4 h-4 ${isSelected ? 'text-emerald-600' : 'text-slate-400'}`} />
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Areas in selected division */}
+                <div className="p-2">
+                  <div className="px-2 py-1.5 text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+                    <span>{lang === 'bn' ? `${activeDivisionTab} বিভাগের প্রধান এলাকাসমূহ` : `Areas in ${activeDivisionTab}`}</span>
+                  </div>
+                  <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto">
+                    {/* Option to select the entire division */}
+                    <button
+                      onClick={() => {
+                        setSelectedDivision(activeDivisionTab);
+                        setSelectedArea(null);
+                        setLocationModalOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs font-bold text-[#007460] hover:bg-emerald-50 rounded flex items-center justify-between"
+                    >
+                      <span>{lang === 'bn' ? `সমগ্র ${activeDivisionTab}` : `All of ${activeDivisionTab}`}</span>
+                      {selectedDivision === activeDivisionTab && !selectedArea && (
+                        <Check className="w-4 h-4 text-emerald-600" />
+                      )}
+                    </button>
+
+                    {LOCATIONS.find(l => l.division === activeDivisionTab)?.areas.map((area) => {
+                      const isPicked = selectedDivision === activeDivisionTab && selectedArea === area;
+                      return (
+                        <button
+                          key={area}
+                          onClick={() => {
+                            setSelectedDivision(activeDivisionTab);
+                            setSelectedArea(area);
+                            setLocationModalOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-xs sm:text-sm rounded flex items-center justify-between transition-colors ${
+                            isPicked 
+                              ? 'bg-emerald-100/70 font-semibold text-emerald-900' 
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span>{area}</span>
+                          {isPicked && <Check className="w-4 h-4 text-emerald-600" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="p-3 bg-slate-50 border-t border-slate-200 text-right">
               <button

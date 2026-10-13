@@ -17,6 +17,9 @@ import { MobileNav } from './components/MobileNav';
 import { Footer } from './components/Footer';
 import { WhatsAppSupportWidget } from './components/WhatsAppSupportWidget';
 import { DeleteAdReasonModal } from './components/DeleteAdReasonModal';
+import { AdminDeleteAdModal } from './components/AdminDeleteAdModal';
+import { BusinessPolicyModal } from './components/BusinessPolicyModal';
+import { OffersShowcaseModal } from './components/OffersShowcaseModal';
 import { ReviewModal } from './components/ReviewModal';
 import { 
   Filter, 
@@ -47,6 +50,7 @@ const MainMarketplace: React.FC = () => {
     activeModal,
     selectedAd,
     adToDelete,
+    adminAdToDelete,
     setActiveModal
   } = useApp();
 
@@ -283,6 +287,9 @@ const MainMarketplace: React.FC = () => {
       {activeModal === 'profile' && <ProfileModal />}
       {activeModal === 'addReview' && <ReviewModal />}
       {adToDelete && <DeleteAdReasonModal />}
+      {adminAdToDelete && <AdminDeleteAdModal />}
+      <BusinessPolicyModal />
+      <OffersShowcaseModal />
 
     </div>
   );

@@ -58,6 +58,12 @@ export interface Ad {
   urgent?: boolean;
   views: number;
   specs?: Record<string, string>;
+  createdTimestamp?: number;
+  postedDate?: string;
+  daysRemaining?: number; // 90 days countdown
+  isExpired?: boolean;
+  deletionReason?: string;
+  deletedAt?: string;
 }
 
 export interface User {
@@ -82,6 +88,13 @@ export interface User {
   walletBalance: number; // ৳ 50 registration bonus
   rewardPoints: number; // loyalty points earned on transactions
   freeAdsCount?: number; // count of free ads posted (first 5 are free)
+  referralCode?: string; // unique referral code e.g. REF-BM-9824
+  referredBy?: string;
+  referralCount?: number;
+  referralEarnings?: number;
+  lastCheckInDate?: string;
+  hasUsedFirstAdBoost?: boolean;
+  hasUsedFirstOrderFreeDelivery?: boolean;
 }
 
 export interface Review {
@@ -168,6 +181,52 @@ export interface NotificationItem {
   type: 'order' | 'ad' | 'chat' | 'payment';
 }
 
+export interface BonusOfferSettings {
+  isBonusEnabled: boolean;
+  signupBonusAmount: number; // e.g. 50, 100, 200, 500 BDT
+  minWithdrawLimit: number; // e.g. 100, 200 BDT
+  allowedGateways: ('bKash' | 'Nagad' | 'Rocket' | 'Bank')[];
+  allowPurchaseWithBonus: boolean;
+  campaignTitleBn: string;
+  campaignTitleEn: string;
+  campaignDescriptionBn: string;
+  isBannerActive: boolean;
+  // 6 Proven Growth & Marketing Features
+  referralBonusAmount: number; // e.g. ৳ 50 per successful friend invite
+  dailyCheckInPoints: number; // e.g. 15-20 points daily
+  firstAdFreeBoostEnabled: boolean; // 3-day Free Top Ad for new sellers
+  firstOrderFreeDeliveryEnabled: boolean; // 100% free delivery on 1st escrow order
+  festiveCampaignMode: 'normal' | 'eid_mega' | 'new_year';
+  autoDeleteUnsoldDays: number; // default 90 days (3 months)
+}
+
+export interface AdminAdDeletionLog {
+  id: string;
+  adId: string;
+  adTitle: string;
+  sellerName: string;
+  sellerPhone: string;
+  reason: string;
+  deletedAt: string;
+  deletedBy: string;
+}
+
+export interface WithdrawalRequest {
+  id: string;
+  userId: string;
+  userName: string;
+  userPhone: string;
+  amount: number;
+  gateway: 'bKash' | 'Nagad' | 'Rocket' | 'Bank';
+  accountNumber: string;
+  accountType?: 'personal' | 'agent';
+  status: 'Pending' | 'Paid' | 'Rejected';
+  trxId?: string;
+  requestedAt: string;
+  processedAt?: string;
+  adminNote?: string;
+}
+
 export interface SystemBackup {
   version: string;
   timestamp: string;
@@ -194,4 +253,7 @@ export interface SystemBackup {
   notifications: NotificationItem[];
   chatMessages: ChatMessage[];
   reviews: Review[];
+  offerSettings?: BonusOfferSettings;
+  withdrawalRequests?: WithdrawalRequest[];
+  adminDeletionLogs?: AdminAdDeletionLog[];
 }

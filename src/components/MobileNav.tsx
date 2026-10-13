@@ -35,18 +35,20 @@ export const MobileNav: React.FC = () => {
         <span className="text-[11px] font-medium leading-none">সার্চ</span>
       </button>
 
-      {/* Post Ad Center Button */}
+      {/* Post Ad Center Button - High Visibility with Yellow Badge */}
       <button
         onClick={() => {
-          if (!currentUser) setActiveModal('auth');
-          else setActiveModal('postAd');
+          setActiveModal('postAd');
         }}
-        className="flex flex-col items-center gap-1 -mt-5"
+        className="flex flex-col items-center gap-1 -mt-6 cursor-pointer group"
+        title="বিনামূল্যে বিজ্ঞাপন দিন"
       >
-        <div className="w-12 h-12 rounded-full bg-[#ffc800] text-slate-950 flex items-center justify-center shadow-md active:scale-95 transition-transform border-2 border-white">
-          <PlusCircle className="w-6 h-6" />
+        <div className="w-14 h-14 rounded-full bg-[#ffc800] hover:bg-[#e6b400] text-slate-950 flex items-center justify-center shadow-lg active:scale-95 transition-all border-4 border-white ring-2 ring-amber-300">
+          <PlusCircle className="w-7 h-7 text-slate-950 group-hover:rotate-90 transition-transform" />
         </div>
-        <span className="text-[10px] font-bold text-slate-900 leading-none">{t.postAd}</span>
+        <span className="text-[11px] font-extrabold text-[#007460] bg-amber-200/90 px-2 py-0.5 rounded-full leading-none shadow-2xs">
+          {t.postAd}
+        </span>
       </button>
 
       <button
