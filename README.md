@@ -1,20 +1,13 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# BikroyMela - অনলাইন মার্কেটপ্লেস ও কেনাবেচা
 
-# Run and deploy your AI Studio app
+বাংলাদেশের আধুনিক ও নিরাপদ ক্লাসিফায়েড মার্কেটপ্লেস। ব্যবহৃত ও নতুন পণ্য, মোবাইল, গ্যাজেট, বাইক এবং প্রোপার্টি (জমি, দোকান, ফ্ল্যাট) ক্রয়-বিক্রয় ও ভাড়ার সম্পূর্ণ প্ল্যাটফর্ম।
 
-This contains everything you need to run your app locally.
+## 🚀 Vercel-এ ডিপ্লয় করার নিয়ম:
+1. GitHub-এ এই রিপোজিটরিটি পুশ বা আপলোড করুন।
+2. [vercel.com](https://vercel.com)-এ গিয়ে **Import Project** সিলেক্ট করে ডিপ্লয় দিন।
+3. `vercel.json` ফাইলটি ইতিমধ্যে কনফিগার করা আছে, ফলে কোনো সেটিং পরিবর্তন ছাড়াই সরাসরি লাইভ হয়ে যাবে।
 
-View your app in AI Studio: https://ai.studio/apps/3138343d-836f-457b-be15-d78ac0b9949c
-
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 💻 লোকাল কম্পিউটারে রান করার নিয়ম:
+1. ডিপেন্ডেন্সি ইনস্টল করুন: `npm install`
+2. লোকাল সার্ভার রান করুন: `npm run dev`
+3. ব্রাউজারে খুলুন: `http://localhost:3000`
