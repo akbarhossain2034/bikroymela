@@ -388,7 +388,7 @@ export const ProfileModal: React.FC = () => {
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
 
-              {/* 5. Pickloo Club */}
+              {/* 5. BikroyMela Club */}
               <button
                 onClick={() => setActiveTab('club')}
                 className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
@@ -400,14 +400,14 @@ export const ProfileModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Crown className="w-4 h-4 text-amber-500" />
                   <div>
-                    <span className="block font-bold">Pickloo Club</span>
+                    <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} ক্লাব</span>
                     <span className="text-[10px] text-slate-400 font-normal">ভিআইপি মেম্বারশিপ অফার</span>
                   </div>
                 </div>
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">VIP</span>
               </button>
 
-              {/* 6. Pickloo Point */}
+              {/* 6. BikroyMela Point */}
               <button
                 onClick={() => setActiveTab('point')}
                 className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
@@ -419,7 +419,7 @@ export const ProfileModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Coins className="w-4 h-4 text-amber-600" />
                   <div>
-                    <span className="block font-bold">Pickloo Point</span>
+                    <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} পয়েন্ট</span>
                     <span className="text-[10px] text-slate-400 font-normal">পয়েন্ট ব্যালেন্স ও ক্যাশব্যাক</span>
                   </div>
                 </div>
@@ -428,7 +428,7 @@ export const ProfileModal: React.FC = () => {
                 </span>
               </button>
 
-              {/* 7. Pickloo Credit */}
+              {/* 7. BikroyMela Credit */}
               <button
                 onClick={() => setActiveTab('credit')}
                 className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
@@ -440,7 +440,7 @@ export const ProfileModal: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <CreditCard className="w-4 h-4 text-emerald-600" />
                   <div>
-                    <span className="block font-bold">Pickloo Credit</span>
+                    <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} ক্রেডিট</span>
                     <span className="text-[10px] text-slate-400 font-normal">শপিং ক্রেডিট ও লিমিট</span>
                   </div>
                 </div>
@@ -735,7 +735,7 @@ export const ProfileModal: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
                     <Crown className="w-4 h-4 text-amber-500" />
-                    <span>Pickloo Club – প্রিমিয়াম মেম্বারশিপ ও ভিআইপি সুবিধা</span>
+                    <span>{siteName || 'বিক্রয় মেলা'} ক্লাব – প্রিমিয়াম মেম্বারশিপ ও ভিআইপি সুবিধা</span>
                   </h3>
                 </div>
 
@@ -752,7 +752,7 @@ export const ProfileModal: React.FC = () => {
               </div>
             )}
 
-            {/* TAB: POINT (PICKLOO POINT) */}
+            {/* TAB: POINT (REWARD POINT) */}
             {activeTab === 'point' && (
               <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -782,7 +782,7 @@ export const ProfileModal: React.FC = () => {
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
                     <CreditCard className="w-4 h-4 text-emerald-600" />
-                    <span>Pickloo Credit – ওয়ালেট ব্যালেন্স ও ক্যাশ উত্তোলন</span>
+                    <span>{siteName || 'বিক্রয় মেলা'} ক্রেডিট – ওয়ালেট ব্যালেন্স ও ক্যাশ উত্তোলন</span>
                   </h3>
                 </div>
 

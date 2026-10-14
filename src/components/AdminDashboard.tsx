@@ -1772,7 +1772,7 @@ export const AdminDashboard: React.FC = () => {
                       </h3>
                     </div>
                     <p className="text-xs sm:text-sm text-emerald-100 mt-1 max-w-3xl leading-relaxed">
-                      যেই নামে আপনি ডোমেইন কিনবেন, সেই নামটি শুধু এখানে লিখে 'সংরক্ষণ করুন' বাটনে চাপ দিন। আপনার সাইটের সকল স্থানে (লগইন/সাইন ইন পেজ, হেডার বার, ফুটার, ব্রাউজার টাইটেল ও কপি লিংক) স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়ে যাবে। লগইন পেজে কোনো Pickaboo বা অপরিবর্তনীয় নাম থাকবে না।
+                      যেই নামে আপনি ডোমেইন কিনবেন, সেই নামটি শুধু এখানে লিখে 'সংরক্ষণ করুন' বাটনে চাপ দিন। আপনার সাইটের সকল স্থানে (লগইন/সাইন ইন পেজ, হেডার বার, ফুটার, ব্রাউজার টাইটেল ও কপি লিংক) স্বয়ংক্রিয়ভাবে পরিবর্তিত হয়ে যাবে।
                     </p>
                   </div>
 
@@ -1832,7 +1832,7 @@ export const AdminDashboard: React.FC = () => {
                         required
                       />
                       <p className="text-[11px] text-slate-500 mt-1">
-                        এই নামটি লগইন পেজ, ওয়েবসাইটের প্রধান হেডার, কপিরাইট এবং ব্রাউজার ট্যাবে প্রদর্শিত হবে। (লগইন পেজে Pickaboo-র পরিবর্তে সরাসরি এই নাম দেখাবে)।
+                        এই নামটি লগইন পেজ, ওয়েবসাইটের প্রধান হেডার, কপিরাইট এবং ব্রাউজার ট্যাবে প্রদর্শিত হবে।
                       </p>
                     </div>
 
@@ -1923,7 +1923,7 @@ export const AdminDashboard: React.FC = () => {
                     <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-2">
                       <div className="text-[11px] font-bold text-slate-700 flex items-center justify-between">
                         <span>০১. লগইন ও সাইন-ইন পেজে:</span>
-                        <span className="text-[10px] text-emerald-600 font-semibold">Pickaboo মুক্ত</span>
+                        <span className="text-[10px] text-emerald-600 font-semibold">১০০% ব্র্যান্ডেড</span>
                       </div>
                       
                       {/* Mini Mock Header */}

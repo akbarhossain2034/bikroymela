@@ -181,7 +181,7 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
                 <Menu className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.2]" />
               </button>
 
-              {/* Dynamic Site / Brand Name logo (configured from admin, no hardcoded Pickaboo) */}
+              {/* Dynamic Site / Brand Name logo (configured dynamically from admin) */}
               <button 
                 onClick={handleBack}
                 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white hover:opacity-95 cursor-pointer focus:outline-none font-sans lowercase"

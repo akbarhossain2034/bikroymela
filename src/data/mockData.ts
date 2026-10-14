@@ -518,8 +518,8 @@ export const INITIAL_USER: User = {
   nidNumber: '19952671829000123',
   memberSince: '2023',
   district: 'Dhaka',
-  walletBalance: 3500, // Pickloo Credit ৳৩৫০০
-  rewardPoints: 100 // Pickloo Point 100 Pts
+  walletBalance: 3500, // BikroyMela Credit ৳৩৫০০
+  rewardPoints: 100 // BikroyMela Point 100 Pts
 };
 
 export const INITIAL_REVIEWS: Review[] = [
