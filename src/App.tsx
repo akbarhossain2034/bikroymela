@@ -63,6 +63,11 @@ const MainMarketplace: React.FC = () => {
     return <AuthView onBackToHome={() => setActiveModal(null)} />;
   }
 
+  // Full-page Customer ID / Account Dashboard matching কাষ্টমার আইডি1.png
+  if (activeModal === 'profile') {
+    return <ProfileModal />;
+  }
+
   // Filter ads
   const filteredAds = ads.filter(ad => {
     // Only active ads in marketplace
@@ -124,7 +129,7 @@ const MainMarketplace: React.FC = () => {
       <CategoryBar />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 flex-1 w-full">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 flex-1 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
           {/* Left Filter Sidebar (3 cols on desktop) */}

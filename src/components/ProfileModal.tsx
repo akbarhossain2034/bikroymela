@@ -1,7 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  X, 
   User, 
   ShieldCheck, 
   Phone, 
@@ -25,20 +24,21 @@ import {
   ArrowRight,
   Eye,
   AlertCircle,
-  Maximize2,
-  Minimize2,
-  Minus,
-  Square,
-  Monitor,
-  Tv,
-  Smartphone,
-  ArrowDownToLine,
   Wallet,
   Send,
-  Clock
+  Clock,
+  Heart,
+  Headphones,
+  Crown,
+  CreditCard,
+  Share2,
+  ChevronRight,
+  ArrowLeft,
+  X,
+  Mail,
+  Calendar,
+  CheckCircle
 } from 'lucide-react';
-
-type PortalSize = 'compact' | 'standard' | 'large' | 'fullscreen';
 
 export const ProfileModal: React.FC = () => {
   const { 
@@ -53,47 +53,40 @@ export const ProfileModal: React.FC = () => {
     setSelectedOrder,
     offerSettings,
     withdrawalRequests,
-    requestWithdrawal
+    requestWithdrawal,
+    setChatRecipient,
+    siteName
   } = useApp();
 
-  // Portal Window Size State (বড় / ছোট / ফুলস্ক্রিন করার অপশন)
-  const [portalSize, setPortalSize] = useState<PortalSize>('standard');
-  const [isMinimized, setIsMinimized] = useState<boolean>(false);
+  // Active section corresponding to left-side navigation matching કાષ્ટমার আইডি1.png
+  const [activeTab, setActiveTab] = useState<
+    'manage_account' | 'orders' | 'wishlist' | 'support' | 'club' | 'point' | 'credit' | 'share_earn' | 'addresses'
+  >('manage_account');
 
-  // Active section corresponding to left-side headlines
-  const [activeHeadline, setActiveHeadline] = useState<
-    'address' | 'profile' | 'wallet' | 'ads' | 'orders' | 'reviews' | 'security'
-  >('address'); // Default to 'address' as highlighted by the user
-  
-  // Profile edit fields
-  const [name, setName] = useState(currentUser?.name || 'Md. Hossain');
-  const [phone, setPhone] = useState(currentUser?.phone || '01332520826');
-  const [email, setEmail] = useState(currentUser?.email || 'akbar.office10@gmail.com');
-  
-  // Address edit fields (বর্তমান ঠিকানা ও স্থায়ী ঠিকানা)
-  const [presentAddress, setPresentAddress] = useState(
-    currentUser?.address || 'বাসা-২৪, রোড-৭, ব্লক-ডি, মিরপুর-১০, ঢাকা-১২১৬'
-  );
+  // Edit User Information modal/state for mobile & desktop (Requirement B-03)
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [firstName, setFirstName] = useState(currentUser?.firstName || 'Md.');
+  const [lastName, setLastName] = useState(currentUser?.lastName || 'Hossain');
+  const [contactNumber, setContactNumber] = useState(currentUser?.phone || '01332520826');
+  const [emailAddress, setEmailAddress] = useState(currentUser?.email || 'akbar.office10@gmail.com');
+  const [dob, setDob] = useState(currentUser?.dob || '1995-05-12');
+  const [gender, setGender] = useState(currentUser?.gender || 'পুরুষ (Male)');
+  const [deliveryAddress, setDeliveryAddress] = useState(currentUser?.address || 'মিরপুর-১০, ঢাকা-১২১৬');
   const [permanentAddress, setPermanentAddress] = useState(
     currentUser?.permanentAddress || 'গ্রাম: রামকৃষ্ণপুর, ডাকঘর: হরিপুর, থানা: বোয়ালমারী, জেলা: ফরিদপুর-৭৮২০'
   );
-  const [presentDistrict, setPresentDistrict] = useState('ঢাকা (Dhaka)');
-  const [presentThana, setPresentThana] = useState('মিরপুর-১০');
-  const [permanentDistrict, setPermanentDistrict] = useState('ফরিদপুর (Faridpur)');
-  const [permanentThana, setPermanentThana] = useState('বোয়ালমারী');
-  const [altPhone, setAltPhone] = useState('০১৭৫৫-৯৯৮৮৭৭');
-  const [isEditingAddress, setIsEditingAddress] = useState(false);
-  const [isEditingProfile, setIsEditingProfile] = useState(false);
 
-  // Security password fields
-  const [currentPass, setCurrentPass] = useState('');
+  // Password change state
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
-  const [copiedId, setCopiedId] = useState(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
-  // Withdrawal Form State
+  // Address edit state
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
+
+  // Withdrawal state (inside Credit/Wallet tab)
   const [showWithdrawForm, setShowWithdrawForm] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState<number>(() => offerSettings?.minWithdrawLimit || 100);
   const [withdrawGateway, setWithdrawGateway] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Bank'>('bKash');
@@ -101,6 +94,64 @@ export const ProfileModal: React.FC = () => {
   const [withdrawAccountType, setWithdrawAccountType] = useState<'personal' | 'agent'>('personal');
   const [withdrawFeedback, setWithdrawFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isSubmittingWithdraw, setIsSubmittingWithdraw] = useState(false);
+
+  const [copiedReferral, setCopiedReferral] = useState(false);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+
+  // Sync internal fields if currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setFirstName(currentUser.firstName || currentUser.name.split(' ')[0] || 'Md.');
+      setLastName(currentUser.lastName || currentUser.name.split(' ').slice(1).join(' ') || 'Hossain');
+      setContactNumber(currentUser.phone);
+      setEmailAddress(currentUser.email || 'akbar.office10@gmail.com');
+      setDob(currentUser.dob || '1995-05-12');
+      setGender(currentUser.gender || 'পুরুষ (Male)');
+      setDeliveryAddress(currentUser.address || 'মিরপুর-১০, ঢাকা-১২১৬');
+      setWithdrawAccount(currentUser.phone);
+    }
+  }, [currentUser]);
+
+  const handleSaveUserInfo = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentUser) return;
+
+    const fullName = `${firstName.trim()} ${lastName.trim()}`.trim();
+    const updatedUser = {
+      ...currentUser,
+      name: fullName || currentUser.name,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: contactNumber.trim(),
+      email: emailAddress.trim(),
+      dob: dob.trim(),
+      gender: gender.trim(),
+      address: deliveryAddress.trim(),
+      permanentAddress: permanentAddress.trim()
+    };
+
+    setCurrentUser(updatedUser);
+    localStorage.setItem('bikroy_user', JSON.stringify(updatedUser));
+    setSaveSuccessMsg(lang === 'bn' ? 'ব্যক্তিগত তথ্য সফলভাবে সংরক্ষিত হয়েছে!' : 'User information saved successfully!');
+    setIsEditUserModalOpen(false);
+    setTimeout(() => setSaveSuccessMsg(''), 4000);
+  };
+
+  const handlePasswordChange = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newPassword || newPassword !== confirmPassword) {
+      alert(lang === 'bn' ? 'নতুন পাসওয়ার্ড দুটি মিলছে না।' : 'Passwords do not match.');
+      return;
+    }
+    setPasswordSuccess(true);
+    setTimeout(() => {
+      setPasswordSuccess(false);
+      setIsPasswordModalOpen(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    }, 2000);
+  };
 
   const handleWithdrawSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -122,1174 +173,435 @@ export const ProfileModal: React.FC = () => {
         setWithdrawFeedback({ type: 'error', message: res.message });
       }
       setIsSubmittingWithdraw(false);
-    }, 300);
+    }, 600);
   };
 
-  if (!currentUser) return null;
-
-  // Derive unique customer ID
-  const customerId = currentUser.id.includes('user-') 
-    ? `#BM-${currentUser.id.replace('user-', '').slice(-4) || '9824'}` 
-    : '#BM-9824';
-
-  const myAds = ads.filter(a => a.sellerId === currentUser.id || a.sellerName === currentUser.name || a.sellerPhone === currentUser.phone);
-  const myReviews = reviews.filter(r => r.targetUserId === currentUser.id || r.targetUserId === 'user-001');
-
-  const handleCopyId = () => {
-    navigator.clipboard?.writeText(customerId);
-    setCopiedId(true);
-    setTimeout(() => setCopiedId(false), 2000);
+  const handleBackToShopping = () => {
+    setActiveModal(null);
   };
 
-  const handleSaveAddress = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentUser(prev => prev ? {
-      ...prev,
-      address: presentAddress,
-      permanentAddress: permanentAddress
-    } : null);
-    setIsEditingAddress(false);
-    setSaveSuccessMsg('🎉 আপনার বর্তমান ও স্থায়ী ঠিকানা সফলভাবে হালনাগাদ করা হয়েছে!');
-    setTimeout(() => setSaveSuccessMsg(''), 3000);
-  };
-
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentUser(prev => prev ? {
-      ...prev,
-      name,
-      phone,
-      email
-    } : null);
-    setIsEditingProfile(false);
-    setSaveSuccessMsg('✅ আপনার ব্যক্তিগত প্রোফাইল তথ্য সফলভাবে সেভ হয়েছে!');
-    setTimeout(() => setSaveSuccessMsg(''), 3000);
-  };
-
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newPassword || newPassword !== confirmPassword) {
-      alert('নতুন পাসওয়ার্ড উভয় ঘরে সঠিকভাবে লিখুন');
-      return;
-    }
-    setCurrentPass('');
-    setNewPassword('');
-    setConfirmPassword('');
-    setSaveSuccessMsg('🔒 আপনার পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে!');
-    setTimeout(() => setSaveSuccessMsg(''), 3000);
-  };
-
-  const handleLogout = () => {
-    if (window.confirm('আপনি কি নিশ্চিত যে আপনার একাউন্ট থেকে লগআউট করতে চান?')) {
-      setCurrentUser(null);
-      setActiveModal(null);
-    }
-  };
-
-  // Left-side headline menu items
-  const headlineItems = [
-    {
-      id: 'address',
-      label: 'ম্যানেজ অ্যাড্রেস',
-      sublabel: 'বর্তমান ও স্থায়ী ঠিকানা',
-      icon: MapPin,
-      badge: '২টি ঠিকানা',
-      highlight: true
-    },
-    {
-      id: 'profile',
-      label: 'প্রোফাইল তথ্য ও আইডি',
-      sublabel: 'পরিচয় ও এনআইডি তথ্য',
-      icon: User,
-      badge: null
-    },
-    {
-      id: 'wallet',
-      label: 'ওয়ালেট ও বোনাস ব্যালেন্স',
-      sublabel: '৳৫০ ওয়েলকাম বোনাস',
-      icon: Coins,
-      badge: `৳${(currentUser.walletBalance ?? 50)}`
-    },
-    {
-      id: 'ads',
-      label: 'আমার বিজ্ঞাপনসমূহ',
-      sublabel: 'পোস্ট করা বিজ্ঞাপন তালিকা',
-      icon: ShoppingBag,
-      badge: `${myAds.length} টি`
-    },
-    {
-      id: 'orders',
-      label: 'আমার অর্ডার ও কেনাকাটা',
-      sublabel: 'এসক্রো ও ডেলিভারি হিস্ট্রি',
-      icon: Package,
-      badge: `${orders.length} টি`
-    },
-    {
-      id: 'reviews',
-      label: 'রিভিউ ও রেটিং স্টার',
-      sublabel: '৫.০★ ক্রেতা-বিক্রেতা ফিডব্যাক',
-      icon: Star,
-      badge: `${myReviews.length} টি`
-    },
-    {
-      id: 'security',
-      label: 'পাসওয়ার্ড ও নিরাপত্তা',
-      sublabel: 'পাসওয়ার্ড পরিবর্তন ও সুরক্ষা',
-      icon: Lock,
-      badge: null
-    }
-  ] as const;
-
-  // Dimensions based on user selected portal size (বড় বা ছোট করার কন্ট্রোল)
-  const sizeClasses: Record<PortalSize, string> = {
-    compact: 'max-w-3xl w-full max-h-[80vh] my-auto rounded-xl',
-    standard: 'max-w-5xl w-full max-h-[90vh] my-auto rounded-2xl',
-    large: 'max-w-7xl w-full max-h-[95vh] my-auto rounded-2xl',
-    fullscreen: 'w-screen h-screen max-w-none max-h-none rounded-none m-0'
-  };
-
-  // If minimized: render Windows-style floating bottom taskbar widget
-  if (isMinimized) {
+  if (!currentUser) {
     return (
-      <aside 
-        aria-label="অ্যাকাউন্ট পোর্টাল মিনিমাইজড বার"
-        className="fixed bottom-4 right-4 sm:right-6 z-50 bg-slate-900/95 text-white backdrop-blur-md border border-emerald-500/50 shadow-2xl rounded-2xl px-3.5 py-2.5 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-5 duration-200"
-      >
-        <button 
-          onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2.5 cursor-pointer text-left focus:outline-none hover:opacity-90"
-          title="রিস্টোর করুন (Restore)"
-        >
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-bold flex items-center justify-center text-sm shadow ring-2 ring-emerald-400 shrink-0">
-            {currentUser.name ? currentUser.name.charAt(0) : 'U'}
-          </div>
-          <div>
-            <div className="text-xs font-bold leading-tight flex items-center gap-1.5 text-white">
-              <span>অ্যাকাউন্ট পোর্টাল</span>
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            </div>
-            <div className="text-[10px] text-emerald-300 font-mono">
-              আইডি: {customerId} · ৳{(currentUser.walletBalance ?? 50).toLocaleString()}
-            </div>
-          </div>
-        </button>
-
-        {/* Windows Titlebar Controls for Taskbar widget */}
-        <div className="flex items-center gap-1 pl-2 border-l border-slate-700">
+      <div className="min-h-screen bg-[#f4f6f8] flex items-center justify-center p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center space-y-4">
+          <User className="w-16 h-16 text-slate-300 mx-auto" />
+          <h2 className="text-xl font-bold text-slate-800">
+            {lang === 'bn' ? 'লগইন করা নেই' : 'Not Logged In'}
+          </h2>
+          <p className="text-xs text-slate-500">
+            {lang === 'bn' ? 'আপনার একাউন্ট তথ্য ও আইডি দেখতে অনুগ্রহ করে লগইন করুন।' : 'Please log in to view your account information.'}
+          </p>
           <button
-            onClick={() => setIsMinimized(false)}
-            className="p-1.5 rounded hover:bg-slate-800 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="উইন্ডো রিস্টোর / ম্যাক্সিমাইজ করুন"
+            onClick={() => setActiveModal('auth')}
+            className="w-full py-2.5 bg-[#007460] text-white font-bold rounded-xl text-xs hover:bg-[#005e4e] transition-colors"
           >
-            <Square className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => { setActiveModal(null); setIsMinimized(false); }}
-            className="p-1.5 rounded hover:bg-red-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
-            title="বন্ধ করুন"
-          >
-            <X className="w-3.5 h-3.5" />
+            {lang === 'bn' ? 'লগইন করুন' : 'Login'}
           </button>
         </div>
-      </aside>
+      </div>
     );
   }
 
+  const referralCode = currentUser.referralCode || `REF-${currentUser.phone.slice(-4)}-9824`;
+  const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/?ref=${referralCode}`;
+
   return (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/65 backdrop-blur-xs overflow-y-auto transition-all ${
-      portalSize === 'fullscreen' ? 'p-0' : 'p-2 sm:p-4'
-    }`}>
-      <div className={`bg-white shadow-2xl text-slate-800 overflow-hidden flex flex-col border border-slate-200 transition-all duration-200 ${sizeClasses[portalSize]}`}>
-        
-        {/* Top Header Bar styled like Windows OS window titlebar */}
-        <div className="px-4 py-2.5 sm:px-6 sm:py-3 bg-[#007460] text-white flex items-center justify-between shrink-0 shadow-sm gap-2">
-          <div className="flex items-center gap-3 min-w-0">
-            {/* Customer ID & Circular Avatar */}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-amber-400 to-amber-500 text-slate-950 font-black text-base flex items-center justify-center shadow ring-2 ring-emerald-300 shrink-0">
-              {currentUser.name ? currentUser.name.charAt(0) : 'U'}
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="font-bold text-sm sm:text-base leading-tight">
-                  ক্রেতা ও বিক্রেতা অ্যাকাউন্ট পোর্টাল
-                </span>
-                {currentUser.isNidVerified && (
-                  <span className="hidden sm:inline-flex items-center gap-1 bg-emerald-800/90 text-emerald-200 text-[10px] px-2 py-0.5 rounded-full font-semibold border border-emerald-400/40">
-                    <ShieldCheck className="w-3 h-3 text-emerald-300" />
-                    <span>NID ভেরিফায়েড</span>
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-2 text-xs text-emerald-100 mt-0.5">
-                <span className="bg-emerald-950/50 px-2 py-0.5 rounded font-mono font-bold tracking-wider text-amber-300 flex items-center gap-1">
-                  <span>কাস্টমার আইডি: {customerId}</span>
-                  <button 
-                    onClick={handleCopyId}
-                    title="কপি করুন" 
-                    className="hover:text-white cursor-pointer ml-1"
-                  >
-                    <Copy className="w-3 h-3" />
-                  </button>
-                </span>
-                {copiedId && <span className="text-[10px] text-emerald-200 animate-pulse">কপি হয়েছে!</span>}
-              </div>
-            </div>
+    <div className="min-h-screen bg-[#f4f6f8] text-slate-800 flex flex-col w-full overflow-x-hidden pb-16">
+      
+      {/* Top Breadcrumb & Return to Shopping Bar matching કાષ્ટমার আইডি1.png */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3 sticky top-0 z-30 shadow-2xs">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+          
+          {/* Breadcrumb Navigation */}
+          <div className="flex items-center gap-2 text-xs text-slate-500 truncate">
+            <button
+              onClick={handleBackToShopping}
+              className="text-slate-600 hover:text-emerald-700 font-medium flex items-center gap-1 cursor-pointer transition-colors"
+              title="হোমে ফিরুন"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>হোম</span>
+            </button>
+            <span>/</span>
+            <span className="text-slate-600 font-medium hidden sm:inline">মাই একাউন্ট (My Account)</span>
+            <span className="hidden sm:inline">/</span>
+            <span className="text-emerald-700 font-bold truncate">Account</span>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Quick Wallet Chip in Top Bar */}
-            <div className="hidden lg:flex items-center gap-2 bg-emerald-900/70 border border-emerald-500/40 px-3 py-1 rounded-full text-xs">
-              <Coins className="w-3.5 h-3.5 text-amber-300" />
-              <span className="text-amber-200 font-bold font-mono">৳{(currentUser.walletBalance ?? 50).toLocaleString()}</span>
-              <span className="text-emerald-300 text-[10px]">বোনাস</span>
-            </div>
+          {/* Action Button: Return to Shopping */}
+          <button
+            onClick={handleBackToShopping}
+            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-300 shadow-2xs whitespace-nowrap shrink-0"
+          >
+            <ArrowLeft className="w-3.5 h-3.5 text-slate-600" />
+            <span>— শপিংয়ে ফিরুন</span>
+          </button>
 
-            {/* Window Resizing Preset Controls (PURELY ICONS, NO TEXT! "লেখা না আইকন।") */}
-            <div className="flex items-center bg-emerald-950/60 p-0.5 rounded-lg border border-emerald-500/40">
-              
-              {/* Compact / Small Window icon */}
-              <button
-                onClick={() => setPortalSize('compact')}
-                className={`p-1.5 rounded transition-colors cursor-pointer ${
-                  portalSize === 'compact' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-emerald-100 hover:bg-emerald-800'
-                }`}
-                title="ছোট স্ক্রিন (Compact Window)"
-              >
-                <Smartphone className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Standard / Medium Window icon */}
-              <button
-                onClick={() => setPortalSize('standard')}
-                className={`p-1.5 rounded transition-colors cursor-pointer ${
-                  portalSize === 'standard' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-emerald-100 hover:bg-emerald-800'
-                }`}
-                title="মাঝারি স্ক্রিন (Standard Window)"
-              >
-                <Monitor className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Wide / Large Window icon */}
-              <button
-                onClick={() => setPortalSize('large')}
-                className={`p-1.5 rounded transition-colors cursor-pointer ${
-                  portalSize === 'large' ? 'bg-amber-400 text-slate-950 shadow-xs' : 'text-emerald-100 hover:bg-emerald-800'
-                }`}
-                title="বড় স্ক্রিন (Wide Window)"
-              >
-                <Tv className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Windows OS Titlebar Control Cluster: Minimize (—), Maximize/Restore (▢/❐), Close (✕) */}
-            <div className="flex items-center bg-emerald-950/60 rounded-lg border border-emerald-500/40 overflow-hidden divide-x divide-emerald-800/60">
-              
-              {/* 1. Minimize ( — ) */}
-              <button
-                onClick={() => setIsMinimized(true)}
-                className="p-1.5 sm:px-2.5 hover:bg-emerald-800 text-emerald-100 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                title="মিনিমাইজ করুন (Minimize)"
-              >
-                <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
-
-              {/* 2. Maximize / Restore ( ▢ / ❐ ) */}
-              <button
-                onClick={() => setPortalSize(portalSize === 'fullscreen' ? 'standard' : 'fullscreen')}
-                className="p-1.5 sm:px-2.5 hover:bg-emerald-800 text-emerald-100 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                title={portalSize === 'fullscreen' ? "স্বাভাবিক আকারে রিস্টোর করুন (Restore)" : "ফুলস্ক্রিন / ম্যাক্সিমাইজ করুন (Maximize)"}
-              >
-                {portalSize === 'fullscreen' ? (
-                  <Copy className="w-3.5 h-3.5" />
-                ) : (
-                  <Square className="w-3.5 h-3.5" />
-                )}
-              </button>
-
-              {/* 3. Close ( ✕ ) with Windows red hover */}
-              <button
-                onClick={() => setActiveModal(null)}
-                className="p-1.5 sm:px-2.5 hover:bg-red-600 text-emerald-100 hover:text-white transition-colors cursor-pointer flex items-center justify-center"
-                title="বন্ধ করুন (Close)"
-              >
-                <X className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
-            </div>
-          </div>
         </div>
+      </div>
 
-        {/* Global Success Notification Banner */}
-        {saveSuccessMsg && (
-          <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2.5 text-xs text-emerald-900 font-semibold flex items-center justify-between shrink-0">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+      {/* Success banner if information saved */}
+      {saveSuccessMsg && (
+        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-3">
+          <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-2xs animate-in fade-in">
+            <div className="flex items-center gap-2 font-medium">
+              <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
               <span>{saveSuccessMsg}</span>
             </div>
-            <button onClick={() => setSaveSuccessMsg('')} className="text-emerald-700 hover:text-emerald-900">
+            <button onClick={() => setSaveSuccessMsg('')} className="text-emerald-700 hover:text-emerald-950">
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Master-Detail Body: Left Headlines, Right Details */}
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-100/60">
+      {/* Main Dashboard Layout: Left Sidebar Card + Right Content Card matching કાષ્ટমার আইডি1.png */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* ======================================================== */}
-          {/* বাম পাশে: মুল হেডলাইনসমূহ (LEFT COLUMN - HEADLINES MENU) */}
-          {/* ======================================================== */}
-          <div className="w-full md:w-72 lg:w-80 shrink-0 bg-white border-r border-slate-200 flex flex-col justify-between overflow-y-auto">
+          {/* LEFT COLUMN: User Card & Menu Sidebar (4 cols on desktop) matching કાષ્ટমার আইডি1.png & કાષ્ટমার আইডি 2.png */}
+          <div className="lg:col-span-4 space-y-4">
             
-            {/* Headlines Navigation List */}
-            <div className="p-3 sm:p-3.5 space-y-1">
-              <div className="px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center justify-between">
-                <span>মূল মেনু ও হেডলাইন</span>
-                <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
-                  অ্যাকাউন্ট সেন্টার
-                </span>
+            {/* User Profile Card */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+              
+              <div className="flex items-center gap-3.5">
+                {/* Circular Initial Avatar */}
+                <div className="w-14 h-14 rounded-full bg-[#007460] text-white flex items-center justify-center font-bold text-2xl shadow-md shrink-0">
+                  {currentUser.name ? currentUser.name.charAt(0) : 'M'}
+                </div>
+
+                <div className="overflow-hidden">
+                  <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
+                    {currentUser.name}
+                  </h3>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    {currentUser.phone}
+                  </p>
+
+                  {/* Badges: Member & Points */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="px-2.5 py-0.5 bg-[#007460] text-white rounded-full text-[11px] font-bold shadow-2xs">
+                      {siteName || 'বিক্রয় মেলা'} মেম্বার
+                    </span>
+                    <span className="px-2.5 py-0.5 bg-amber-100 text-amber-900 border border-amber-300 rounded-full text-[11px] font-bold">
+                      {currentUser.rewardPoints ?? 100} Pts
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {headlineItems.map(item => {
-                const IconComponent = item.icon;
-                const isSelected = activeHeadline === item.id;
-                
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => setActiveHeadline(item.id)}
-                    className={`w-full text-left p-3 rounded-xl transition-all flex items-center justify-between group cursor-pointer ${
-                      isSelected
-                        ? 'bg-emerald-50/90 text-[#007460] font-bold border-l-4 border-[#007460] shadow-xs'
-                        : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 border-l-4 border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
-                        isSelected 
-                          ? 'bg-[#007460] text-white shadow-xs' 
-                          : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200 group-hover:text-slate-900'
-                      }`}>
-                        <IconComponent className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0">
-                        <div className="text-xs sm:text-sm font-semibold truncate leading-tight">
-                          {item.label}
-                        </div>
-                        <div className="text-[10px] text-slate-600 truncate mt-0.5">
-                          {item.sublabel}
-                        </div>
-                      </div>
-                    </div>
+              {/* Summary Balance & Points Boxes matching કાષ્ટমার আইডি1.png */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <span className="text-[11px] text-slate-500 font-medium block">ক্রেডিট ব্যালেন্স</span>
+                  <span className="text-base font-extrabold text-emerald-700 font-mono mt-0.5 block">
+                    ৳{currentUser.walletBalance?.toLocaleString() ?? '৩৫০০'}
+                  </span>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                  <span className="text-[11px] text-slate-500 font-medium block">অর্জিত পয়েন্ট</span>
+                  <span className="text-base font-extrabold text-amber-600 font-mono mt-0.5 block">
+                    {currentUser.rewardPoints ?? 100}
+                  </span>
+                </div>
+              </div>
 
-                    {item.badge && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold shrink-0 ml-1 ${
-                        isSelected 
-                          ? 'bg-emerald-200/80 text-emerald-950 font-bold' 
-                          : 'bg-slate-100 text-slate-700'
-                      }`}>
-                        {item.badge}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
             </div>
 
-            {/* Bottom Actions: User Info Quick Card & Logout */}
-            <div className="p-3 border-t border-slate-200 bg-slate-50/80 space-y-2 shrink-0">
-              <div className="flex items-center justify-between text-xs px-2 py-1 bg-white rounded-lg border border-slate-200">
-                <div className="text-[11px] text-slate-500">
-                  সদস্য: <span className="font-semibold text-slate-700">{currentUser.memberSince || '২০২৩'} সাল</span>
-                </div>
-                <div className="text-[11px] font-mono text-emerald-700 font-bold">
-                  {currentUser.phone}
-                </div>
-              </div>
-
+            {/* Navigation Menu List matching કાષ્ટমার আইডি1.png & કાષ્ટমার আইডি 2.png */}
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden divide-y divide-slate-100 text-xs">
+              
+              {/* 1. Manage Account */}
               <button
-                onClick={handleLogout}
-                className="w-full py-2 px-3 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 rounded-lg border border-rose-200 hover:border-rose-600 transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                onClick={() => setActiveTab('manage_account')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'manage_account'
+                    ? 'bg-sky-50 text-sky-800 font-bold border-l-4 border-sky-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
               >
-                <LogOut className="w-3.5 h-3.5" />
-                <span>অ্যাকাউন্ট থেকে লগআউট</span>
+                <div className="flex items-center gap-3">
+                  <User className="w-4 h-4 text-sky-600" />
+                  <div>
+                    <span className="block font-bold">Manage Account</span>
+                    <span className="text-[10px] text-slate-400 font-normal">একাউন্ট তথ্য ও পরিবর্তন</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
+
+              {/* 2. My orders */}
+              <button
+                onClick={() => setActiveTab('orders')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'orders'
+                    ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Package className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="block font-bold">My orders</span>
+                    <span className="text-[10px] text-slate-400 font-normal">অর্ডারের হিস্ট্রি ও ট্র্যাকিং</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* 3. My wishlist */}
+              <button
+                onClick={() => setActiveTab('wishlist')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'wishlist'
+                    ? 'bg-rose-50 text-rose-800 font-bold border-l-4 border-rose-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Heart className="w-4 h-4 text-rose-600" />
+                  <div>
+                    <span className="block font-bold">My wishlist</span>
+                    <span className="text-[10px] text-slate-400 font-normal">পছন্দের পণ্যের তালিকা</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* 4. Support tickets */}
+              <button
+                onClick={() => setActiveTab('support')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'support'
+                    ? 'bg-indigo-50 text-indigo-800 font-bold border-l-4 border-indigo-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Headphones className="w-4 h-4 text-indigo-600" />
+                  <div>
+                    <span className="block font-bold">Support tickets</span>
+                    <span className="text-[10px] text-slate-400 font-normal">অভিযোগ ও লাইভ সমাধান</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* 5. Pickloo Club */}
+              <button
+                onClick={() => setActiveTab('club')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'club'
+                    ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <div>
+                    <span className="block font-bold">Pickloo Club</span>
+                    <span className="text-[10px] text-slate-400 font-normal">ভিআইপি মেম্বারশিপ অফার</span>
+                  </div>
+                </div>
+                <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">VIP</span>
+              </button>
+
+              {/* 6. Pickloo Point */}
+              <button
+                onClick={() => setActiveTab('point')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'point'
+                    ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-500'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Coins className="w-4 h-4 text-amber-600" />
+                  <div>
+                    <span className="block font-bold">Pickloo Point</span>
+                    <span className="text-[10px] text-slate-400 font-normal">পয়েন্ট ব্যালেন্স ও ক্যাশব্যাক</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-1.5 py-0.5 rounded font-mono">
+                  {currentUser.rewardPoints ?? 100} Pts
+                </span>
+              </button>
+
+              {/* 7. Pickloo Credit */}
+              <button
+                onClick={() => setActiveTab('credit')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'credit'
+                    ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <div>
+                    <span className="block font-bold">Pickloo Credit</span>
+                    <span className="text-[10px] text-slate-400 font-normal">শপিং ক্রেডিট ও লিমিট</span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.5 rounded font-mono">
+                  ৳{currentUser.walletBalance?.toLocaleString() ?? '৩৫০০'}
+                </span>
+              </button>
+
+              {/* 8. Share & Earn */}
+              <button
+                onClick={() => setActiveTab('share_earn')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'share_earn'
+                    ? 'bg-teal-50 text-teal-800 font-bold border-l-4 border-teal-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Share2 className="w-4 h-4 text-teal-600" />
+                  <div>
+                    <span className="block font-bold">Share & Earn</span>
+                    <span className="text-[10px] text-slate-400 font-normal">আইডি শেয়ার করে আয় করুন</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* 9. Manage Addresses */}
+              <button
+                onClick={() => setActiveTab('addresses')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'addresses'
+                    ? 'bg-sky-50 text-sky-800 font-bold border-l-4 border-sky-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-sky-600" />
+                  <div>
+                    <span className="block font-bold">Manage Addresses</span>
+                    <span className="text-[10px] text-slate-400 font-normal">সংরক্ষিত ডেলিভারি ঠিকানা</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400" />
+              </button>
+
+              {/* 10. Log Out */}
+              <button
+                onClick={() => {
+                  if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিত যে লগআউট করতে চান?' : 'Are you sure you want to log out?')) {
+                    localStorage.removeItem('bikroy_user');
+                    setCurrentUser(null);
+                    setActiveModal(null);
+                  }
+                }}
+                className="w-full px-4 py-3.5 text-left flex items-center justify-between text-rose-600 hover:bg-rose-50 transition-colors font-bold cursor-pointer"
+              >
+                <div className="flex items-center gap-3">
+                  <LogOut className="w-4 h-4 text-rose-600" />
+                  <span>লগ আউট (Log Out)</span>
+                </div>
+                <ChevronRight className="w-4 h-4 text-rose-400" />
+              </button>
+
             </div>
+
           </div>
 
-          {/* ======================================================== */}
-          {/* ডান পাশে: হেডলাইনের সোজা বিস্তারিত বিবরণ (RIGHT COLUMN) */}
-          {/* ======================================================== */}
-          <div className="flex-1 bg-white overflow-y-auto p-4 sm:p-6 lg:p-7">
+          {/* RIGHT COLUMN: Main Content Area matching કાષ્ટমার আইডি1.png (8 cols on desktop) */}
+          <div className="lg:col-span-8 space-y-6">
             
-            {/* ------------------------------------------------------------------ */}
-            {/* 1. ম্যানেজ অ্যাড্রেস (সোজা ডান পাশে বর্তমান ও স্থায়ী ও এডিট অপশন) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'address' && (
+            {/* TAB: MANAGE ACCOUNT (Exact match to કાષ્ટমার আইডি1.png) */}
+            {activeTab === 'manage_account' && (
               <div className="space-y-6">
                 
-                {/* Header & Description */}
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#007460]"></span>
-                      <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                        ম্যানেজ অ্যাড্রেস (ঠিকানা ব্যবস্থাপনা)
-                      </h3>
-                      <span className="bg-emerald-100 text-[#007460] text-[11px] font-bold px-2.5 py-0.5 rounded-full">
-                        ভেরিফায়েড
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-1">
-                      পণ্য কেনাবেচা, সরাসরি সাক্ষাৎ, হোম ডেলিভারি ও কুরিয়ার পার্সেল পাওয়ার জন্য আপনার বর্তমান ও স্থায়ী ঠিকানা হালনাগাদ রাখুন।
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setIsEditingAddress(!isEditingAddress)}
-                    className="self-start sm:self-auto flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#007460] hover:bg-[#005f4e] rounded-lg shadow-xs transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>{isEditingAddress ? 'এডিট বন্ধ করুন' : 'ঠিকানা পরিবর্তন ও এডিট'}</span>
-                  </button>
-                </div>
-
-                {/* দুটি প্রধান কার্ড: ১. বর্তমান ঠিকানা, ২. স্থায়ী ঠিকানা */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* কার্ড ১: বর্তমান ঠিকানা (Present / Delivery Address) */}
-                  <div className="bg-gradient-to-br from-emerald-50/60 to-white border-2 border-emerald-500/40 rounded-xl p-4 sm:p-5 relative shadow-xs">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                          <Building2 className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900">১. বর্তমান ঠিকানা</h4>
-                          <span className="text-[10px] text-emerald-700 font-semibold">
-                            (Present / Delivery Address)
-                          </span>
-                        </div>
-                      </div>
-                      <span className="bg-emerald-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                        ডিফল্ট ডেলিভারি
-                      </span>
+                {/* CARD 1: User Information (ব্যক্তিগত তথ্য) with [Edit] Button */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2 font-bold text-slate-900 text-sm sm:text-base">
+                      <User className="w-4 h-4 text-sky-600" />
+                      <span>User Information (ব্যক্তিগত তথ্য)</span>
                     </div>
 
-                    <div className="space-y-2 text-xs">
-                      <div className="p-2.5 bg-white rounded-lg border border-emerald-200/70 font-medium text-slate-800 leading-relaxed min-h-[56px]">
-                        {presentAddress}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                        <div className="p-2 bg-emerald-50/70 rounded-md">
-                          <span className="text-slate-500 block">জেলা / শহর:</span>
-                          <span className="font-bold text-slate-800">{presentDistrict}</span>
-                        </div>
-                        <div className="p-2 bg-emerald-50/70 rounded-md">
-                          <span className="text-slate-500 block">থানা / এলাকা:</span>
-                          <span className="font-bold text-slate-800">{presentThana}</span>
-                        </div>
-                      </div>
-
-                      <div className="p-2 bg-emerald-50/70 rounded-md text-[11px] flex items-center justify-between">
-                        <span className="text-slate-500">যোগাযোগের মোবাইল:</span>
-                        <span className="font-mono font-bold text-slate-800">{phone}</span>
-                      </div>
-
-                      <div className="text-[10px] text-emerald-800 pt-1 flex items-center gap-1.5 font-medium">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>অনলাইন অর্ডার ও সরাসরি কেনাবেচায় ডেলিভারি ঠিকানা হিসেবে প্রযোজ্য</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* কার্ড ২: স্থায়ী ঠিকানা (Permanent Address) */}
-                  <div className="bg-gradient-to-br from-slate-50 to-white border-2 border-slate-300 rounded-xl p-4 sm:p-5 relative shadow-xs">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-lg bg-slate-700 text-white flex items-center justify-center shadow-xs">
-                          <Compass className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-sm text-slate-900">২. স্থায়ী ঠিকানা</h4>
-                          <span className="text-[10px] text-slate-500 font-semibold">
-                            (Permanent / NID Address)
-                          </span>
-                        </div>
-                      </div>
-                      <span className="bg-slate-200 text-slate-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        এনআইডি ভেরিফাইড
-                      </span>
-                    </div>
-
-                    <div className="space-y-2 text-xs">
-                      <div className="p-2.5 bg-white rounded-lg border border-slate-200 font-medium text-slate-800 leading-relaxed min-h-[56px]">
-                        {permanentAddress}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
-                        <div className="p-2 bg-slate-100 rounded-md">
-                          <span className="text-slate-500 block">মূল জেলা:</span>
-                          <span className="font-bold text-slate-800">{permanentDistrict}</span>
-                        </div>
-                        <div className="p-2 bg-slate-100 rounded-md">
-                          <span className="text-slate-500 block">উপজেলা / থানা:</span>
-                          <span className="font-bold text-slate-800">{permanentThana}</span>
-                        </div>
-                      </div>
-
-                      <div className="p-2 bg-slate-100 rounded-md text-[11px] flex items-center justify-between">
-                        <span className="text-slate-500">বিকল্প ইমার্জেন্সি ফোন:</span>
-                        <span className="font-mono font-bold text-slate-800">{altPhone}</span>
-                      </div>
-
-                      <div className="text-[10px] text-slate-600 pt-1 flex items-center gap-1.5 font-medium">
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                        <span>জাতীয় পরিচয়পত্রের তথ্য অনুযায়ী স্থায়ী আবাসন ও নিরাপত্তা যাচাইকৃত</span>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* ৩. প্রয়োজনীয় এডিট অপশন (Address Edit Form) */}
-                <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 sm:p-5">
-                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-200">
-                    <div className="flex items-center gap-2">
-                      <Edit3 className="w-4 h-4 text-[#007460]" />
-                      <h4 className="font-bold text-sm text-slate-900">
-                        ৩. প্রয়োজনীয় এডিট ও ঠিকানা পরিবর্তন অপশন
-                      </h4>
-                    </div>
-                    <span className="text-[11px] text-slate-500 font-medium">
-                      তথ্য পরিবর্তন শেষে "ঠিকানা সেভ করুন" চাপুন
-                    </span>
-                  </div>
-
-                  <form onSubmit={handleSaveAddress} className="space-y-4 text-xs">
-                    {/* বর্তমান ঠিকানা এডিট */}
-                    <div>
-                      <label className="block font-bold text-slate-700 mb-1">
-                        বর্তমান ঠিকানা (বাসা/রোড/ব্লক/এলাকা):
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={presentAddress}
-                        onChange={(e) => setPresentAddress(e.target.value)}
-                        placeholder="উদাঃ বাসা-২৪, রোড-৭, ব্লক-ডি, মিরপুর-১০, ঢাকা-১২১৬"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] focus:border-transparent outline-none"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">
-                          বর্তমান জেলা / শহর:
-                        </label>
-                        <select
-                          value={presentDistrict}
-                          onChange={(e) => setPresentDistrict(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] outline-none"
-                        >
-                          <option value="ঢাকা (Dhaka)">ঢাকা (Dhaka)</option>
-                          <option value="চট্টগ্রাম (Chittagong)">চট্টগ্রাম (Chittagong)</option>
-                          <option value="সিলেট (Sylhet)">সিলেট (Sylhet)</option>
-                          <option value="রাজশাহী (Rajshahi)">রাজশাহী (Rajshahi)</option>
-                          <option value="খুলনা (Khulna)">খুলনা (Khulna)</option>
-                          <option value="বরিশাল (Barishal)">বরিশাল (Barishal)</option>
-                          <option value="রংপুর (Rangpur)">রংপুর (Rangpur)</option>
-                          <option value="ময়মনসিংহ (Mymensingh)">ময়মনসিংহ (Mymensingh)</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">
-                          বর্তমান থানা / এলাকা:
-                        </label>
-                        <input
-                          type="text"
-                          value={presentThana}
-                          onChange={(e) => setPresentThana(e.target.value)}
-                          placeholder="উদাঃ মিরপুর-১০ / উত্তরা / গুলশান"
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] outline-none"
-                        />
-                      </div>
-                    </div>
-
-                    {/* স্থায়ী ঠিকানা এডিট */}
-                    <div className="pt-2 border-t border-slate-200">
-                      <label className="block font-bold text-slate-700 mb-1">
-                        স্থায়ী ঠিকানা (গ্রাম/মহল্লা/ডাকঘর/উপজেলা):
-                      </label>
-                      <textarea
-                        rows={2}
-                        value={permanentAddress}
-                        onChange={(e) => setPermanentAddress(e.target.value)}
-                        placeholder="উদাঃ গ্রাম: রামকৃষ্ণপুর, ডাকঘর: হরিপুর, থানা: বোয়ালমারী, জেলা: ফরিদপুর"
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] focus:border-transparent outline-none"
-                        required
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">
-                          স্থায়ী জেলা:
-                        </label>
-                        <input
-                          type="text"
-                          value={permanentDistrict}
-                          onChange={(e) => setPermanentDistrict(e.target.value)}
-                          placeholder="উদাঃ ফরিদপুর / কুমিল্লা / বগুড়া"
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] outline-none"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block font-semibold text-slate-700 mb-1">
-                          বিকল্প ইমার্জেন্সি মোবাইল নম্বর:
-                        </label>
-                        <input
-                          type="text"
-                          value={altPhone}
-                          onChange={(e) => setAltPhone(e.target.value)}
-                          placeholder="উদাঃ ০১৭৫৫-৯৯৮৮৭৭"
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-[#007460] outline-none font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1">
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>বর্তমান ও স্থায়ী ঠিকানা এসক্রো সুরক্ষায় এনক্রিপ্ট করা থাকে</span>
-                      </div>
-
-                      <button
-                        type="submit"
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-[#007460] hover:bg-[#005f4e] text-white font-bold rounded-lg shadow-sm transition-all cursor-pointer active:scale-95"
-                      >
-                        <Save className="w-4 h-4" />
-                        <span>ঠিকানা সেভ করুন</span>
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------------ */}
-            {/* 2. প্রোফাইল তথ্য ও আইডি (USER INFO & IDENTITY) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'profile' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                      প্রোফাইল তথ্য ও কাস্টমার আইডি
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      আপনার ব্যক্তিগত অ্যাকাউন্ট পরিচিতি, এনআইডি ও মেম্বারশিপ বিবরণী
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setIsEditingProfile(!isEditingProfile)}
-                    className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-bold text-[#007460] bg-emerald-50 hover:bg-emerald-100 rounded-lg border border-emerald-200 transition-colors cursor-pointer"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" />
-                    <span>{isEditingProfile ? 'বাতিল' : 'প্রোফাইল এডিট'}</span>
-                  </button>
-                </div>
-
-                {/* Customer ID Highlight Card */}
-                <div className="p-4 bg-gradient-to-r from-emerald-900 to-[#007460] rounded-xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-md">
-                  <div>
-                    <span className="text-[11px] text-emerald-200 uppercase font-semibold tracking-wider">
-                      আপনার অফিশিয়াল ইউনিক বিক্রয়মেলা আইডি
-                    </span>
-                    <div className="text-xl sm:text-2xl font-mono font-black text-amber-300 tracking-wider flex items-center gap-2 mt-0.5">
-                      <span>{customerId}</span>
-                      <button
-                        onClick={handleCopyId}
-                        className="p-1 hover:bg-white/10 rounded cursor-pointer transition-colors"
-                        title="কপি করুন"
-                      >
-                        <Copy className="w-4 h-4 text-emerald-200 hover:text-white" />
-                      </button>
-                    </div>
-                    <span className="text-xs text-emerald-100 mt-1 block">
-                      সদস্য: {currentUser.memberSince || '২০২৩'} সাল থেকে ভেরিফাইড ইউজার
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-2 bg-emerald-950/50 p-2.5 rounded-lg border border-emerald-400/30">
-                    <ShieldCheck className="w-6 h-6 text-emerald-300 shrink-0" />
-                    <div className="text-xs">
-                      <div className="font-bold text-white">এনআইডি যাচাইকৃত</div>
-                      <div className="text-[10px] text-emerald-200 font-mono">
-                        {currentUser.nidNumber || '19952671829000123'}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Profile Information Form / Cards */}
-                {isEditingProfile ? (
-                  <form onSubmit={handleSaveProfile} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3.5 text-xs">
-                    <h4 className="font-bold text-slate-900">ব্যক্তিগত তথ্য হালনাগাদ করুন</h4>
-                    <div>
-                      <label className="block text-slate-700 font-semibold mb-1">পূর্ণ নাম:</label>
-                      <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
-                        required
-                      />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-slate-700 font-semibold mb-1">মোবাইল নম্বর:</label>
-                        <input
-                          type="text"
-                          value={phone}
-                          onChange={(e) => setPhone(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460] font-mono"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-slate-700 font-semibold mb-1">ইমেইল ঠিকানা:</label>
-                        <input
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-2 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingProfile(false)}
-                        className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-100"
-                      >
-                        বাতিল
-                      </button>
-                      <button
-                        type="submit"
-                        className="px-4 py-2 bg-[#007460] text-white font-bold rounded-lg hover:bg-[#005f4e]"
-                      >
-                        সংরক্ষণ করুন
-                      </button>
-                    </div>
-                  </form>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-slate-500 block text-[11px]">ইউজার নাম</span>
-                      <span className="font-bold text-slate-900 text-sm mt-0.5 block">{currentUser.name}</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-slate-500 block text-[11px]">মোবাইল নম্বর (ভেরিফাইড)</span>
-                      <span className="font-bold text-slate-900 text-sm mt-0.5 block font-mono">{currentUser.phone}</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-slate-500 block text-[11px]">ইমেইল অ্যাকাউন্ট</span>
-                      <span className="font-bold text-slate-900 text-sm mt-0.5 block">{currentUser.email || 'akbar.office10@gmail.com'}</span>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
-                      <span className="text-slate-500 block text-[11px]">অ্যাকাউন্টের ধরন ও রোল</span>
-                      <span className="font-bold text-emerald-800 text-sm mt-0.5 block">ক্রেতা ও বিক্রেতা (সক্রিয়)</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------------ */}
-            {/* 3. ওয়ালেট ও রিওয়ার্ড পয়েন্ট (WALLET & WITHDRAWAL MANAGEMENT) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'wallet' && (
-              <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-slate-200">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
-                      <span>ওয়ালেট ব্যালেন্স ও ক্যাশ উত্তোলন</span>
-                      <span className="bg-amber-100 text-amber-900 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider">
-                        ক্যাশ বোনাস
-                      </span>
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      অ্যাকাউন্ট খোলার ওয়েলকাম উপহার, ক্যাশব্যাক ও কেনাবেচা বোনাস সরাসরি বিকাশ বা নগদে তুলে নিন
-                    </p>
-                  </div>
-
-                  <button
-                    onClick={() => setShowWithdrawForm(!showWithdrawForm)}
-                    className="self-start sm:self-auto flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 rounded-lg shadow-sm transition-all cursor-pointer"
-                  >
-                    <ArrowDownToLine className="w-3.5 h-3.5" />
-                    <span>{showWithdrawForm ? 'ফর্ম বন্ধ করুন' : 'টাকা তুলুন (বিকাশ / নগদ)'}</span>
-                  </button>
-                </div>
-
-                {/* Feedback message banner */}
-                {withdrawFeedback && (
-                  <div className={`p-3.5 rounded-xl border text-xs flex items-center justify-between ${
-                    withdrawFeedback.type === 'success' 
-                      ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-semibold' 
-                      : 'bg-rose-50 border-rose-300 text-rose-900 font-semibold'
-                  }`}>
-                    <div className="flex items-center gap-2">
-                      {withdrawFeedback.type === 'success' ? (
-                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      ) : (
-                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
-                      )}
-                      <span>{withdrawFeedback.message}</span>
-                    </div>
-                    <button onClick={() => setWithdrawFeedback(null)} className="text-slate-500 hover:text-slate-700">
-                      <X className="w-3.5 h-3.5" />
+                    {/* Edit Button (Opens mobile-responsive drawer/modal, solves B-03) */}
+                    <button
+                      type="button"
+                      onClick={() => setIsEditUserModalOpen(true)}
+                      className="text-xs font-bold text-sky-600 hover:text-sky-700 flex items-center gap-1.5 transition-colors cursor-pointer hover:underline"
+                    >
+                      <Edit3 className="w-3.5 h-3.5" />
+                      <span>Edit (এডিট করুন)</span>
                     </button>
                   </div>
-                )}
 
-                {/* ১. প্রধান দুটি ব্যালেন্স কার্ড */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* ওয়ালেট ক্যাশ ব্যালেন্স কার্ড */}
-                  <div className="p-5 bg-gradient-to-br from-emerald-600 via-teal-700 to-emerald-800 rounded-2xl text-white shadow-md relative overflow-hidden">
-                    <div className="flex items-center justify-between relative z-10">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
-                        <Wallet className="w-6 h-6 text-amber-300" />
-                      </div>
-                      <span className="bg-amber-400 text-slate-950 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs">
-                        সরাসরি ক্যাশ আউটযোগ্য
-                      </span>
+                  {/* 2-Column Responsive Information Grid matching કાષ્ટমার আইডি1.png */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-xs">
+                    <div>
+                      <span className="text-slate-400 font-medium block">First Name</span>
+                      <span className="font-bold text-slate-800 text-sm mt-0.5 block">{firstName}</span>
                     </div>
 
-                    <div className="mt-4 relative z-10">
-                      <span className="text-xs text-emerald-100 block">বর্তমান উত্তোলনযোগ্য ব্যালেন্স</span>
-                      <div className="text-3xl font-black font-mono text-white mt-1 flex items-baseline gap-1.5">
-                        <span>৳ {(currentUser.walletBalance ?? 0).toLocaleString()}</span>
-                        <span className="text-xs font-normal text-emerald-200">টাকা</span>
-                      </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Last Name</span>
+                      <span className="font-bold text-slate-800 text-sm mt-0.5 block">{lastName}</span>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-emerald-400/30 text-[11px] text-emerald-100 flex items-center justify-between relative z-10">
-                      <span className="flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                        <span>সর্বনিম্ন উত্তোলন: ৳ {offerSettings?.minWithdrawLimit || 100}</span>
-                      </span>
-                      <button
-                        onClick={() => {
-                          setWithdrawAmount(currentUser.walletBalance ?? (offerSettings?.minWithdrawLimit || 100));
-                          setShowWithdrawForm(true);
-                        }}
-                        className="text-amber-300 hover:text-white font-bold underline underline-offset-2 cursor-pointer"
-                      >
-                        উত্তোলন করুন ➔
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* রিওয়ার্ড পয়েন্ট কার্ড */}
-                  <div className="p-5 bg-gradient-to-br from-amber-500 to-amber-700 rounded-2xl text-white shadow-md relative overflow-hidden">
-                    <div className="flex items-center justify-between relative z-10">
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-xs">
-                        <Award className="w-6 h-6 text-white" />
-                      </div>
-                      <span className="bg-white text-amber-900 font-black text-[10px] px-2.5 py-0.5 rounded-full uppercase">
-                        লয়্যালটি পয়েন্ট
-                      </span>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Contact Number</span>
+                      <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{contactNumber}</span>
                     </div>
 
-                    <div className="mt-4 relative z-10">
-                      <span className="text-xs text-amber-100 block">মোট অর্জিত পয়েন্ট</span>
-                      <div className="text-3xl font-black font-mono text-white mt-1">
-                        {(currentUser.rewardPoints ?? 120)} <span className="text-sm font-normal text-amber-100">পয়েন্ট</span>
-                      </div>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Date of Birth</span>
+                      <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{dob}</span>
                     </div>
 
-                    <div className="mt-4 pt-3 border-t border-amber-400/30 text-[11px] text-amber-100 flex items-center gap-1.5 relative z-10">
-                      <CheckCircle2 className="w-3.5 h-3.5 text-white shrink-0" />
-                      <span>পণ্য কেনাবেচা ও রেটিং দিলে আইডিতে স্বয়ংক্রিয়ভাবে পয়েন্ট যোগ হয়</span>
+                    <div>
+                      <span className="text-slate-400 font-medium block">Gender</span>
+                      <span className="font-bold text-slate-800 text-sm mt-0.5 block">{gender}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 font-medium block">Delivery Address</span>
+                      <span className="font-bold text-slate-800 text-sm mt-0.5 block">{deliveryAddress}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* ২. ইন্টারেক্টিভ উইথড্রয়াল ফর্ম (WITHDRAWAL FORM) */}
-                {showWithdrawForm && (
-                  <form onSubmit={handleWithdrawSubmit} className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50/70 via-white to-slate-50 rounded-2xl border-2 border-emerald-300 shadow-sm space-y-4 animate-fadeIn">
-                    <div className="flex items-center justify-between pb-2 border-b border-emerald-200">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">
-                          ৳
-                        </div>
-                        <h4 className="font-bold text-sm text-slate-900">
-                          বিকাশ / নগদ / রকেটে টাকা তোলার আবেদন করুন
-                        </h4>
+                {/* CARD 2: Account Security (লগইন ও পাসওয়ার্ড সুরক্ষা) matching કાષ્ટমার আইডি1.png */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-5">
+                  <div className="flex items-center gap-2 font-bold text-slate-900 text-sm sm:text-base border-b border-slate-100 pb-3">
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span>Account Security (লগইন ও পাসওয়ার্ড সুরক্ষা)</span>
+                  </div>
+
+                  <div className="space-y-4 text-xs">
+                    {/* Email Field with Verified Tag */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                      <div>
+                        <span className="text-slate-400 font-medium block">Email Address (ইমেইল ঠিকানা)</span>
+                        <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{emailAddress}</span>
                       </div>
-                      <span className="text-[11px] text-slate-500 font-medium">
-                        ব্যালেন্স: <b className="text-emerald-700">৳ {currentUser.walletBalance ?? 0}</b>
+                      <span className="px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-full text-xs font-bold flex items-center gap-1 shrink-0 self-start sm:self-auto">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>ভেরিফাইড</span>
                       </span>
                     </div>
 
-                    {/* গেটওয়ে নির্বাচন */}
-                    <div>
-                      <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                        টাকা তোলার মাধ্যম বেছে নিন:
-                      </label>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                        {[
-                          { id: 'bKash', label: 'বিকাশ (bKash)', color: 'border-pink-500 text-pink-700 bg-pink-50' },
-                          { id: 'Nagad', label: 'নগদ (Nagad)', color: 'border-orange-500 text-orange-700 bg-orange-50' },
-                          { id: 'Rocket', label: 'রকেট (Rocket)', color: 'border-purple-500 text-purple-700 bg-purple-50' },
-                          { id: 'Bank', label: 'ব্যাংক ট্রান্সফার', color: 'border-blue-500 text-blue-700 bg-blue-50' }
-                        ].map(gw => (
-                          <button
-                            key={gw.id}
-                            type="button"
-                            onClick={() => setWithdrawGateway(gw.id as any)}
-                            className={`p-2.5 rounded-xl border text-xs font-bold transition-all text-center cursor-pointer ${
-                              withdrawGateway === gw.id
-                                ? `${gw.color} ring-2 ring-emerald-500 shadow-xs font-black`
-                                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                            }`}
-                          >
-                            {gw.label}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* অ্যাকাউন্ট ও মোবাইল নম্বর */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {/* Password Field with Change Password CTA */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          {withdrawGateway} মোবাইল বা অ্যাকাউন্ট নম্বর:
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          value={withdrawAccount}
-                          onChange={(e) => setWithdrawAccount(e.target.value)}
-                          placeholder="উদাঃ 017XXXXXXXX"
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-mono font-bold focus:ring-2 focus:ring-emerald-500 outline-none"
-                        />
+                        <span className="text-slate-400 font-medium block">Password (পাসওয়ার্ড)</span>
+                        <span className="font-mono text-base font-bold text-slate-800 tracking-widest mt-0.5 block">••••••••</span>
                       </div>
-
-                      <div>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          অ্যাকাউন্টের ধরন:
-                        </label>
-                        <select
-                          value={withdrawAccountType}
-                          onChange={(e) => setWithdrawAccountType(e.target.value as any)}
-                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-xs font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
-                        >
-                          <option value="personal">ব্যক্তিগত (Personal)</option>
-                          <option value="agent">এজেন্ট (Agent)</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* টাকার পরিমাণ ও কুইক বাটন */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <label className="text-xs font-bold text-slate-700">
-                          উত্তোলনের পরিমাণ (টাকা):
-                        </label>
-                        <span className="text-[11px] text-emerald-700 font-semibold">
-                          সর্বনিম্ন: ৳ {offerSettings?.minWithdrawLimit || 100}
-                        </span>
-                      </div>
-
-                      <div className="relative">
-                        <span className="absolute inset-y-0 left-0 pl-3 flex items-center font-bold text-slate-500 text-sm">
-                          ৳
-                        </span>
-                        <input
-                          type="number"
-                          min={offerSettings?.minWithdrawLimit || 50}
-                          max={currentUser.walletBalance ?? 0}
-                          required
-                          value={withdrawAmount || ''}
-                          onChange={(e) => setWithdrawAmount(Number(e.target.value) || 0)}
-                          placeholder="টাকার অঙ্ক লিখুন"
-                          className="w-full pl-8 pr-4 py-2 bg-white border border-slate-300 rounded-lg text-sm font-bold font-mono focus:ring-2 focus:ring-emerald-500 outline-none"
-                        />
-                      </div>
-
-                      {/* দ্রুত টাকার অঙ্ক নির্বাচন */}
-                      <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                        <span className="text-[10px] text-slate-500 font-medium">কুইক সিলেক্ট:</span>
-                        {[50, 100, 200, 500].map(amt => (
-                          <button
-                            key={amt}
-                            type="button"
-                            onClick={() => setWithdrawAmount(amt)}
-                            className="px-2.5 py-1 text-[11px] font-semibold bg-white border border-slate-200 hover:border-emerald-400 hover:bg-emerald-50 rounded-md transition-colors"
-                          >
-                            ৳ {amt}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          onClick={() => setWithdrawAmount(currentUser.walletBalance ?? 0)}
-                          className="px-2.5 py-1 text-[11px] font-bold bg-amber-100 text-amber-950 hover:bg-amber-200 rounded-md transition-colors ml-auto"
-                        >
-                          সব টাকা (৳ {currentUser.walletBalance ?? 0})
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-amber-50/80 rounded-xl border border-amber-200/80 text-[11px] text-amber-900 leading-relaxed flex items-start gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                      <div>
-                        <b>এডমিন নিশ্চিতকরণ:</b> উইথড্র রিকোয়েস্ট পাঠানোর পর এডমিন প্যানেল থেকে আপনার মোবাইল বা গেটওয়ে নম্বর যাচাই করে ১ থেকে ১২ ঘণ্টার মধ্যে টাকা পাঠানো হবে।
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
                       <button
                         type="button"
-                        onClick={() => setShowWithdrawForm(false)}
-                        className="px-4 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                        onClick={() => setIsPasswordModalOpen(true)}
+                        className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer shrink-0 self-start sm:self-auto shadow-2xs"
                       >
-                        বাতিল
+                        Change Password
                       </button>
-                      <button
-                        type="submit"
-                        disabled={isSubmittingWithdraw || (currentUser.walletBalance ?? 0) <= 0}
-                        className="flex items-center gap-1.5 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-bold text-xs rounded-lg shadow-sm transition-all disabled:opacity-50 cursor-pointer active:scale-95"
-                      >
-                        <Send className="w-3.5 h-3.5" />
-                        <span>{isSubmittingWithdraw ? 'আবেদন পাঠানো হচ্ছে...' : 'উত্তোলন নিশ্চিত করুন'}</span>
-                      </button>
-                    </div>
-                  </form>
-                )}
-
-                {/* ৩. ব্যবহারকারীর উইথড্র রিকোয়েস্ট হিস্ট্রি */}
-                <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <h4 className="font-bold text-xs sm:text-sm text-slate-900 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-emerald-600" />
-                      <span>উত্তোলন রিকোয়েস্ট ও পেমেন্ট হিস্ট্রি</span>
-                    </h4>
-                    <span className="text-[11px] text-slate-500">
-                      মোট আবেদন: {withdrawalRequests.filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone).length}টি
-                    </span>
-                  </div>
-
-                  {withdrawalRequests.filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone).length === 0 ? (
-                    <div className="text-center py-6 text-slate-500 text-xs">
-                      আপনার এখনো কোনো ক্যাশ তোলার আবেদন নেই। উপরে &quot;টাকা তুলুন&quot; বাটনে চাপ দিয়ে বিকাশ/নগদে টাকা তুলতে পারেন।
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs">
-                        <thead>
-                          <tr className="border-b border-slate-200 text-slate-600 bg-slate-50 text-[11px]">
-                            <th className="py-2.5 px-3 font-semibold">রিকোয়েস্ট আইডি</th>
-                            <th className="py-2.5 px-3 font-semibold">গেটওয়ে ও নম্বর</th>
-                            <th className="py-2.5 px-3 font-semibold">টাকার অঙ্ক</th>
-                            <th className="py-2.5 px-3 font-semibold">তারিখ</th>
-                            <th className="py-2.5 px-3 font-semibold">স্ট্যাটাস</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {withdrawalRequests
-                            .filter(w => w.userId === currentUser.id || w.userPhone === currentUser.phone)
-                            .map(item => (
-                              <tr key={item.id} className="hover:bg-slate-50/70 transition-colors">
-                                <td className="py-3 px-3 font-mono font-bold text-slate-800">
-                                  #{item.id}
-                                </td>
-                                <td className="py-3 px-3">
-                                  <div className="font-semibold text-slate-900">{item.gateway}</div>
-                                  <div className="text-[10px] text-slate-500 font-mono">{item.accountNumber} ({item.accountType === 'agent' ? 'এজেন্ট' : 'পার্সোনাল'})</div>
-                                </td>
-                                <td className="py-3 px-3 font-mono font-black text-emerald-700 text-sm">
-                                  ৳ {item.amount}
-                                </td>
-                                <td className="py-3 px-3 text-[11px] text-slate-500">
-                                  {item.requestedAt}
-                                </td>
-                                <td className="py-3 px-3">
-                                  {item.status === 'Pending' && (
-                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800">
-                                      <Clock className="w-3 h-3 text-amber-600" />
-                                      <span>অপেক্ষমাণ (যাচাই চলছে)</span>
-                                    </span>
-                                  )}
-                                  {item.status === 'Paid' && (
-                                    <div className="inline-flex flex-col">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
-                                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                                        <span>টাকা পাঠানো হয়েছে</span>
-                                      </span>
-                                      {item.trxId && (
-                                        <span className="text-[9px] font-mono text-slate-500 mt-0.5">Trx: {item.trxId}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                  {item.status === 'Rejected' && (
-                                    <div className="inline-flex flex-col">
-                                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">
-                                        <AlertCircle className="w-3 h-3 text-rose-600" />
-                                        <span>বাতিল ও রিফান্ডেড</span>
-                                      </span>
-                                      {item.adminNote && (
-                                        <span className="text-[9px] text-slate-500 mt-0.5">{item.adminNote}</span>
-                                      )}
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* ৪. বোনাস ব্যালেন্স ব্যবহারের ৩টি উপায় কার্ড */}
-                <div className="bg-slate-50 rounded-xl border border-slate-200 p-4">
-                  <h4 className="font-bold text-xs text-slate-800 mb-2.5">
-                    💡 এই বোনাস টাকা আপনি কীভাবে ব্যবহার করতে পারবেন:
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
-                        <ArrowDownToLine className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>১. সরাসরি ক্যাশ উত্তোলন</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        বিকাশ, নগদ বা রকেটে যেকোনো সময় সরাসরি ক্যাশ টাকা তুলে নিজের পকেটে নিতে পারবেন।
-                      </p>
-                    </div>
-
-                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
-                        <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>২. কেনাকাটায় ডিসকাউন্ট</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        মার্কেটপ্লেসে যেকোনো পণ্য অর্ডারের সময় ওয়ালেট ব্যালেন্স দিয়ে মূল্যে সরাসরি ছাড় পাবেন।
-                      </p>
-                    </div>
-
-                    <div className="p-3 bg-white rounded-lg border border-slate-200 space-y-1">
-                      <div className="font-bold text-emerald-800 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                        <span>৩. ফ্রি বিজ্ঞাপন বুস্ট</span>
-                      </div>
-                      <p className="text-[11px] text-slate-600 leading-relaxed">
-                        আপনার পণ্য দ্রুত বিক্রির জন্য ফিচার্ড অ্যাড বা টপ বিজ্ঞাপন স্লট নিতে এই ব্যালেন্স ব্যবহার করা যাবে।
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -1297,124 +609,51 @@ export const ProfileModal: React.FC = () => {
               </div>
             )}
 
-            {/* ------------------------------------------------------------------ */}
-            {/* 4. আমার বিজ্ঞাপনসমূহ (MY ADS) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'ads' && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-4 border-b border-slate-200">
-                  <div>
-                    <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                      আমার বিজ্ঞাপনসমূহ ({myAds.length})
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      আপনার পোস্ট করা বিজ্ঞাপনের তালিকা, ভিউ সংখ্যা ও নিয়ন্ত্রণ
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => { setActiveModal(null); setTimeout(() => setActiveModal('postAd'), 100); }}
-                    className="px-3.5 py-1.5 text-xs font-bold text-slate-950 bg-[#ffc800] hover:bg-[#e6b400] rounded-lg shadow-xs cursor-pointer"
-                  >
-                    + নতুন বিজ্ঞাপন দিন
-                  </button>
-                </div>
-
-                {myAds.length === 0 ? (
-                  <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
-                    <ShoppingBag className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs text-slate-600 font-semibold">আপনার কোনো সক্রিয় বিজ্ঞাপন নেই।</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {myAds.map(ad => (
-                      <div key={ad.id} className="p-3 sm:p-4 bg-white rounded-xl border border-slate-200 hover:border-emerald-300 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                        <div className="flex items-center gap-3">
-                          <img 
-                            src={ad.images[0]} 
-                            alt={ad.titleBn} 
-                            className="w-16 h-16 rounded-lg object-cover border border-slate-200 shrink-0"
-                          />
-                          <div>
-                            <h4 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">
-                              {ad.titleBn}
-                            </h4>
-                            <div className="font-bold font-mono text-[#007460] text-sm mt-0.5">
-                              ৳ {ad.price.toLocaleString()}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
-                              <span>ভিউ: {ad.views} বার</span>
-                              <span>·</span>
-                              <span className="text-emerald-700 font-semibold">স্ট্যাটাস: সক্রিয়</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                          <button
-                            onClick={() => setAdToDelete(ad)}
-                            className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-colors cursor-pointer"
-                            title="বিজ্ঞাপন মুছুন (কারণ ও ফি সংক্রান্ত নিয়মাবলী)"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                            <span>মুছুন</span>
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ------------------------------------------------------------------ */}
-            {/* 5. আমার অর্ডার ও কেনাকাটা (MY ORDERS) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'orders' && (
-              <div className="space-y-4">
-                <div className="pb-4 border-b border-slate-200">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                    আমার অর্ডার ও কেনাকাটা ({orders.length})
+            {/* TAB: MY ORDERS */}
+            {activeTab === 'orders' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Package className="w-4 h-4 text-emerald-600" />
+                    <span>অর্ডার ও ট্র্যাকিং হিস্ট্রি ({orders.length})</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    এসক্রো সুরক্ষিত ক্রয়-বিক্রয় ও কুরিয়ার ডেলিভারি ট্র্যাকিং
-                  </p>
                 </div>
 
                 {orders.length === 0 ? (
-                  <div className="text-center py-10 bg-slate-50 rounded-xl border border-slate-200">
-                    <Package className="w-12 h-12 text-slate-400 mx-auto mb-2" />
-                    <p className="text-xs text-slate-600 font-semibold">কোনো অর্ডার এখনো করা হয়নি।</p>
+                  <div className="py-12 text-center text-slate-400 space-y-2">
+                    <Package className="w-10 h-10 mx-auto text-slate-300" />
+                    <p className="text-xs">এখনও কোনো অর্ডার করেননি।</p>
+                    <button
+                      onClick={handleBackToShopping}
+                      className="px-4 py-2 bg-[#007460] text-white rounded-lg text-xs font-bold"
+                    >
+                      কেনাকাটা শুরু করুন
+                    </button>
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {orders.map(order => (
-                      <div key={order.id} className="p-3 sm:p-4 bg-white rounded-xl border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
-                        <div className="flex items-center gap-3">
-                          <img src={order.adImage} alt={order.adTitle} className="w-14 h-14 rounded-lg object-cover shrink-0 border border-slate-200" />
-                          <div>
-                            <div className="text-[11px] font-mono font-bold text-emerald-800">
-                              অর্ডার #{order.id}
-                            </div>
-                            <h4 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-1">
-                              {order.adTitle}
-                            </h4>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              ৳ {order.totalAmount.toLocaleString()} ({order.paymentMethod})
-                            </div>
+                    {orders.map(ord => (
+                      <div key={ord.id} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-900 text-sm">{ord.adTitle}</span>
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 font-mono font-bold rounded text-[10px]">
+                              #{ord.id}
+                            </span>
                           </div>
+                          <p className="text-slate-500">
+                            মূল্য: <span className="font-bold text-emerald-700 font-mono">৳{ord.totalAmount?.toLocaleString()}</span> · কুরিয়ার ট্র্যাকিং: <span className="font-mono text-slate-700">{ord.trackingNumber}</span>
+                          </p>
                         </div>
-
-                        <div className="flex items-center gap-2 self-end sm:self-center">
-                          <span className="text-[11px] px-2.5 py-1 rounded-full font-semibold bg-emerald-100 text-emerald-800">
-                            এসক্রো সুরক্ষিত
-                          </span>
-                          <button
-                            onClick={() => { setSelectedOrder(order); setActiveModal('orderTracking'); }}
-                            className="px-3 py-1.5 text-xs font-bold text-white bg-[#007460] hover:bg-[#005f4e] rounded-lg cursor-pointer"
-                          >
-                            ট্র্যাক করুন
-                          </button>
-                        </div>
+                        <button
+                          onClick={() => {
+                            setSelectedOrder(ord);
+                            setActiveModal('orderTracking');
+                          }}
+                          className="px-3 py-1.5 bg-[#007460] hover:bg-[#005e4e] text-white rounded-lg text-xs font-semibold whitespace-nowrap self-start sm:self-auto"
+                        >
+                          লাইভ ট্র্যাকিং দেখুন ➔
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -1422,122 +661,285 @@ export const ProfileModal: React.FC = () => {
               </div>
             )}
 
-            {/* ------------------------------------------------------------------ */}
-            {/* 6. রিভিউ ও রেটিং স্টার (REVIEWS & RATINGS) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'reviews' && (
-              <div className="space-y-4">
-                <div className="pb-4 border-b border-slate-200">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                    রিভিউ ও রেটিং স্টার ({myReviews.length})
+            {/* TAB: MY WISHLIST */}
+            {activeTab === 'wishlist' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-rose-600" />
+                    <span>পছন্দের বিজ্ঞাপনের তালিকা (Wishlist)</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    ক্রেতা ও বিক্রেতাদের পরস্পরের দেওয়া রেটিং ও রিভিউ
-                  </p>
                 </div>
 
-                {/* Rating Overview Card */}
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl font-black text-amber-900">৫.০</div>
-                    <div>
-                      <div className="flex items-center text-amber-500">
-                        {'★'.repeat(5)}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {ads.slice(0, 4).map(ad => (
+                    <div key={ad.id} className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex gap-3 text-xs">
+                      <img src={ad.images[0]} alt={ad.titleBn} className="w-16 h-16 object-cover rounded-lg shrink-0" />
+                      <div className="flex-1 min-w-0 flex flex-col justify-between">
+                        <h4 className="font-bold text-slate-900 truncate">{ad.titleBn}</h4>
+                        <span className="font-extrabold text-emerald-700 font-mono">৳{ad.price.toLocaleString()}</span>
+                        <button
+                          onClick={handleBackToShopping}
+                          className="text-[11px] font-bold text-[#007460] hover:underline text-left mt-1"
+                        >
+                          পণ্যটি দেখুন ➔
+                        </button>
                       </div>
-                      <div className="text-xs text-slate-600 mt-0.5">
-                        ১০০% ইতিবাচক কাস্টমার সন্তুষ্টি স্কোর
-                      </div>
-                    </div>
-                  </div>
-                  <span className="bg-amber-200 text-amber-900 font-bold text-xs px-3 py-1 rounded-full">
-                    টপ রেটেড মেম্বার
-                  </span>
-                </div>
-
-                <div className="space-y-3">
-                  {myReviews.map(rev => (
-                    <div key={rev.id} className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
-                      <div className="flex items-center justify-between text-xs mb-1">
-                        <span className="font-bold text-slate-900">{rev.reviewerName}</span>
-                        <div className="text-amber-500 font-bold">
-                          {'★'.repeat(rev.rating)}
-                        </div>
-                      </div>
-                      <p className="text-xs text-slate-600 leading-relaxed">
-                        "{rev.comment}"
-                      </p>
-                      <span className="text-[10px] text-slate-600 mt-1 block">
-                        পণ্য: {rev.adTitle}
-                      </span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* ------------------------------------------------------------------ */}
-            {/* 7. পাসওয়ার্ড ও নিরাপত্তা (SECURITY & PASSWORD) */}
-            {/* ------------------------------------------------------------------ */}
-            {activeHeadline === 'security' && (
-              <div className="space-y-6">
-                <div className="pb-4 border-b border-slate-200">
-                  <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                    পাসওয়ার্ড ও অ্যাকাউন্ট নিরাপত্তা
+            {/* TAB: SUPPORT TICKETS */}
+            {activeTab === 'support' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Headphones className="w-4 h-4 text-indigo-600" />
+                    <span>২৪/৭ কাস্টমার সাপোর্ট ও হেল্পডেস্ক</span>
                   </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    পাসওয়ার্ড পরিবর্তন ও দ্বি-স্তর বিশিষ্ট সুরক্ষা সেটিংস
-                  </p>
                 </div>
 
-                <form onSubmit={handlePasswordChange} className="bg-slate-50 p-4 sm:p-5 rounded-xl border border-slate-200 space-y-3.5 text-xs max-w-md">
-                  <h4 className="font-bold text-slate-900">পাসওয়ার্ড পরিবর্তন করুন</h4>
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">বর্তমান পাসওয়ার্ড:</label>
-                    <input
-                      type="password"
-                      value={currentPass}
-                      onChange={(e) => setCurrentPass(e.target.value)}
-                      placeholder="বর্তমান পাসওয়ার্ড দিন"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
-                      required
-                    />
+                <div className="p-4 bg-indigo-50/60 border border-indigo-200 rounded-xl space-y-3 text-xs">
+                  <p className="text-slate-700 leading-relaxed">
+                    যেকোনো অভিযোগ, ডেলিভারি সমস্যা বা এসক্রো পেমেন্ট সংক্রান্ত সহায়তায় আমাদের অভিজ্ঞ সাপোর্ট টিম সবসময় আপনার পাশে আছে।
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        setChatRecipient({ id: 'support-01', name: 'বিক্রয়মেলা হেল্পডেস্ক', phone: '09612-888999' });
+                        setActiveModal('chat');
+                      }}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <Headphones className="w-3.5 h-3.5" />
+                      <span>লাইভ সাপোর্ট চ্যাট শুরু করুন</span>
+                    </button>
+                    <a
+                      href="https://wa.me/8801332520826"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-[#25D366] hover:bg-[#20ba59] text-white rounded-lg font-bold flex items-center gap-1.5 shadow-2xs"
+                    >
+                      <span>হোয়াটসঅ্যাপ সাপোর্ট</span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CLUB / VIP */}
+            {activeTab === 'club' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Crown className="w-4 h-4 text-amber-500" />
+                    <span>Pickloo Club – প্রিমিয়াম মেম্বারশিপ ও ভিআইপি সুবিধা</span>
+                  </h3>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div className="p-4 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2">
+                    <span className="font-bold text-amber-950 block">👑 গোল্ডেন ফিচার্ড বুস্টিং</span>
+                    <p className="text-slate-600">প্রতি মাসে ১টি বিজ্ঞাপনে সম্পূর্ণ ফ্রি হোমপেজ ফিচার্ড বুস্টিং সুবিধা।</p>
+                  </div>
+                  <div className="p-4 bg-emerald-50/70 border border-emerald-200 rounded-xl space-y-2">
+                    <span className="font-bold text-emerald-950 block">🚚 ফ্রি ডেলিভারি ভাউচার</span>
+                    <p className="text-slate-600">প্রতিটি অর্ডারে ৫০% ডেলিভারি ডিসকাউন্ট এবং জিরো এসক্রো ফি সুবিধা।</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: POINT (PICKLOO POINT) */}
+            {activeTab === 'point' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Coins className="w-4 h-4 text-amber-500" />
+                    <span>পয়েন্ট ব্যালেন্স ও ক্যাশব্যাক রিওয়ার্ড</span>
+                  </h3>
+                  <span className="text-sm font-extrabold text-amber-800 bg-amber-100 px-3 py-1 rounded-full font-mono">
+                    মোট পয়েন্ট: {currentUser.rewardPoints ?? 100} Pts
+                  </span>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+                  <h4 className="font-bold text-slate-800">পয়েন্ট অর্জনের সুযোগ:</h4>
+                  <ul className="space-y-1.5 text-slate-600 list-disc list-inside">
+                    <li>দৈনিক সাইটে প্রবেশ করলে: ২০ পয়েন্ট</li>
+                    <li>প্রতিটি নতুন বিজ্ঞাপন দিলে: ১৫ পয়েন্ট</li>
+                    <li>সফল অর্ডারে ক্যাশব্যাক: প্রতি ১০০ টাকায় ১ পয়েন্ট</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+
+            {/* TAB: CREDIT & WITHDRAWAL */}
+            {activeTab === 'credit' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-emerald-600" />
+                    <span>Pickloo Credit – ওয়ালেট ব্যালেন্স ও ক্যাশ উত্তোলন</span>
+                  </h3>
+                </div>
+
+                <div className="p-5 bg-gradient-to-r from-emerald-800 to-teal-900 text-white rounded-2xl space-y-3 shadow-md">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-emerald-200 font-medium">বর্তমান ওয়ালেট ব্যালেন্স</span>
+                    <span className="text-xs bg-emerald-700/80 px-2 py-0.5 rounded font-mono">১০০% ক্যাশ যোগ্য</span>
+                  </div>
+                  <div className="text-3xl font-extrabold font-mono text-amber-300">
+                    ৳{(currentUser.walletBalance ?? 3500).toLocaleString()}
+                  </div>
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setShowWithdrawForm(!showWithdrawForm)}
+                      className="px-4 py-2 bg-amber-400 hover:bg-amber-300 text-slate-950 font-bold rounded-lg text-xs transition-colors shadow-2xs cursor-pointer"
+                    >
+                      {showWithdrawForm ? 'ফর্ম বন্ধ করুন' : 'বিকাশ/নগদে ক্যাশ তুলুন ➔'}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cash Withdrawal Form */}
+                {showWithdrawForm && (
+                  <form onSubmit={handleWithdrawSubmit} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs animate-in fade-in">
+                    <h4 className="font-bold text-slate-800">ক্যাশ টাকা উত্তোলনের আবেদন করুন:</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-slate-600 font-medium block mb-1">উত্তোলনের পরিমাণ (টাকা)</label>
+                        <input
+                          type="number"
+                          value={withdrawAmount}
+                          onChange={(e) => setWithdrawAmount(Number(e.target.value))}
+                          min={offerSettings?.minWithdrawLimit || 50}
+                          max={currentUser.walletBalance || 50000}
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-slate-900"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="text-slate-600 font-medium block mb-1">গেটওয়ে নির্বাচন</label>
+                        <select
+                          value={withdrawGateway}
+                          onChange={(e) => setWithdrawGateway(e.target.value as any)}
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900"
+                        >
+                          <option value="bKash">bKash (বিকাশ)</option>
+                          <option value="Nagad">Nagad (নগদ)</option>
+                          <option value="Rocket">Rocket (রকেট)</option>
+                          <option value="Bank">ব্যাংক একাউন্ট</option>
+                        </select>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label className="text-slate-600 font-medium block mb-1">অ্যাকাউন্ট নম্বর</label>
+                        <input
+                          type="text"
+                          value={withdrawAccount}
+                          onChange={(e) => setWithdrawAccount(e.target.value)}
+                          placeholder="01XXXXXXXXX"
+                          className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-slate-900"
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isSubmittingWithdraw}
+                      className="px-4 py-2 bg-[#007460] hover:bg-[#005e4e] text-white rounded-lg font-bold text-xs transition-colors cursor-pointer"
+                    >
+                      {isSubmittingWithdraw ? 'আবেদন পাঠানো হচ্ছে...' : 'উত্তোলন নিশ্চিত করুন'}
+                    </button>
+                  </form>
+                )}
+
+                {withdrawFeedback && (
+                  <div className={`p-3 rounded-lg text-xs font-semibold ${
+                    withdrawFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                  }`}>
+                    {withdrawFeedback.message}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: SHARE & EARN */}
+            {activeTab === 'share_earn' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <Share2 className="w-4 h-4 text-teal-600" />
+                    <span>Share & Earn – বন্ধুদের সাথে শেয়ার করে আয় করুন</span>
+                  </h3>
+                </div>
+
+                <div className="p-5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200 rounded-2xl space-y-4 text-xs">
+                  <div className="space-y-1">
+                    <span className="font-bold text-teal-950 text-sm block">আপনার ইউনিক রেফারেল কোড ও লিংক</span>
+                    <p className="text-slate-600">
+                      আপনার পরিচিত কেউ এই কোড বা লিংক ব্যবহার করে একাউন্ট খুললেই আপনার একাউন্টে ৫০ টাকা ক্যাশ বোনাস ও ৫০ পয়েন্ট জমা হবে!
+                    </p>
                   </div>
 
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">নতুন পাসওয়ার্ড:</label>
+                  <div className="flex items-center gap-2">
                     <input
-                      type="password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder="কমপক্ষে ৬ ডিজিটের নতুন পাসওয়ার্ড"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
-                      required
+                      type="text"
+                      readOnly
+                      value={referralLink}
+                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg font-mono text-slate-700 text-xs"
                     />
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(referralLink);
+                        setCopiedReferral(true);
+                        setTimeout(() => setCopiedReferral(false), 2500);
+                      }}
+                      className="px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-lg whitespace-nowrap transition-colors flex items-center gap-1 shadow-2xs"
+                    >
+                      {copiedReferral ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedReferral ? 'কপি হয়েছে' : 'কপি করুন'}</span>
+                    </button>
                   </div>
+                </div>
+              </div>
+            )}
 
-                  <div>
-                    <label className="block text-slate-700 font-semibold mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন:</label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="পুনরায় নতুন পাসওয়ার্ড লিখুন"
-                      className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-[#007460]"
-                      required
-                    />
-                  </div>
-
+            {/* TAB: MANAGE ADDRESSES */}
+            {activeTab === 'addresses' && (
+              <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-sky-600" />
+                    <span>সংরক্ষিত ডেলিভারি ঠিকানা (Manage Addresses)</span>
+                  </h3>
                   <button
-                    type="submit"
-                    className="w-full py-2.5 bg-[#007460] hover:bg-[#005f4e] text-white font-bold rounded-lg shadow-sm transition-colors cursor-pointer"
+                    onClick={() => setIsEditUserModalOpen(true)}
+                    className="text-xs font-bold text-sky-600 hover:underline flex items-center gap-1"
                   >
-                    পাসওয়ার্ড আপডেট করুন
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>ঠিকানা পরিবর্তন</span>
                   </button>
-                </form>
+                </div>
 
-                <div className="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-center gap-2 font-medium">
-                  <ShieldCheck className="w-5 h-5 text-emerald-700 shrink-0" />
-                  <span>আপনার অ্যাকাউন্টটি টু-ফ্যাক্টর এসএমএস ওটিপি দ্বারা সুরক্ষিত রয়েছে।</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full inline-block">
+                      প্রাথমিক ডেলিভারি ঠিকানা
+                    </span>
+                    <p className="font-bold text-slate-800 text-sm">{deliveryAddress}</p>
+                    <p className="text-slate-500">ফোন: {contactNumber}</p>
+                  </div>
+
+                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                    <span className="text-[10px] font-bold text-slate-700 bg-slate-200 px-2 py-0.5 rounded-full inline-block">
+                      স্থায়ী ঠিকানা
+                    </span>
+                    <p className="font-bold text-slate-800 text-sm">{permanentAddress}</p>
+                  </div>
                 </div>
               </div>
             )}
@@ -1545,8 +947,211 @@ export const ProfileModal: React.FC = () => {
           </div>
 
         </div>
-
       </div>
+
+      {/* MODAL 1: EDIT USER INFORMATION (Requirement B-03 - Mobile Responsive) */}
+      {isEditUserModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-200 my-auto">
+            
+            <div className="bg-slate-900 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Edit3 className="w-4 h-4 text-sky-400" />
+                <span>ব্যক্তিগত তথ্য পরিবর্তন ও আপডেট (Edit User Info)</span>
+              </div>
+              <button
+                onClick={() => setIsEditUserModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUserInfo} className="p-5 space-y-3.5 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">First Name (প্রথম নাম)</label>
+                  <input
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Last Name (শেষ নাম)</label>
+                  <input
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">Contact Number (মোবাইল নম্বর)</label>
+                <input
+                  type="text"
+                  value={contactNumber}
+                  onChange={(e) => setContactNumber(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">Email Address (ইমেইল ঠিকানা)</label>
+                <input
+                  type="email"
+                  value={emailAddress}
+                  onChange={(e) => setEmailAddress(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Date of Birth (জন্ম তারিখ)</label>
+                  <input
+                    type="date"
+                    value={dob}
+                    onChange={(e) => setDob(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-mono focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-700 font-bold block mb-1">Gender (লিঙ্গ)</label>
+                  <select
+                    value={gender}
+                    onChange={(e) => setGender(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  >
+                    <option value="পুরুষ (Male)">পুরুষ (Male)</option>
+                    <option value="মহিলা (Female)">মহিলা (Female)</option>
+                    <option value="অন্যান্য (Other)">অন্যান্য (Other)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">Delivery Address (ডেলিভারি ঠিকানা)</label>
+                <textarea
+                  value={deliveryAddress}
+                  onChange={(e) => setDeliveryAddress(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg text-slate-900 font-medium focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  required
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsEditUserModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-bold text-xs"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>তথ্য সংরক্ষণ করুন</span>
+                </button>
+              </div>
+            </form>
+
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: CHANGE PASSWORD */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 sm:p-4 backdrop-blur-xs overflow-y-auto animate-in fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 my-auto">
+            <div className="bg-slate-900 px-5 py-4 text-white flex items-center justify-between">
+              <div className="flex items-center gap-2 font-bold text-sm">
+                <Lock className="w-4 h-4 text-amber-400" />
+                <span>পাসওয়ার্ড পরিবর্তন করুন</span>
+              </div>
+              <button
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handlePasswordChange} className="p-5 space-y-3 text-xs">
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">বর্তমান পাসওয়ার্ড</label>
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">নতুন পাসওয়ার্ড</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="কমপক্ষে ৬ অক্ষর"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="text-slate-700 font-bold block mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="আবার টাইপ করুন"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
+                  required
+                />
+              </div>
+
+              {passwordSuccess && (
+                <div className="p-2.5 bg-emerald-100 text-emerald-800 rounded-lg font-bold text-center">
+                  ✓ পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-bold"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#007460] hover:bg-[#005e4e] text-white rounded-lg font-bold"
+                >
+                  পাসওয়ার্ড আপডেট করুন
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

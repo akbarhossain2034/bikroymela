@@ -76,7 +76,7 @@ export const WhatsAppSupportWidget: React.FC = () => {
   return (
     <>
       {/* Floating WhatsApp Live Button */}
-      <aside aria-label="WhatsApp Support" className="fixed bottom-20 sm:bottom-6 right-4 sm:right-6 z-40 flex items-center group">
+      <aside aria-label="WhatsApp Support" className="fixed bottom-20 right-4 sm:right-6 z-40 flex items-center group">
         {/* Floating Button Icon */}
         <button
           onClick={() => setIsOpen(!isOpen)}

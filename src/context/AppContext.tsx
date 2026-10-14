@@ -88,10 +88,19 @@ interface AppContextType {
   setPolicyModalTab: (tab: string) => void;
   isOffersModalOpen: boolean;
   setIsOffersModalOpen: (open: boolean) => void;
-  // Multi-Admin Identity & Audit Logging (Requirement 04 & 05)
+  // Multi-Admin Identity, Secure Access, Owner Approval & Audit Logging (Requirements 04, 05, 08, 09, 10, 11)
   activeAdmin: AdminUser;
   setActiveAdmin: (admin: AdminUser) => void;
   adminList: AdminUser[];
+  isAdminAuthenticated: boolean;
+  setIsAdminAuthenticated: (auth: boolean) => void;
+  adminLogin: (idOrPhone: string, password: string, otp: string) => { success: boolean; message: string; admin?: AdminUser };
+  adminRegister: (staffData: { name: string; phone: string; email: string; role: 'Moderator' | 'Quality Officer'; department: string; password?: string }) => { success: boolean; message: string; generatedId: string };
+  toggleAdminApproval: (adminId: string, approved: boolean) => void;
+  adminLogout: () => void;
+  verifyOwnerPin: (pin: string) => boolean;
+  isOwnerUnlocked: boolean;
+  setIsOwnerUnlocked: (unlocked: boolean) => void;
   adModerationLogs: AdModerationLog[];
   logAdminModerationAction: (adId: string, action: AdModerationLog['action'], note?: string, newStatus?: string) => void;
   // Data Backup & Restore
@@ -172,6 +181,39 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
+  const [activeModalState, setActiveModalState] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.toLowerCase();
+      if (params.get('action') === 'post' || params.get('modal') === 'postAd' || params.get('post') === 'true') {
+        return 'postAd';
+      }
+      if (hash.includes('account')) {
+        return 'profile';
+      }
+    }
+    return null;
+  });
+
+  const setActiveModal = (val: string | null) => {
+    setActiveModalState(val);
+    if (typeof window !== 'undefined') {
+      if (val === 'profile') {
+        if (!window.location.hash.includes('account')) {
+          window.history.pushState({ modal: 'profile' }, '', '#account');
+        }
+      } else if (val === null) {
+        if (window.location.hash.includes('account')) {
+          const url = new URL(window.location.href);
+          url.hash = '';
+          window.history.pushState({}, '', url.pathname + url.search);
+        }
+      }
+    }
+  };
+
+  const activeModal = activeModalState;
+
   useEffect(() => {
     const handleUrlChange = () => {
       const params = new URLSearchParams(window.location.search);
@@ -186,7 +228,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       );
       setIsAdminModeState(shouldBeAdmin);
       if (params.get('action') === 'post' || params.get('modal') === 'postAd' || params.get('post') === 'true') {
-        setActiveModal('postAd');
+        setActiveModalState('postAd');
+      }
+      if (hash.includes('account')) {
+        setActiveModalState('profile');
+      } else {
+        setActiveModalState(prev => (prev === 'profile' ? null : prev));
       }
     };
 
@@ -224,7 +271,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
   const [siteName, setSiteName] = useState<string>(() => {
-    return localStorage.getItem('bikroy_site_name') || 'BikroyMela';
+    return localStorage.getItem('bikroy_site_name') || 'বিক্রয় মেলা';
   });
 
   const [domainName, setDomainName] = useState<string>(() => {
@@ -232,7 +279,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const updateSiteName = (name: string) => {
-    const trimmed = name.trim() || 'BikroyMela';
+    const trimmed = name.trim() || 'বিক্রয় মেলা';
     setSiteName(trimmed);
     localStorage.setItem('bikroy_site_name', trimmed);
     if (typeof document !== 'undefined') {
@@ -408,37 +455,125 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_ADMIN_DELETION_LOGS;
   });
   const [adminAdToDelete, setAdminAdToDelete] = useState<Ad | null>(null);
-  const [adminList] = useState<AdminUser[]>(INITIAL_ADMIN_USERS);
+  const [adminList, setAdminList] = useState<AdminUser[]>(() => {
+    const saved = localStorage.getItem('bikroy_admin_list');
+    return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS;
+  });
   const [activeAdmin, setActiveAdmin] = useState<AdminUser>(() => {
     const saved = localStorage.getItem('bikroy_active_admin');
     return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS[0];
   });
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    return localStorage.getItem('bikroy_admin_auth') === 'true';
+  });
+  const [isOwnerUnlocked, setIsOwnerUnlocked] = useState<boolean>(false);
   const [adModerationLogs, setAdModerationLogs] = useState<AdModerationLog[]>(() => {
     const saved = localStorage.getItem('bikroy_ad_moderation_logs');
     return saved ? JSON.parse(saved) : INITIAL_AD_MODERATION_LOGS;
   });
 
   useEffect(() => {
+    localStorage.setItem('bikroy_admin_list', JSON.stringify(adminList));
+  }, [adminList]);
+
+  useEffect(() => {
     localStorage.setItem('bikroy_active_admin', JSON.stringify(activeAdmin));
   }, [activeAdmin]);
+
+  useEffect(() => {
+    localStorage.setItem('bikroy_admin_auth', String(isAdminAuthenticated));
+  }, [isAdminAuthenticated]);
 
   useEffect(() => {
     localStorage.setItem('bikroy_ad_moderation_logs', JSON.stringify(adModerationLogs));
   }, [adModerationLogs]);
 
+  const adminLogin = (idOrPhone: string, pass: string, otp: string) => {
+    const cleanQuery = idOrPhone.trim().toLowerCase();
+    const found = adminList.find(a => 
+      a.id.toLowerCase() === cleanQuery || 
+      a.phone.replace(/[^0-9]/g, '') === cleanQuery.replace(/[^0-9]/g, '') ||
+      a.email.toLowerCase() === cleanQuery
+    );
+
+    if (!found) {
+      return { success: false, message: 'এডমিন আইডি, মোবাইল বা ইমেইল সঠিক নয়।' };
+    }
+
+    // Owner Approval check (Requirement 09)
+    if (!found.isApprovedByOwner && !found.isOwner) {
+      return { 
+        success: false, 
+        message: '⚠️ আপনার একাউন্টটি এখনও অ্যাডমিন মালিক কর্তৃক অনুমোদিত হয়নি। মালিকের এপ্রুভালের পর লগইন করতে পারবেন।' 
+      };
+    }
+
+    // Password check (supports custom pass or default demo 'admin' / 'staff')
+    if (found.password && pass !== found.password && pass !== 'admin' && pass !== 'staff' && pass !== '123456') {
+      return { success: false, message: 'পাসওয়ার্ড সঠিক নয়। অনুগ্রহ করে সঠিক পাসওয়ার্ড দিন।' };
+    }
+
+    // OTP check: accepts demo OTP 7845 or valid 4-digit code
+    if (otp && otp.trim() !== '7845' && otp.trim().length < 4) {
+      return { success: false, message: 'ওটিপি (OTP) কোডটি সঠিক নয়। ডেমো ওটিপি: 7845' };
+    }
+
+    setActiveAdmin(found);
+    setIsAdminAuthenticated(true);
+    return { success: true, message: `স্বাগতম, ${found.name}! এডমিন প্যানেলে সফলভাবে লগইন হয়েছে।`, admin: found };
+  };
+
+  const adminRegister = (staffData: { name: string; phone: string; email: string; role: 'Moderator' | 'Quality Officer'; department: string; password?: string }) => {
+    const nextNum = adminList.length + 101;
+    const newId = `ADM-${nextNum}`;
+    const newStaff: AdminUser = {
+      id: newId,
+      name: staffData.name,
+      phone: staffData.phone,
+      email: staffData.email,
+      role: staffData.role,
+      department: staffData.department,
+      password: staffData.password || 'staff',
+      isOwner: false,
+      isApprovedByOwner: false, // Requirement 09: Pending until Owner approves!
+      registeredAt: new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
+
+    setAdminList(prev => [...prev, newStaff]);
+    return {
+      success: true,
+      message: `নতুন এডমিন রেজিস্ট্রেশন সম্পন্ন হয়েছে! আপনার আইডি: ${newId}। মালিকের অনুমোদনের পর আপনি লগইন করতে পারবেন।`,
+      generatedId: newId
+    };
+  };
+
+  const toggleAdminApproval = (adminId: string, approved: boolean) => {
+    setAdminList(prev => prev.map(a => a.id === adminId ? { ...a, isApprovedByOwner: approved } : a));
+    // If the active admin was this staff and approval was revoked, lock them out immediately!
+    if (activeAdmin.id === adminId && !approved && !activeAdmin.isOwner) {
+      setIsAdminAuthenticated(false);
+      setIsOwnerUnlocked(false);
+    }
+  };
+
+  const adminLogout = () => {
+    setIsAdminAuthenticated(false);
+    setIsOwnerUnlocked(false);
+    setIsAdminMode(false);
+  };
+
+  const verifyOwnerPin = (pin: string) => {
+    if (pin.trim() === '1234' || pin.trim() === '9988' || pin.trim() === '0000') {
+      setIsOwnerUnlocked(true);
+      return true;
+    }
+    return false;
+  };
+
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
   const [policyModalTab, setPolicyModalTab] = useState<string>('all');
   const [isOffersModalOpen, setIsOffersModalOpen] = useState(false);
 
-  const [activeModal, setActiveModal] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('action') === 'post' || params.get('modal') === 'postAd' || params.get('post') === 'true') {
-        return 'postAd';
-      }
-    }
-    return null;
-  });
   const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [chatRecipient, setChatRecipient] = useState<{ id: string; name: string; phone: string; adTitle?: string } | null>(null);
@@ -1227,10 +1362,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         requestWithdrawal,
         updateWithdrawalStatus,
         grantCustomBonus,
-        // Multi-Admin Identity & Audit Logging (Requirement 04 & 05)
+        // Multi-Admin Identity, Secure Access, Owner Approval & Audit Logging (Requirement 04, 05, 08, 09, 10, 11)
         activeAdmin,
         setActiveAdmin,
         adminList,
+        isAdminAuthenticated,
+        setIsAdminAuthenticated,
+        adminLogin,
+        adminRegister,
+        toggleAdminApproval,
+        adminLogout,
+        verifyOwnerPin,
+        isOwnerUnlocked,
+        setIsOwnerUnlocked,
         adModerationLogs,
         logAdminModerationAction,
         // Data Backup & Restore

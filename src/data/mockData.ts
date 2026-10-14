@@ -729,7 +729,11 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
     role: 'Super Admin',
     phone: '01332520826',
     email: 'akbar.office10@gmail.com',
-    department: 'ম্যানেজমেন্ট ও পলিসি'
+    department: 'ম্যানেজমেন্ট ও পলিসি (মালিক)',
+    isOwner: true,
+    isApprovedByOwner: true,
+    password: 'admin',
+    registeredAt: '০১ অক্টোবর ২০২৬'
   },
   {
     id: 'ADM-102',
@@ -737,7 +741,11 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
     role: 'Moderator',
     phone: '01712-334455',
     email: 'kaysar.moderator@bikroymela.com',
-    department: 'বিজ্ঞাপন যাচাই ও কোয়ালিটি'
+    department: 'বিজ্ঞাপন যাচাই ও কোয়ালিটি',
+    isOwner: false,
+    isApprovedByOwner: true,
+    password: 'staff',
+    registeredAt: '০৫ অক্টোবর ২০২৬'
   },
   {
     id: 'ADM-103',
@@ -745,7 +753,23 @@ export const INITIAL_ADMIN_USERS: AdminUser[] = [
     role: 'Quality Officer',
     phone: '01822-445566',
     email: 'sumaiya.qa@bikroymela.com',
-    department: 'এসক্রো নিরাপত্তা ও গ্রাহক সেবা'
+    department: 'এসক্রো নিরাপত্তা ও গ্রাহক সেবা',
+    isOwner: false,
+    isApprovedByOwner: true,
+    password: 'staff',
+    registeredAt: '০৮ অক্টোবর ২০২৬'
+  },
+  {
+    id: 'ADM-104',
+    name: 'তানভীর হাসান',
+    role: 'Moderator',
+    phone: '01911-223344',
+    email: 'tanvir.mod@bikroymela.com',
+    department: 'বিজ্ঞাপন নিরীক্ষা (নতুন আবেদনকারী)',
+    isOwner: false,
+    isApprovedByOwner: false, // অপেক্ষমাণ - মালিক টিক দিলে তবেই লগইন এক্সেস পাবে
+    password: 'staff',
+    registeredAt: '১৩ অক্টোবর ২০২৬'
   }
 ];
 

@@ -94,6 +94,10 @@ export interface AdminUser {
   phone: string;
   email: string;
   department?: string;
+  isOwner?: boolean;
+  isApprovedByOwner?: boolean;
+  password?: string;
+  registeredAt?: string;
 }
 
 export interface User {

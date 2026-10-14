@@ -261,17 +261,7 @@ export const Header: React.FC = () => {
               </button>
             )}
 
-            {/* Post Ad Button - Bikroy Iconic Yellow CTA */}
-            <button
-              onClick={() => {
-                setActiveModal('postAd');
-              }}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-extrabold text-slate-950 bg-[#ffc800] hover:bg-[#e6b400] active:scale-[0.98] rounded-lg shadow-md transition-all whitespace-nowrap cursor-pointer ring-1 ring-amber-400"
-              title="বিনামূল্যে বিজ্ঞাপন দিন"
-            >
-              <PlusCircle className="w-4 h-4 text-slate-950" />
-              <span>{t.postAd}</span>
-            </button>
+            {/* Post ad button removed from top right as requested - unified at bottom navigation bar */}
 
             {/* Mobile menu trigger */}
             <button

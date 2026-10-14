@@ -14,14 +14,18 @@ export const MobileNav: React.FC = () => {
   } = useApp();
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-slate-200 px-3 py-2 flex items-center justify-around shadow-lg">
-      <button
-        onClick={() => { resetFilters(); setIsAdminMode(false); }}
-        className="flex flex-col items-center gap-1 text-slate-600 hover:text-emerald-700"
-      >
-        <Home className="w-5 h-5" />
-        <span className="text-[11px] font-medium leading-none">{t.allAds}</span>
-      </button>
+    <nav 
+      aria-label="Bottom Navigation Bar"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_25px_rgba(0,0,0,0.08)] py-1.5 px-3"
+    >
+      <div className="max-w-2xl mx-auto flex items-center justify-around">
+        <button
+          onClick={() => { resetFilters(); setIsAdminMode(false); }}
+          className="flex flex-col items-center gap-1 text-slate-600 hover:text-[#007460] transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-50 cursor-pointer"
+        >
+          <Home className="w-5 h-5" />
+          <span className="text-[11px] font-semibold leading-none">{t.allAds}</span>
+        </button>
 
       <button
         onClick={() => {
@@ -76,8 +80,9 @@ export const MobileNav: React.FC = () => {
         ) : (
           <User className="w-5 h-5" />
         )}
-        <span className="text-[11px] font-medium leading-none">{currentUser ? 'অ্যাকাউন্ট' : 'লগইন'}</span>
+        <span className="text-[11px] font-semibold leading-none">{currentUser ? 'অ্যাকাউন্ট' : 'লগইন'}</span>
       </button>
-    </div>
+      </div>
+    </nav>
   );
 };

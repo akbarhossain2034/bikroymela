@@ -341,10 +341,15 @@ export const PaymentModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Escrow badge */}
-              <div className="flex items-center gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900">
-                <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>{t.escrowBadgeText}</span>
+              {/* Escrow badge & SSLCommerz indicator */}
+              <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg text-[11px] text-emerald-900">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{t.escrowBadgeText}</span>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-800 bg-white px-2 py-0.5 rounded border border-emerald-300 font-mono shrink-0">
+                  SSLCommerz Secured
+                </span>
               </div>
 
               {/* Submit CTA */}
