@@ -204,6 +204,15 @@ export const Footer: React.FC = () => {
                 গোপনীয়তা নীতি (Privacy Policy)
               </button>
             </li>
+            <li>
+              <button 
+                onClick={() => setIsAdminMode(true)} 
+                className="hover:text-emerald-400 transition-colors text-left cursor-pointer flex items-center gap-1.5 text-slate-400"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                <span>এডমিন ও স্টাফ লগইন (Admin Login)</span>
+              </button>
+            </li>
           </ul>
         </div>
       </div>

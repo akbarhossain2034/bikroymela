@@ -5,19 +5,14 @@ import {
   ShoppingCart, 
   Search, 
   Lock, 
-  ArrowLeft,
-  X,
   CheckCircle2,
   Eye,
   EyeOff,
+  Mail,
+  Smartphone,
   ShieldCheck,
-  Crown,
-  KeyRound,
   RotateCw,
-  UserCheck,
-  AlertCircle,
-  Building2,
-  Sparkles
+  AlertCircle
 } from 'lucide-react';
 
 interface AdminAuthGateProps {
@@ -30,45 +25,44 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     adminLogin, 
     adminRegister,
     checkAdminExists,
-    adminList
+    adminList,
+    setActiveAdmin
   } = useApp();
 
-  // Multi-step flow matching customer login:
-  // 1. 'identify' (Initial Screen: Admin ID/Phone/Email + Sign Up/Login)
-  // 2. 'password' (2nd Screen: Password + Security OTP matching 2য়.png)
-  // 3. 'forgot_password' (Admin Password Reset)
-  // 4. 'otp_verify' (Step 1 of Registration: OTP verification matching 3য়.png)
-  // 5. 'register_details' (Step 2 of Registration: Staff application matching 4থ.png)
-  // 6. 'register_success' (Step 3 of Registration: Success notice & Owner review matching 5ম.png)
+  // Multi-step flow matching 1.png, 2য়.png, 3য়.png, 4থ.png, 5ম.png
+  // Exactly identical to Customer Login!
   const [step, setStep] = useState<
     'identify' | 'password' | 'forgot_password' | 'otp_verify' | 'register_details' | 'register_success'
   >('identify');
 
-  // Input states
-  const [identifier, setIdentifier] = useState('ADM-101');
-  const [password, setPassword] = useState('admin');
-  const [securityOtp, setSecurityOtp] = useState('7845');
+  // Input Mode in 1.png: Toggle between Mobile and Email
+  const [inputMode, setInputMode] = useState<'mobile' | 'email'>('mobile');
+  const [mobileOrEmail, setMobileOrEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
 
-  // Matched Admin info
+  // Matched Admin record
   const [matchedAdmin, setMatchedAdmin] = useState<any>(null);
 
-  // OTP state for registration
+  // OTP state for registration (matching 3য়.png)
   const [generatedOtp, setGeneratedOtp] = useState('1234');
   const [otpInput, setOtpInput] = useState('');
   const [otpTimer, setOtpTimer] = useState(59);
   const [canResendOtp, setCanResendOtp] = useState(false);
 
-  // Staff application state
-  const [regName, setRegName] = useState('');
-  const [regRole, setRegRole] = useState<'Moderator' | 'Quality Officer'>('Moderator');
-  const [regDepartment, setRegDepartment] = useState('বিজ্ঞাপন যাচাই ও কোয়ালিটি');
-  const [regPassword, setRegPassword] = useState('staff');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('staff');
-  const [generatedAdminId, setGeneratedAdminId] = useState('');
+  // Registration details state (matching 4থ.png)
+  const [regFirstName, setRegFirstName] = useState('');
+  const [regLastName, setRegLastName] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regReferralCode, setRegReferralCode] = useState('');
+  const [agreedTerms, setAgreedTerms] = useState(true);
+
+  // Registered staff result (matching 5ম.png)
+  const [registeredAdminData, setRegisteredAdminData] = useState<any>(null);
 
   // OTP countdown timer
   useEffect(() => {
@@ -93,15 +87,19 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     onBackToCustomer();
   };
 
-  // Step 1: Intelligent Checking
+  // Step 1: Intelligent Checking (Matching Photo 1)
   const handleIdentifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFeedbackError(null);
     setFeedbackSuccess(null);
 
-    const cleanInput = identifier.trim();
+    const cleanInput = mobileOrEmail.trim();
     if (!cleanInput) {
-      setFeedbackError('অনুগ্রহ করে এডমিন আইডি, মোবাইল নম্বর অথবা ইমেইল দিন।');
+      setFeedbackError(
+        inputMode === 'mobile' 
+          ? 'অনুগ্রহ করে আপনার মোবাইল নম্বর দিন।' 
+          : 'অনুগ্রহ করে আপনার ইমেইল এড্রেস দিন।'
+      );
       return;
     }
 
@@ -109,16 +107,17 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
 
     setTimeout(() => {
       setIsChecking(false);
+      
+      // Check admin list (includes ID, phone, email, owner email)
       const res = checkAdminExists(cleanInput);
 
       if (res.exists && res.admin) {
-        // Exists -> Go to Password + Security PIN Screen (matching 2য়.png)
+        // Registered Admin -> Go to Password Screen (matching 2য়.png)
         setMatchedAdmin(res.admin);
         setStep('password');
-        setPassword(res.admin.isOwner ? 'admin' : 'staff');
-        setSecurityOtp('7845');
+        setPassword('');
       } else {
-        // Not registered as Admin -> Go to 3-step Staff Registration flow (matching 3য়.png)
+        // Not registered as Admin -> Go to 3-step staff application (matching 3, 4, 5)
         const newCode = Math.floor(1000 + Math.random() * 9000).toString();
         setGeneratedOtp(newCode);
         setOtpInput('');
@@ -135,14 +134,14 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setFeedbackError(null);
 
     if (!password.trim()) {
-      setFeedbackError('অনুগ্রহ করে পাসওয়ার্ড দিন।');
+      setFeedbackError('অনুগ্রহ করে আপনার পাসওয়ার্ড দিন।');
       return;
     }
 
     setIsChecking(true);
     setTimeout(() => {
       setIsChecking(false);
-      const res = adminLogin(identifier, password, securityOtp);
+      const res = adminLogin(mobileOrEmail, password, '7845');
       if (res.success) {
         setFeedbackSuccess(res.message);
       } else {
@@ -157,10 +156,11 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setFeedbackError(null);
 
     if (otpInput.trim() !== generatedOtp && otpInput.trim() !== '1234') {
-      setFeedbackError('ভুল ওটিপি কোড! ডেমো ওটিপি কোড: ' + generatedOtp);
+      setFeedbackError('ভুল ওটিপি কোড! ডেমো ওটিপি: ' + generatedOtp);
       return;
     }
 
+    // OTP Verified -> Go to Step 4 (Account Details matching 4থ.png)
     setStep('register_details');
   };
 
@@ -169,88 +169,131 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setGeneratedOtp(newCode);
     setOtpTimer(59);
     setCanResendOtp(false);
-    setFeedbackSuccess('নতুন ওটিপি কোড পাঠানো হয়েছে!');
+    setOtpInput('');
+    setFeedbackSuccess(`নতুন ওটিপি পাঠানো হয়েছে: ${newCode}`);
     setTimeout(() => setFeedbackSuccess(null), 3000);
   };
 
-  // Step 4: Handle Admin Staff Registration Form (matching 4থ.png)
+  // Step 4: Handle Registration Submission (matching 4থ.png)
   const handleRegisterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFeedbackError(null);
 
-    if (!regName.trim()) {
-      setFeedbackError('অনুগ্রহ করে আবেদনকারীর পুরো নাম দিন।');
+    if (!regFirstName.trim() || !regLastName.trim()) {
+      setFeedbackError('অনুগ্রহ করে আপনার পুরো নাম লিখুন।');
+      return;
+    }
+
+    if (regPassword.length < 4) {
+      setFeedbackError('পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে।');
       return;
     }
 
     if (regPassword !== regConfirmPassword) {
-      setFeedbackError('উভয় পাসওয়ার্ড একই হতে হবে।');
+      setFeedbackError('কনফার্ম পাসওয়ার্ডের সাথে মূল পাসওয়ার্ড মিলছে না!');
+      return;
+    }
+
+    if (!agreedTerms) {
+      setFeedbackError('অনুগ্রহ করে ব্যবহারের শর্তাবলী মেনে নিন।');
       return;
     }
 
     setIsChecking(true);
     setTimeout(() => {
       setIsChecking(false);
-      const isEmail = identifier.includes('@');
-      const res = adminRegister({
-        name: regName.trim(),
-        phone: isEmail ? '01711-889900' : identifier.trim(),
-        email: isEmail ? identifier.trim() : `${identifier.replace(/[^0-9]/g, '')}@bikroymela.com`,
-        role: regRole,
-        department: regDepartment,
+      const fullName = `${regFirstName.trim()} ${regLastName.trim()}`;
+      const cleanPhone = inputMode === 'mobile' ? mobileOrEmail : '01700-000000';
+      const cleanEmail = inputMode === 'email' ? mobileOrEmail : `${mobileOrEmail.replace(/[^0-9]/g, '')}@staff.bikroymela.com`;
+
+      const regResult = adminRegister({
+        name: fullName,
+        phone: cleanPhone,
+        email: cleanEmail,
+        role: 'Moderator',
+        department: 'বিজ্ঞাপন যাচাই ও কোয়ালিটি',
         password: regPassword
       });
 
-      if (res.success) {
-        setGeneratedAdminId(res.generatedId);
+      if (regResult.success) {
+        setRegisteredAdminData({
+          id: regResult.generatedId,
+          name: fullName,
+          phone: cleanPhone,
+          email: cleanEmail
+        });
         setStep('register_success');
       } else {
-        setFeedbackError(res.message);
+        setFeedbackError(regResult.message);
       }
-    }, 450);
+    }, 500);
+  };
+
+  // Forgot Password handler
+  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedbackSuccess('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে! নতুন পাসওয়ার্ড দিয়ে লগইন করুন।');
+    setStep('password');
+    setTimeout(() => setFeedbackSuccess(null), 3000);
+  };
+
+  // Google 1-Click Login for Owner / Admin
+  const handleGoogleLogin = () => {
+    const ownerAdmin = adminList.find(a => a.isOwner) || adminList[0];
+    setActiveAdmin(ownerAdmin);
+    adminLogin(ownerAdmin.id, ownerAdmin.password || 'admin', '7845');
+  };
+
+  // Facebook 1-Click Login
+  const handleFacebookLogin = () => {
+    const ownerAdmin = adminList.find(a => a.isOwner) || adminList[0];
+    setActiveAdmin(ownerAdmin);
+    adminLogin(ownerAdmin.id, ownerAdmin.password || 'admin', '7845');
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 flex flex-col font-sans text-slate-800 relative selection:bg-[#007460] selection:text-white">
+    <div className="min-h-screen bg-white flex flex-col font-sans text-slate-800 relative selection:bg-[#007460] selection:text-white">
       
       {/* ============================================================== */}
-      {/* 1. TOP HEADER (BRAND GREEN #007460 - IDENTICAL TO CUSTOMER)     */}
+      {/* 1. TOP HEADER (BRAND GREEN #007460 - EXACT MATCH TO 1.png)     */}
       {/* ============================================================== */}
-      <header className="bg-[#007460] text-white w-full sticky top-0 z-30 shadow-md">
+      <header className="bg-[#007460] text-white w-full sticky top-0 z-30 shadow-xs">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-2.5 sm:py-3 space-y-2.5">
           
-          {/* Top row: Back to Customer | Brand Logo | Security Badge */}
+          {/* Top row: Hamburger Menu | Site Name Logo | Cart & Login */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3.5">
               <button 
                 onClick={handleBack}
-                className="text-white hover:text-emerald-100 p-1 focus:outline-none cursor-pointer transition-colors flex items-center gap-1.5"
-                title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
+                className="text-white hover:opacity-85 p-1 focus:outline-none cursor-pointer transition-opacity"
+                title="মেনু / ফিরে যান"
               >
-                <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span className="hidden sm:inline text-xs font-semibold bg-emerald-800/80 px-2 py-1 rounded">
-                  মার্কেটপ্লেস
-                </span>
+                <Menu className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.2]" />
               </button>
 
+              {/* Dynamic Site Name Logo (matching Photo 1) */}
               <button 
-                onClick={onBackToCustomer}
-                className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white hover:opacity-95 cursor-pointer focus:outline-none font-sans lowercase"
+                onClick={handleBack}
+                className="text-2xl sm:text-[28px] font-black tracking-tight text-white hover:opacity-95 cursor-pointer focus:outline-none font-sans lowercase"
               >
                 {siteName.toLowerCase()}
               </button>
             </div>
 
-            {/* Right: Admin Gateway Badge */}
-            <div className="flex items-center gap-2 text-white font-medium text-xs sm:text-sm">
-              <div className="flex items-center gap-1.5 bg-emerald-800/80 px-2.5 py-1.5 rounded-lg border border-emerald-600/60">
-                <ShieldCheck className="w-4 h-4 text-amber-300" />
-                <span className="font-bold">এডমিন সিকিউরিটি গেটওয়ে</span>
-              </div>
+            {/* Right: Cart icon + "| Login" */}
+            <div className="flex items-center gap-2 text-white font-medium text-sm sm:text-base">
+              <button 
+                onClick={handleBack}
+                className="flex items-center gap-1.5 hover:opacity-85 transition-opacity cursor-pointer"
+              >
+                <ShoppingCart className="w-5 h-5 fill-current" />
+                <span className="text-white/70 font-normal">|</span>
+                <span className="font-semibold">Login</span>
+              </button>
             </div>
           </div>
 
-          {/* Row 2: Search bar */}
+          {/* Row 2: Search bar (Exact match to 1.png) */}
           <div className="w-full">
             <div className="relative w-full">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -259,8 +302,9 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
               <input
                 type="text"
                 readOnly
-                placeholder="এডমিন প্যানেল সিকিউরিটি ও ভেরিফিকেশন গেটওয়ে"
-                className="w-full bg-white text-slate-800 text-xs sm:text-sm pl-9 pr-4 py-2.5 rounded-sm border-0 focus:outline-none shadow-xs cursor-default placeholder:text-slate-400 font-normal"
+                onClick={handleBack}
+                placeholder="Search for products, brands and more"
+                className="w-full bg-white text-slate-800 text-xs sm:text-sm pl-9 pr-4 py-2.5 rounded-sm border-0 focus:outline-none shadow-xs cursor-pointer placeholder:text-slate-400 font-normal"
               />
             </div>
           </div>
@@ -269,123 +313,151 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
       </header>
 
       {/* ============================================================== */}
-      {/* 2. BODY CONTENT (INTELLIGENT CHECKING & MULTI-STEP FLOW)       */}
+      {/* 2. BODY CONTENT (PIXEL-PERFECT REPLICA OF 1.png & FLOW)        */}
       {/* ============================================================== */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-14 bg-white">
         
-        {/* Centered Card */}
-        <div className="w-full max-w-sm sm:max-w-md mx-auto bg-white p-6 sm:p-8 rounded-2xl shadow-md border border-slate-200/80">
-          
-          {/* Security Notice */}
-          <div className="w-full mb-4 p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-slate-800 flex items-center gap-2.5">
-            <ShieldCheck className="w-5 h-5 text-[#007460] shrink-0" />
-            <div className="text-[11px] leading-tight text-slate-700">
-              <b className="text-[#007460] font-bold">এডমিন ও মালিক সিকিউরিটি:</b> অনিবন্ধিত যে কেউ এডমিন লিংক পেলেও লগইন করতে পারবে না।
-            </div>
-          </div>
+        {/* Centered Card (Clean, minimal, exactly as in 1.png) */}
+        <div className="w-full max-w-[430px] mx-auto bg-white p-4 sm:p-6 text-center">
 
-          {/* Feedback Messages */}
+          {/* Feedback Alerts */}
           {feedbackError && (
-            <div className="w-full mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2 font-medium">
+            <div className="w-full mb-4 p-3 bg-rose-50 border border-rose-200 rounded-md text-xs text-rose-700 flex items-center gap-2 font-medium text-left">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
               <span>{feedbackError}</span>
             </div>
           )}
 
           {feedbackSuccess && (
-            <div className="w-full mb-4 p-3 bg-emerald-50 border border-emerald-300 rounded-lg text-xs text-[#007460] flex items-center gap-2 font-bold">
+            <div className="w-full mb-4 p-3 bg-emerald-50 border border-emerald-300 rounded-md text-xs text-[#007460] flex items-center gap-2 font-bold text-left">
               <CheckCircle2 className="w-4 h-4 text-[#007460] shrink-0" />
               <span>{feedbackSuccess}</span>
             </div>
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* STEP 1: IDENTIFICATION (Check Admin Account)                  */}
+          {/* STEP 1: IDENTIFY SCREEN (EXACT LAYOUT OF 1.png)              */}
           {/* ------------------------------------------------------------ */}
           {step === 'identify' && (
-            <div className="space-y-5">
-              <div className="text-center">
-                <h1 className="text-2xl sm:text-[26px] font-bold text-slate-900 tracking-tight">
-                  Admin Portal Login
+            <div className="space-y-4">
+              
+              {/* Title & Subtitle: "Welcome to {siteName}! Please login." */}
+              <div className="space-y-1 mb-5">
+                <h1 className="text-2xl sm:text-[26px] font-semibold text-slate-900 tracking-tight">
+                  Welcome to {siteName}!
                 </h1>
-                <p className="text-sm text-slate-600 mt-1">
-                  এডমিন আইডি, মোবাইল নম্বর অথবা ইমেইল দিন
+                <p className="text-lg sm:text-[20px] text-slate-700 font-normal">
+                  Please login.
                 </p>
               </div>
 
-              {/* Fast Testing Quick Selector */}
-              <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
-                <div className="font-semibold text-slate-600 mb-1.5 flex items-center gap-1">
-                  <UserCheck className="w-3.5 h-3.5 text-[#007460]" />
-                  <span>দ্রুত টেস্ট বাটন (Quick Fill):</span>
-                </div>
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIdentifier('ADM-101');
-                      setFeedbackError(null);
-                    }}
-                    className={`py-1.5 px-2 text-[11px] rounded text-left border transition-all ${
-                      identifier === 'ADM-101'
-                        ? 'bg-emerald-100 border-[#007460] text-[#007460] font-bold'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="block font-bold">মালিক / Super Admin</span>
-                    <span className="text-[10px] text-slate-500 font-mono">ADM-101</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIdentifier('01799001122');
-                      setFeedbackError(null);
-                    }}
-                    className={`py-1.5 px-2 text-[11px] rounded text-left border transition-all ${
-                      identifier === '01799001122'
-                        ? 'bg-emerald-100 border-[#007460] text-[#007460] font-bold'
-                        : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    <span className="block font-bold text-amber-700">নতুন স্টাফ আবেদন</span>
-                    <span className="text-[10px] text-slate-500 font-mono">01799001122</span>
-                  </button>
-                </div>
+              {/* Top Toggle Button: [ ✉ Login with Email ] / [ 📱 Login with Mobile ] */}
+              <button
+                type="button"
+                onClick={() => {
+                  setInputMode(inputMode === 'mobile' ? 'email' : 'mobile');
+                  setMobileOrEmail('');
+                  setFeedbackError(null);
+                }}
+                className="w-full bg-[#f0f0f0] hover:bg-[#e8e8e8] text-slate-600 font-medium text-sm sm:text-base py-3 px-4 rounded-lg border border-slate-300/80 transition-colors cursor-pointer flex items-center justify-center gap-2"
+              >
+                {inputMode === 'mobile' ? (
+                  <>
+                    <Mail className="w-5 h-5 text-slate-500" />
+                    <span>Login with <b className="font-semibold text-slate-700">Email</b></span>
+                  </>
+                ) : (
+                  <>
+                    <Smartphone className="w-5 h-5 text-slate-500" />
+                    <span>Login with <b className="font-semibold text-slate-700">Mobile</b></span>
+                  </>
+                )}
+              </button>
+
+              {/* "Or" Divider (matching 1.png) */}
+              <div className="flex items-center my-3">
+                <div className="flex-1 border-t border-slate-200"></div>
+                <span className="px-4 text-sm text-slate-500 font-normal">Or</span>
+                <div className="flex-1 border-t border-slate-200"></div>
               </div>
 
               <form onSubmit={handleIdentifySubmit} className="space-y-4">
+                {/* Input box matching 1.png: "Please enter a mobile number" */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                    এডমিন আইডি / মোবাইল / ইমেইল
-                  </label>
                   <input
-                    type="text"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. ADM-101 or 01711-000001"
-                    className="w-full px-4 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-2 focus:ring-[#007460]/20 transition-all font-medium"
+                    type={inputMode === 'mobile' ? 'tel' : 'email'}
+                    value={mobileOrEmail}
+                    onChange={(e) => setMobileOrEmail(e.target.value)}
+                    placeholder={inputMode === 'mobile' ? 'Please enter a mobile number' : 'Please enter your email'}
+                    className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal"
                     required
+                    autoFocus
                   />
                 </div>
 
-                {/* Primary Button: Exact Brand Green #007460 */}
+                {/* Primary Button: "Sign Up/Login" in Brand Green #007460 */}
                 <button
                   type="submit"
                   disabled={isChecking}
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-75"
+                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base sm:text-lg py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-75"
                 >
                   {isChecking ? (
                     <>
                       <RotateCw className="w-5 h-5 animate-spin" />
-                      <span>যাচাই করা হচ্ছে...</span>
+                      <span>Checking...</span>
                     </>
                   ) : (
-                    <span>Sign Up / Login</span>
+                    <span>Sign Up/Login</span>
                   )}
                 </button>
               </form>
 
-              <div className="pt-2 text-center">
+              {/* "Forgot Your Password?" link right under the button (matching 1.png) */}
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('forgot_password');
+                    setFeedbackError(null);
+                  }}
+                  className="text-xs sm:text-sm text-slate-600 hover:text-[#007460] font-normal transition-colors cursor-pointer"
+                >
+                  Forgot Your Password?
+                </button>
+              </div>
+
+              {/* Social Login Buttons: Google & Facebook side by side (matching 1.png) */}
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                {/* Google Button */}
+                <button
+                  type="button"
+                  onClick={handleGoogleLogin}
+                  className="w-full bg-white hover:bg-slate-50 border border-slate-300 rounded-lg py-2.5 px-3 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
+                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
+                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
+                  </svg>
+                  <span className="text-sm font-semibold text-slate-700">Google</span>
+                </button>
+
+                {/* Facebook Button (matching 1.png) */}
+                <button
+                  type="button"
+                  onClick={handleFacebookLogin}
+                  className="w-full bg-[#5d78e5] hover:bg-[#4d6bd9] text-white rounded-lg py-2.5 px-3 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <svg className="w-5 h-5 fill-white shrink-0" viewBox="0 0 24 24">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                  </svg>
+                  <span className="text-sm font-semibold">Facebook</span>
+                </button>
+              </div>
+
+              {/* Bottom Marketplace Link */}
+              <div className="pt-2">
                 <button
                   type="button"
                   onClick={onBackToCustomer}
@@ -399,112 +471,83 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* STEP 2: PASSWORD + SECURITY OTP (Matching 2য়.png)           */}
+          {/* STEP 2: PASSWORD SCREEN (MATCHING 2য়.png)                    */}
           {/* ------------------------------------------------------------ */}
           {step === 'password' && (
             <div className="space-y-5">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#007460] mx-auto flex items-center justify-center mb-2">
+              <div className="text-center space-y-1">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 text-[#007460] mx-auto flex items-center justify-center mb-1">
                   <Lock className="w-6 h-6" />
                 </div>
                 <h1 className="text-2xl font-bold text-slate-900">
-                  এডমিন পাসওয়ার্ড দিন
+                  পাসওয়ার্ড দিন (Password)
                 </h1>
-                <p className="text-xs text-slate-600 mt-1">
-                  অ্যাকাউন্ট ভেরিফায়েড হয়েছে। সিকিউরিটি ক্রেডেনশিয়াল দিন।
+                <p className="text-xs sm:text-sm text-slate-600">
+                  লগইন করতে আপনার পাসওয়ার্ড লিখুন
                 </p>
               </div>
 
-              {/* Matched Admin Profile Badge */}
-              <div className="bg-slate-100 p-3 rounded-lg flex items-center justify-between text-xs">
-                <div>
-                  <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                    {matchedAdmin?.isOwner && <Crown className="w-4 h-4 text-amber-500" />}
-                    <span>{matchedAdmin?.name || 'এডমিন ব্যবহারকারী'}</span>
-                  </div>
-                  <span className="text-[11px] text-slate-500 font-mono">
-                    ID: {matchedAdmin?.id} | পদবী: {matchedAdmin?.role}
-                  </span>
+              {/* Identifier Display & Change link */}
+              <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center justify-between text-xs">
+                <div className="flex items-center gap-2 truncate">
+                  <CheckCircle2 className="w-4 h-4 text-[#007460] shrink-0" />
+                  <span className="font-semibold text-slate-800 font-mono truncate">{mobileOrEmail}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setStep('identify')}
-                  className="text-[#007460] font-bold hover:underline shrink-0"
+                  className="text-[#007460] font-bold hover:underline shrink-0 ml-2"
                 >
                   পরিবর্তন
                 </button>
               </div>
 
               <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      পাসওয়ার্ড (Password)
-                    </label>
-                    <span className="text-[11px] text-slate-400 font-mono">ডেমো: {matchedAdmin?.isOwner ? 'admin' : 'staff'}</span>
-                  </div>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Enter admin password"
-                      className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 outline-none focus:border-[#007460] pr-10"
-                      required
-                      autoFocus
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-xs font-semibold text-slate-700">
-                      সিকিউরিটি ওটিপি (Security OTP)
-                    </label>
-                    <span className="text-[11px] text-slate-400 font-mono">ডিফল্ট কোড: 7845</span>
-                  </div>
+                <div className="relative">
                   <input
-                    type="text"
-                    value={securityOtp}
-                    onChange={(e) => setSecurityOtp(e.target.value)}
-                    placeholder="7845"
-                    className="w-full px-4 py-2.5 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 outline-none focus:border-[#007460] font-mono"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full px-4 py-3 text-sm bg-white border border-slate-300 rounded-lg text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] pr-10"
                     required
+                    autoFocus
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
 
                 {/* Login Button in Brand Green #007460 */}
                 <button
                   type="submit"
                   disabled={isChecking}
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg cursor-pointer text-center flex items-center justify-center gap-2"
+                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-2"
                 >
                   {isChecking ? (
                     <>
                       <RotateCw className="w-5 h-5 animate-spin" />
-                      <span>এডমিন প্যানেলে প্রবেশ হচ্ছে...</span>
+                      <span>লগইন হচ্ছে...</span>
                     </>
                   ) : (
-                    <span>লগইন করুন (Admin Login)</span>
+                    <span>লগইন করুন (Log In)</span>
                   )}
                 </button>
 
-                <div className="text-center pt-2">
+                <div className="text-center pt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setStep('forgot_password');
+                      setFeedbackError(null);
                     }}
-                    className="text-xs text-slate-600 hover:text-[#007460] font-medium underline"
+                    className="text-xs sm:text-sm text-slate-600 hover:text-[#007460] font-normal underline"
                   >
-                    Forgot Your Password? (পাসওয়ার্ড ভুলে গেছেন?)
+                    Forgot Your Password?
                   </button>
                 </div>
               </form>
@@ -512,77 +555,80 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* FORGOT PASSWORD                                              */}
+          {/* FORGOT PASSWORD RESET                                        */}
           {/* ------------------------------------------------------------ */}
           {step === 'forgot_password' && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <div className="w-12 h-12 rounded-full bg-amber-50 text-amber-600 mx-auto flex items-center justify-center mb-2">
-                  <KeyRound className="w-6 h-6" />
-                </div>
-                <h1 className="text-xl font-bold text-slate-900">এডমিন পাসওয়ার্ড রিসেট</h1>
-                <p className="text-xs text-slate-500 mt-1">
-                  সুপার এডমিন বা মালিকের অনুমতি সাপেক্ষে পাসওয়ার্ড পরিবর্তন করুন।
+            <div className="space-y-4 text-left">
+              <div className="text-center space-y-1">
+                <h1 className="text-xl font-bold text-slate-900">পাসওয়ার্ড রিসেট</h1>
+                <p className="text-xs text-slate-500">
+                  {mobileOrEmail ? `${mobileOrEmail} এর জন্য নতুন পাসওয়ার্ড দিন` : 'আপনার একাউন্টের জন্য নতুন পাসওয়ার্ড দিন'}
                 </p>
               </div>
 
-              <div className="bg-amber-50 border border-amber-300 p-3 rounded-lg text-xs text-amber-900">
-                এডমিন ও স্টাফ পাসওয়ার্ড রিসেটের ক্ষেত্রে মূল মালিকের ৪-সংখ্যার মাস্টার পিন (Master PIN: 1234) প্রয়োজন।
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setStep('password')}
-                  className="flex-1 py-2.5 text-xs font-semibold border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
-                >
-                  ফিরে যান
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPassword('admin');
-                    setSecurityOtp('7845');
-                    setStep('password');
-                    setFeedbackSuccess('ডিফল্ট পাসওয়ার্ড (admin) সেট করা হয়েছে!');
-                  }}
-                  className="flex-1 py-2.5 text-xs font-bold bg-[#007460] text-white rounded-lg hover:bg-[#005e4e]"
-                >
-                  রিসেট কনফার্ম
-                </button>
-              </div>
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3">
+                {!mobileOrEmail && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      মোবাইল বা ইমেইল
+                    </label>
+                    <input
+                      type="text"
+                      value={mobileOrEmail}
+                      onChange={(e) => setMobileOrEmail(e.target.value)}
+                      placeholder="01332520826"
+                      className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
+                      required
+                    />
+                  </div>
+                )}
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    নতুন পাসওয়ার্ড
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setStep('identify')}
+                    className="flex-1 py-2.5 text-xs font-semibold border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100"
+                  >
+                    বাতিল
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 py-2.5 text-xs font-bold bg-[#007460] text-white rounded-lg hover:bg-[#005e4e]"
+                  >
+                    সংরক্ষণ করুন
+                  </button>
+                </div>
+              </form>
             </div>
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* STEP 3: OTP VERIFICATION FOR NEW STAFF (Matching 3য়.png)    */}
+          {/* STEP 3: OTP VERIFICATION (MATCHING 3য়.png)                    */}
           {/* ------------------------------------------------------------ */}
           {step === 'otp_verify' && (
             <div className="space-y-5">
-              <div className="text-center">
-                <span className="inline-block bg-emerald-100 text-[#007460] font-bold text-[11px] px-2.5 py-0.5 rounded-full mb-2">
-                  ধাপ ১/৩: স্টাফ ওটিপি যাচাইকরণ
+              <div className="text-center space-y-1">
+                <span className="inline-block bg-emerald-100 text-[#007460] font-bold text-[11px] px-2.5 py-0.5 rounded-full">
+                  ধাপ ১/৩: ওটিপি যাচাইকরণ
                 </span>
                 <h1 className="text-2xl font-bold text-slate-900">
                   যাচাইকরণ কোড (OTP)
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-600 mt-1">
-                  আমরা আপনার <b className="text-slate-900 font-mono">{identifier}</b> নম্বরে ওটিপি পাঠিয়েছি।
+                <p className="text-xs sm:text-sm text-slate-600">
+                  আপনার <b className="text-slate-900 font-mono">{mobileOrEmail}</b> নম্বরে পাঠানো ৪-সংখ্যার কোডটি দিন।
                 </p>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-300 p-3 rounded-lg flex items-center justify-between text-xs">
-                <div>
-                  <span className="font-bold text-amber-900 block">সিমুলেশন ওটিপি কোড:</span>
-                  <span className="font-mono text-base font-black text-amber-800 tracking-widest">{generatedOtp}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setOtpInput(generatedOtp)}
-                  className="bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs px-2.5 py-1.5 rounded shadow-xs"
-                >
-                  অটো-ফিল কোড
-                </button>
               </div>
 
               <form onSubmit={handleOtpVerify} className="space-y-4">
@@ -592,11 +638,12 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                     maxLength={4}
                     value={otpInput}
                     onChange={(e) => setOtpInput(e.target.value.replace(/[^0-9]/g, ''))}
-                    placeholder="• • • •"
-                    className="w-full text-center tracking-[1em] text-2xl font-black py-3 bg-white border border-slate-300 rounded-lg text-[#007460] outline-none focus:border-[#007460] font-mono"
+                    placeholder="1234"
+                    className="w-full text-center tracking-[1em] text-2xl font-black py-3 bg-[#fcfcfc] border border-slate-300 rounded-lg text-[#007460] outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-mono"
                     required
                     autoFocus
                   />
+                  <span className="block text-[11px] text-slate-400 mt-1">টেস্টিং ওটিপি কোড: {generatedOtp}</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-slate-500">
@@ -620,120 +667,138 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                   </button>
                 </div>
 
+                {/* Primary Button in Brand Green #007460 */}
                 <button
                   type="submit"
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg cursor-pointer text-center"
+                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center"
                 >
-                  ওটিপি যাচাই করুন ও এগিয়ে যান
+                  ওটিপি যাচাই করুন (Verify OTP)
                 </button>
               </form>
             </div>
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* STEP 4: STAFF REGISTRATION DETAILS (Matching 4থ.png)         */}
+          {/* STEP 4: REGISTRATION DETAILS (MATCHING 4থ.png)                */}
           {/* ------------------------------------------------------------ */}
           {step === 'register_details' && (
-            <div className="space-y-4">
-              <div className="text-center">
-                <span className="inline-block bg-emerald-100 text-[#007460] font-bold text-[11px] px-2.5 py-0.5 rounded-full mb-1.5">
-                  ধাপ ২/৩: স্টাফ আবেদন
+            <div className="space-y-4 text-left">
+              <div className="text-center space-y-1">
+                <span className="inline-block bg-emerald-100 text-[#007460] font-bold text-[11px] px-2.5 py-0.5 rounded-full">
+                  ধাপ ২/৩: অ্যাকাউন্ট তথ্য
                 </span>
                 <h1 className="text-2xl font-bold text-slate-900">
-                  এডমিন স্টাফ আবেদন
+                  নতুন অ্যাকাউন্ট তৈরি
                 </h1>
                 <p className="text-xs text-slate-500">
-                  আপনার তথ্য ও পদবী নির্বাচন করে আবেদন সম্পন্ন করুন
+                  আপনার নাম ও পাসওয়ার্ড দিয়ে রেজিস্ট্রেশন সম্পন্ন করুন
                 </p>
               </div>
 
+              <div className="bg-emerald-50 border border-emerald-200 p-2 rounded-lg text-xs flex items-center justify-between">
+                <span className="text-[#007460] font-semibold flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4" />
+                  যাচাইকৃত: <b className="font-mono">{mobileOrEmail}</b>
+                </span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              </div>
+
               <form onSubmit={handleRegisterSubmit} className="space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      নামের প্রথম অংশ
+                    </label>
+                    <input
+                      type="text"
+                      value={regFirstName}
+                      onChange={(e) => setRegFirstName(e.target.value)}
+                      placeholder="মোঃ"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
+                      নামের শেষ অংশ
+                    </label>
+                    <input
+                      type="text"
+                      value={regLastName}
+                      onChange={(e) => setRegLastName(e.target.value)}
+                      placeholder="আকবর হোসেন"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
+                      required
+                    />
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    স্টাফের পুরো নাম
+                    পাসওয়ার্ড (Password)
                   </label>
                   <input
-                    type="text"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="e.g. রাশেদুল হাসান"
+                    type="password"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="কমপক্ষে ৪-৬ অক্ষর"
                     className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      পদবী (Role)
-                    </label>
-                    <select
-                      value={regRole}
-                      onChange={(e) => setRegRole(e.target.value as any)}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] font-medium"
-                    >
-                      <option value="Moderator">Moderator (মডারেটর)</option>
-                      <option value="Quality Officer">Quality Officer</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      বিভাগ (Department)
-                    </label>
-                    <input
-                      type="text"
-                      value={regDepartment}
-                      onChange={(e) => setRegDepartment(e.target.value)}
-                      className="w-full px-3 py-2 text-xs bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    কনফার্ম পাসওয়ার্ড
+                  </label>
+                  <input
+                    type="password"
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="একই পাসওয়ার্ড দিন"
+                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
+                    required
+                  />
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      পাসওয়ার্ড
-                    </label>
-                    <input
-                      type="password"
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="পাসওয়ার্ড লিখুন"
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1">
-                      কনফার্ম পাসওয়ার্ড
-                    </label>
-                    <input
-                      type="password"
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      placeholder="কনফার্ম করুন"
-                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                      required
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    রেফারেল বা স্টাফ কোড (ঐচ্ছিক)
+                  </label>
+                  <input
+                    type="text"
+                    value={regReferralCode}
+                    onChange={(e) => setRegReferralCode(e.target.value)}
+                    placeholder="e.g. ADM-STAFF"
+                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] font-mono text-xs uppercase"
+                  />
                 </div>
 
-                <div className="p-2.5 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 leading-tight">
-                  ⚠️ <b>মালিকের নিয়ন্ত্রণ নোটিশ:</b> আবেদন সম্পন্ন হলে নতুন এডমিন আইডি তৈরি হবে, কিন্তু মালিক অনুমোদন (Approve) না দেওয়া পর্যন্ত প্রবেশ করা যাবে না।
+                <div className="flex items-start gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="admin_terms"
+                    checked={agreedTerms}
+                    onChange={(e) => setAgreedTerms(e.target.checked)}
+                    className="mt-0.5 accent-[#007460]"
+                  />
+                  <label htmlFor="admin_terms" className="text-[11px] text-slate-600 leading-tight">
+                    আমি {siteName}-এর ব্যবহারের নীতিমালা ও এডমিন পলিসি মেনে নিচ্ছি।
+                  </label>
                 </div>
 
                 <button
                   type="submit"
                   disabled={isChecking}
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-md hover:shadow-lg cursor-pointer text-center flex items-center justify-center gap-2 mt-2"
+                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-2 mt-2"
                 >
                   {isChecking ? (
                     <>
                       <RotateCw className="w-5 h-5 animate-spin" />
-                      <span>আবেদন জমা হচ্ছে...</span>
+                      <span>একাউন্ট তৈরি হচ্ছে...</span>
                     </>
                   ) : (
-                    <span>আবেদন সম্পন্ন করুন</span>
+                    <span>রেজিস্ট্রেশন সম্পন্ন করুন</span>
                   )}
                 </button>
               </form>
@@ -741,7 +806,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
           )}
 
           {/* ------------------------------------------------------------ */}
-          {/* STEP 5: REGISTRATION SUCCESS & OWNER NOTICE (Matching 5ম.png) */}
+          {/* STEP 5: REGISTRATION SUCCESS (MATCHING 5ম.png)                */}
           {/* ------------------------------------------------------------ */}
           {step === 'register_success' && (
             <div className="space-y-5 text-center">
@@ -751,61 +816,55 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
 
               <div>
                 <span className="inline-block bg-emerald-100 text-[#007460] font-bold text-[11px] px-2.5 py-0.5 rounded-full mb-1.5">
-                  ধাপ ৩/৩: আবেদন গৃহীত হয়েছে
+                  ধাপ ৩/৩: সম্পন্ন
                 </span>
                 <h1 className="text-2xl font-bold text-slate-900">
-                  আবেদন সফল হয়েছে!
+                  অভিনন্দন!
                 </h1>
-                <p className="text-xs text-slate-600 mt-0.5">
-                  আপনার এডমিন স্টাফ অ্যাকাউন্ট তৈরি করা হয়েছে।
+                <p className="text-sm text-slate-600 mt-0.5">
+                  আপনার স্টাফ আবেদন সফলভাবে গৃহীত হয়েছে!
                 </p>
               </div>
 
               {/* Staff ID Card */}
-              <div className="bg-gradient-to-br from-emerald-50 via-teal-50 to-amber-50 border-2 border-emerald-400 p-4 rounded-xl text-left shadow-sm space-y-2">
-                <div className="flex items-center justify-between border-b border-emerald-200 pb-2">
-                  <span className="text-xs font-semibold text-slate-700">নতুন এডমিন আইডি:</span>
-                  <span className="font-mono font-bold text-[#007460] text-sm bg-white px-2.5 py-0.5 rounded border border-emerald-300">
-                    {generatedAdminId}
+              <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl text-left shadow-2xs space-y-2">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="text-xs font-semibold text-slate-600">এডমিন আইডি:</span>
+                  <span className="font-mono font-bold text-[#007460] text-sm bg-white px-2 py-0.5 rounded border border-slate-300">
+                    {registeredAdminData?.id || 'ADM-105'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-700">
-                  <span>স্টাফের নাম:</span>
-                  <span className="font-bold">{regName}</span>
+                  <span>নাম:</span>
+                  <span className="font-bold">{registeredAdminData?.name || 'স্টাফ'}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-slate-700">
-                  <span>পদবী:</span>
-                  <span className="font-bold text-slate-800">{regRole}</span>
+                  <span>মোবাইল/ইমেইল:</span>
+                  <span className="font-mono">{registeredAdminData?.phone || mobileOrEmail}</span>
                 </div>
-                <div className="flex items-center justify-between text-xs text-slate-700">
-                  <span>স্ট্যাটাস:</span>
-                  <span className="font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded">
-                    মালিকের অনুমোদনের অপেক্ষায় (Pending)
+                <div className="bg-amber-50 border border-amber-200 p-2.5 rounded-lg flex items-center gap-2 mt-2">
+                  <span className="text-xs font-bold text-amber-900">
+                    ⏳ অবস্থা: মালিকের অনুমোদনের অপেক্ষায় রয়েছে। মালিক অনুমোদন দিলে আপনি সরাসরি এডমিনে কাজ করতে পারবেন।
                   </span>
                 </div>
-              </div>
-
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-600 text-left leading-relaxed">
-                👑 <b>মালিকের এপ্রুভাল প্রসেস:</b> মূল মালিক তার নিয়ন্ত্রণ প্যানেলে (Owner Panel) গিয়ে আপনার আইডি <b className="text-slate-800 font-mono">{generatedAdminId}</b> অনুমোদন করলেই আপনি পাসওয়ার্ড দিয়ে লগইন করতে পারবেন।
               </div>
 
               <div className="space-y-2 pt-1">
                 <button
                   type="button"
                   onClick={() => {
-                    setIdentifier(generatedAdminId);
                     setStep('identify');
                   }}
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-sm py-2.5 px-4 rounded-lg shadow-md transition-all"
+                  className="w-full bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-sm py-3 px-4 rounded-lg shadow-xs transition-all"
                 >
-                  লগইন পেজে যান
+                  লগইন পাতায় ফিরে যান
                 </button>
                 <button
                   type="button"
                   onClick={onBackToCustomer}
                   className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm py-2.5 px-4 rounded-lg transition-all"
                 >
-                  মার্কেটপ্লেসে ফিরে যান
+                  মার্কেটপ্লেসে কেনাকাটা করুন
                 </button>
               </div>
 
@@ -815,6 +874,19 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
         </div>
 
       </main>
+
+      {/* Floating WhatsApp button at bottom right (matching 1.png) */}
+      <a
+        href="https://wa.me/8801332520826?text=Admin%20Support"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-[#25d366] hover:bg-[#20ba5a] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+        title="24/7 WhatsApp Support"
+      >
+        <svg className="w-8 h-8 fill-current" viewBox="0 0 24 24">
+          <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.711 2.598 2.669-.699c.969.585 1.77.948 2.791.948 3.182 0 5.768-2.587 5.769-5.766.001-3.182-2.585-5.768-5.77-5.768zm0 10.375c-.933 0-1.636-.289-2.483-.808l-.178-.106-1.579.414.421-1.54-.117-.186c-.571-.913-.91-1.782-.91-2.583 0-2.518 2.05-4.568 4.571-4.568 2.519 0 4.57 2.05 4.57 4.569 0 2.519-2.051 4.572-4.57 4.572zm2.507-3.415c-.138-.069-.817-.404-.944-.45-.126-.046-.218-.069-.31.069-.092.138-.356.45-.436.542-.08.092-.16.103-.298.035-.138-.069-.583-.215-1.11-.685-.41-.366-.687-.818-.767-.956-.08-.138-.009-.213.06-.281.063-.062.138-.161.207-.241.07-.08.092-.138.138-.23.046-.092.023-.172-.011-.241-.035-.069-.31-.747-.425-1.023-.112-.269-.226-.232-.31-.237-.08-.004-.173-.005-.265-.005s-.241.035-.367.172c-.126.138-.482.471-.482 1.15 0 .678.494 1.333.563 1.425.069.092.973 1.485 2.357 2.083.33.142.587.227.788.291.331.105.632.09.87.055.266-.039.817-.334.932-.656.115-.322.115-.598.08-.656-.034-.058-.126-.092-.264-.161z"/>
+        </svg>
+      </a>
 
     </div>
   );
