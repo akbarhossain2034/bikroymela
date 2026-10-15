@@ -108,16 +108,6 @@ export const Header: React.FC = () => {
 
             <button
               onClick={() => {
-                setActiveModal('orderTracking');
-              }}
-              className="hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <Package className="w-4 h-4 text-emerald-200" />
-              <span>{t.orders}</span>
-            </button>
-
-            <button
-              onClick={() => {
                 setChatRecipient({ id: 'support-01', name: lang === 'bn' ? 'বিক্রয়মেলা হেল্পডেস্ক' : 'BikroyMela Support', phone: '09612-888999' });
                 setActiveModal('chat');
               }}
@@ -136,8 +126,8 @@ export const Header: React.FC = () => {
               <span>{lang === 'bn' ? 'পয়েন্ট ও অফার' : 'Points & Rewards'}</span>
             </button>
 
-            {/* Admin Switcher */}
-            {isAdminMode ? (
+            {/* Admin Switcher - only when already in Admin Mode */}
+            {isAdminMode && (
               <button
                 onClick={() => setIsAdminMode(false)}
                 className="px-2.5 py-1 text-xs font-bold rounded transition-colors flex items-center gap-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm cursor-pointer"
@@ -145,15 +135,6 @@ export const Header: React.FC = () => {
               >
                 <User className="w-3.5 h-3.5" />
                 <span>{t.switchToUser}</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAdminMode(true)}
-                className="px-2.5 py-1 text-xs font-semibold rounded transition-colors flex items-center gap-1.5 bg-emerald-800/80 hover:bg-emerald-700 text-emerald-100 hover:text-white cursor-pointer border border-emerald-700/50"
-                title={lang === 'bn' ? 'এডমিন ও মালিক লগইন পোর্টাল' : 'Admin & Owner Login'}
-              >
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-                <span>{lang === 'bn' ? 'এডমিন পোর্টাল' : 'Admin Portal'}</span>
               </button>
             )}
           </nav>
@@ -294,13 +275,6 @@ export const Header: React.FC = () => {
               {t.allAds}
             </button>
             <button
-              onClick={() => { setActiveModal('orderTracking'); setMobileMenuOpen(false); }}
-              className="text-left py-2 px-2 text-sm text-white hover:bg-emerald-800/50 rounded flex items-center justify-between"
-            >
-              <span>{t.orders}</span>
-              <Package className="w-4 h-4" />
-            </button>
-            <button
               onClick={() => {
                 setChatRecipient({ id: 'support-01', name: 'BikroyMela Support', phone: '09612-888999' });
                 setActiveModal('chat');
@@ -323,21 +297,13 @@ export const Header: React.FC = () => {
                 <LogOut className="w-4 h-4" />
               </button>
             )}
-            {isAdminMode ? (
+            {isAdminMode && (
               <button
                 onClick={() => { setIsAdminMode(false); setMobileMenuOpen(false); }}
                 className="text-left py-2 px-2 text-sm text-amber-300 font-semibold hover:bg-emerald-800/50 rounded flex items-center justify-between"
               >
                 <span>{t.switchToUser}</span>
                 <User className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={() => { setIsAdminMode(true); setMobileMenuOpen(false); }}
-                className="text-left py-2 px-2 text-sm text-emerald-200 font-semibold hover:bg-emerald-800/50 rounded flex items-center justify-between"
-              >
-                <span>এডমিন পোর্টাল</span>
-                <ShieldCheck className="w-4 h-4 text-emerald-300" />
               </button>
             )}
           </div>

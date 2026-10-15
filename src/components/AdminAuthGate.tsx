@@ -38,6 +38,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
   // Input Mode in 1.png: Toggle between Mobile and Email
   const [inputMode, setInputMode] = useState<'mobile' | 'email'>('mobile');
   const [mobileOrEmail, setMobileOrEmail] = useState('');
+  const [adminId, setAdminId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -93,13 +94,9 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setFeedbackError(null);
     setFeedbackSuccess(null);
 
-    const cleanInput = mobileOrEmail.trim();
+    const cleanInput = (adminId || mobileOrEmail).trim();
     if (!cleanInput) {
-      setFeedbackError(
-        inputMode === 'mobile' 
-          ? 'অনুগ্রহ করে আপনার মোবাইল নম্বর দিন।' 
-          : 'অনুগ্রহ করে আপনার ইমেইল এড্রেস দিন।'
-      );
+      setFeedbackError('অনুগ্রহ করে আপনার এডমিন আইডি (ID) অথবা মোবাইল/ইমেইল দিন।');
       return;
     }
 
@@ -108,6 +105,10 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setTimeout(() => {
       setIsChecking(false);
       
+      if (!mobileOrEmail && adminId) {
+        setMobileOrEmail(adminId);
+      }
+
       // Check admin list (includes ID, phone, email, owner email)
       const res = checkAdminExists(cleanInput);
 
@@ -141,7 +142,8 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setIsChecking(true);
     setTimeout(() => {
       setIsChecking(false);
-      const res = adminLogin(mobileOrEmail, password, '7845');
+      const targetQuery = (adminId || mobileOrEmail).trim();
+      const res = adminLogin(targetQuery, password, '7845');
       if (res.success) {
         setFeedbackSuccess(res.message);
       } else {
@@ -235,20 +237,6 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setFeedbackSuccess('পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে! নতুন পাসওয়ার্ড দিয়ে লগইন করুন।');
     setStep('password');
     setTimeout(() => setFeedbackSuccess(null), 3000);
-  };
-
-  // Google 1-Click Login for Owner / Admin
-  const handleGoogleLogin = () => {
-    const ownerAdmin = adminList.find(a => a.isOwner) || adminList[0];
-    setActiveAdmin(ownerAdmin);
-    adminLogin(ownerAdmin.id, ownerAdmin.password || 'admin', '7845');
-  };
-
-  // Facebook 1-Click Login
-  const handleFacebookLogin = () => {
-    const ownerAdmin = adminList.find(a => a.isOwner) || adminList[0];
-    setActiveAdmin(ownerAdmin);
-    adminLogin(ownerAdmin.id, ownerAdmin.password || 'admin', '7845');
   };
 
   return (
@@ -347,7 +335,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                   Welcome to {siteName}!
                 </h1>
                 <p className="text-lg sm:text-[20px] text-slate-700 font-normal">
-                  Please login.
+                  Please login (Admin)
                 </p>
               </div>
 
@@ -381,35 +369,53 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                 <div className="flex-1 border-t border-slate-200"></div>
               </div>
 
-              <form onSubmit={handleIdentifySubmit} className="space-y-4">
-                {/* Input box matching 1.png: "Please enter a mobile number" */}
+              <form onSubmit={handleIdentifySubmit} className="space-y-3.5">
+                {/* Input box matching 1.png: "Please enter a mobile number" / "Please enter your email" */}
                 <div>
                   <input
                     type={inputMode === 'mobile' ? 'tel' : 'email'}
                     value={mobileOrEmail}
-                    onChange={(e) => setMobileOrEmail(e.target.value)}
+                    onChange={(e) => {
+                      setMobileOrEmail(e.target.value);
+                      if (e.target.value) setAdminId('');
+                    }}
                     placeholder={inputMode === 'mobile' ? 'Please enter a mobile number' : 'Please enter your email'}
                     className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal"
-                    required
                     autoFocus
                   />
                 </div>
 
-                {/* Primary Button: "Sign Up/Login" in Brand Green #007460 */}
-                <button
-                  type="submit"
-                  disabled={isChecking}
-                  className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base sm:text-lg py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-75"
-                >
-                  {isChecking ? (
-                    <>
-                      <RotateCw className="w-5 h-5 animate-spin" />
-                      <span>Checking...</span>
-                    </>
-                  ) : (
-                    <span>Sign Up/Login</span>
-                  )}
-                </button>
+                {/* Single box named 'ID' replacing Google & Facebook, placed above Sign Up/Login */}
+                <div>
+                  <input
+                    type="text"
+                    value={adminId}
+                    onChange={(e) => {
+                      setAdminId(e.target.value);
+                      if (e.target.value) setMobileOrEmail('');
+                    }}
+                    placeholder="ID"
+                    className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal font-mono"
+                  />
+                </div>
+
+                {/* Primary Button: "Sign Up/Login" moved slightly downward */}
+                <div className="pt-2">
+                  <button
+                    type="submit"
+                    disabled={isChecking}
+                    className="w-full bg-[#007460] hover:bg-[#005e4e] active:bg-[#004b3e] text-white font-bold text-base sm:text-lg py-3 px-4 rounded-lg transition-all shadow-xs cursor-pointer text-center flex items-center justify-center gap-2 disabled:opacity-75"
+                  >
+                    {isChecking ? (
+                      <>
+                        <RotateCw className="w-5 h-5 animate-spin" />
+                        <span>Checking...</span>
+                      </>
+                    ) : (
+                      <span>Sign Up/Login</span>
+                    )}
+                  </button>
+                </div>
               </form>
 
               {/* "Forgot Your Password?" link right under the button (matching 1.png) */}
@@ -426,38 +432,8 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                 </button>
               </div>
 
-              {/* Social Login Buttons: Google & Facebook side by side (matching 1.png) */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                {/* Google Button */}
-                <button
-                  type="button"
-                  onClick={handleGoogleLogin}
-                  className="w-full bg-white hover:bg-slate-50 border border-slate-300 rounded-lg py-2.5 px-3 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#4285F4" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"/>
-                    <path fill="#34A853" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
-                    <path fill="#FBBC05" d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"/>
-                    <path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"/>
-                  </svg>
-                  <span className="text-sm font-semibold text-slate-700">Google</span>
-                </button>
-
-                {/* Facebook Button (matching 1.png) */}
-                <button
-                  type="button"
-                  onClick={handleFacebookLogin}
-                  className="w-full bg-[#5d78e5] hover:bg-[#4d6bd9] text-white rounded-lg py-2.5 px-3 flex items-center justify-center gap-2 shadow-2xs transition-colors cursor-pointer"
-                >
-                  <svg className="w-5 h-5 fill-white shrink-0" viewBox="0 0 24 24">
-                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
-                  </svg>
-                  <span className="text-sm font-semibold">Facebook</span>
-                </button>
-              </div>
-
               {/* Bottom Marketplace Link */}
-              <div className="pt-2">
+              <div className="pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={onBackToCustomer}
@@ -491,7 +467,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
               <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 truncate">
                   <CheckCircle2 className="w-4 h-4 text-[#007460] shrink-0" />
-                  <span className="font-semibold text-slate-800 font-mono truncate">{mobileOrEmail}</span>
+                  <span className="font-semibold text-slate-800 font-mono truncate">{adminId || mobileOrEmail}</span>
                 </div>
                 <button
                   type="button"

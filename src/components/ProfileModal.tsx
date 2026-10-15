@@ -489,24 +489,6 @@ export const ProfileModal: React.FC = () => {
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
 
-              {/* Admin Portal Shortcut */}
-              <button
-                onClick={() => {
-                  setActiveModal(null);
-                  setIsAdminMode(true);
-                }}
-                className="w-full px-4 py-3.5 text-left flex items-center justify-between text-[#007460] hover:bg-emerald-50 transition-colors font-bold cursor-pointer border-t border-slate-100"
-              >
-                <div className="flex items-center gap-3">
-                  <ShieldCheck className="w-4 h-4 text-[#007460]" />
-                  <div>
-                    <span className="block font-bold">Admin Portal (এডমিন প্যানেল)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">এডমিন ও মালিক নিয়ন্ত্রণ</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-emerald-400" />
-              </button>
-
               {/* 10. Log Out */}
               <button
                 onClick={() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
   Menu, 
@@ -12,10 +12,12 @@ import {
   EyeOff,
   Mail,
   Smartphone,
+  Phone,
   ShieldCheck,
   RotateCw,
   AlertCircle
 } from 'lucide-react';
+import { User } from '../types';
 
 interface AuthViewProps {
   onBackToHome?: () => void;
@@ -24,6 +26,7 @@ interface AuthViewProps {
 export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
   const { 
     siteName, 
+    setCurrentUser,
     setActiveModal, 
     checkCustomerExists,
     customerLogin,
@@ -41,8 +44,10 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
   // 4. 'otp_verify' (Step 1 of Registration: OTP verification matching 3য়.png)
   // 5. 'register_details' (Step 2 of Registration: Name, Password setup matching 4থ.png)
   // 6. 'register_success' (Step 3 of Registration: Success & Bonus matching 5ম.png)
+  // 7. 'guest_login' (Guest login matching 2য়.png with password blocked)
+  // 8. 'guest_otp' (Guest 4-digit OTP matching 3য়.png & 4থ.png with 5-minute timer)
   const [step, setStep] = useState<
-    'identify' | 'password' | 'forgot_password' | 'otp_verify' | 'register_details' | 'register_success'
+    'identify' | 'password' | 'forgot_password' | 'otp_verify' | 'register_details' | 'register_success' | 'guest_login' | 'guest_otp'
   >('identify');
 
   // Input Mode in 1.png: Toggle between Mobile and Email
@@ -53,6 +58,129 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
   const [isChecking, setIsChecking] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
+
+  // Guest flow states (matching 2য়.png, 3য়.png, 4থ.png)
+  const [guestMobile, setGuestMobile] = useState('01332520826');
+  const [guestOtpDigits, setGuestOtpDigits] = useState<string[]>(['', '', '', '']);
+  const [generatedGuestOtp, setGeneratedGuestOtp] = useState('3837');
+  const [guestOtpTimer, setGuestOtpTimer] = useState(300); // 5 minutes (300s)
+  const [canResendGuestOtp, setCanResendGuestOtp] = useState(false);
+  const otp0Ref = useRef<HTMLInputElement>(null);
+  const otp1Ref = useRef<HTMLInputElement>(null);
+  const otp2Ref = useRef<HTMLInputElement>(null);
+  const otp3Ref = useRef<HTMLInputElement>(null);
+  const guestOtpRefs = [otp0Ref, otp1Ref, otp2Ref, otp3Ref];
+
+  // Format MM:SS for 5-minute countdown
+  const formatTimer = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  };
+
+  // Guest OTP 5-minute countdown (300 seconds)
+  useEffect(() => {
+    let timer: any;
+    if (step === 'guest_otp' && guestOtpTimer > 0) {
+      timer = setInterval(() => {
+        setGuestOtpTimer(prev => prev - 1);
+      }, 1000);
+    } else if (guestOtpTimer === 0) {
+      setCanResendGuestOtp(true);
+    }
+    return () => clearInterval(timer);
+  }, [step, guestOtpTimer]);
+
+  const handleDigitChange = (index: number, val: string) => {
+    const digit = val.replace(/[^0-9]/g, '').slice(-1);
+    const newDigits = [...guestOtpDigits];
+    newDigits[index] = digit;
+    setGuestOtpDigits(newDigits);
+    setFeedbackError(null);
+    if (digit && index < 3) {
+      guestOtpRefs[index + 1].current?.focus();
+    }
+  };
+
+  const handleDigitKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !guestOtpDigits[index] && index > 0) {
+      guestOtpRefs[index - 1].current?.focus();
+    }
+  };
+
+  const handleGuestLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanNumber = guestMobile.trim();
+    if (!cleanNumber || cleanNumber.replace(/[^0-9]/g, '').length < 11) {
+      setFeedbackError('অনুগ্রহ করে সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন।');
+      return;
+    }
+    setFeedbackError(null);
+    setFeedbackSuccess(null);
+    const randomCode = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedGuestOtp(randomCode);
+    setGuestOtpDigits(['', '', '', '']);
+    setGuestOtpTimer(300); // 5 minutes
+    setCanResendGuestOtp(false);
+    setStep('guest_otp');
+  };
+
+  const handleResendGuestOtp = () => {
+    const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+    setGeneratedGuestOtp(newCode);
+    setGuestOtpDigits(['', '', '', '']);
+    setGuestOtpTimer(300); // 5 minutes
+    setCanResendGuestOtp(false);
+    setFeedbackSuccess(`নতুন ৪-সংখ্যার ওটিপি পাঠানো হয়েছে: ${newCode}`);
+    setTimeout(() => setFeedbackSuccess(null), 3000);
+  };
+
+  const handleGuestOtpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const entered = guestOtpDigits.join('');
+    if (entered.length < 4) {
+      setFeedbackError('অনুগ্রহ করে ৪ ডিজিটের ওটিপি নম্বরটি পূরণ করুন।');
+      return;
+    }
+    if (entered !== generatedGuestOtp && entered !== '3837' && entered !== '1234') {
+      setFeedbackError(`ভুল ওটিপি কোড! ডেমো কোড: ${generatedGuestOtp}`);
+      return;
+    }
+
+    const cleanDigits = guestMobile.replace(/[^0-9]/g, '');
+    const guestId = `GUEST-${cleanDigits.slice(-5) || Math.floor(10000 + Math.random() * 90000)}`;
+    const guestUser: User = {
+      id: guestId,
+      name: `গেস্ট ক্রেতা (${guestMobile.slice(-4)})`,
+      firstName: 'গেস্ট',
+      lastName: 'ক্রেতা',
+      phone: guestMobile,
+      email: `${cleanDigits}@guest.bikroymela.com`,
+      avatar: '',
+      address: 'মিরপুর, ঢাকা',
+      permanentAddress: '',
+      role: 'user',
+      isPhoneVerified: true,
+      isNidVerified: false,
+      memberSince: new Date().getFullYear().toString(),
+      district: 'Dhaka',
+      walletBalance: 0,
+      rewardPoints: 50,
+      freeAdsCount: 1,
+      referralCode: `REF-${guestId}`
+    };
+
+    setCurrentUser(guestUser);
+    try {
+      localStorage.removeItem('bikroy_user_logged_out');
+      localStorage.setItem('bikroy_user', JSON.stringify(guestUser));
+    } catch {}
+
+    setFeedbackSuccess('🎉 গেস্ট ভেরিফিকেশন সফল হয়েছে! এখন পাসওয়ার্ড ছাড়াই যেকোনো পণ্য কেনাকাটা বা বিজ্ঞাপন দিতে পারবেন।');
+    setTimeout(() => {
+      setActiveModal(null);
+    }, 600);
+  };
 
   // OTP state for registration & reset (matching 3য়.png)
   const [generatedOtp, setGeneratedOtp] = useState('1234');
@@ -85,6 +213,12 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
   }, [step, otpTimer]);
 
   const handleBack = () => {
+    if (step === 'guest_otp') {
+      setStep('guest_login');
+      setFeedbackError(null);
+      setFeedbackSuccess(null);
+      return;
+    }
     if (step !== 'identify') {
       setStep('identify');
       setFeedbackError(null);
@@ -450,17 +584,32 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
                 </button>
               </form>
 
-              {/* "Forgot Your Password?" link right under the button (matching 1.png) */}
-              <div className="pt-1">
+              {/* "Forgot Your Password? / Guest?" link right under the button (matching user request) */}
+              <div className="pt-1 flex items-center justify-center gap-1.5 text-xs sm:text-sm text-slate-600">
                 <button
                   type="button"
                   onClick={() => {
                     setStep('forgot_password');
                     setFeedbackError(null);
                   }}
-                  className="text-xs sm:text-sm text-slate-600 hover:text-[#007460] font-normal transition-colors cursor-pointer"
+                  className="hover:text-[#007460] font-normal transition-colors cursor-pointer"
                 >
                   Forgot Your Password?
+                </button>
+                <span className="text-slate-400 font-semibold select-none">/</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = mobileOrEmail.replace(/[^0-9]/g, '');
+                    setGuestMobile(clean.length >= 11 ? mobileOrEmail : '01332520826');
+                    setFeedbackError(null);
+                    setFeedbackSuccess(null);
+                    setStep('guest_login');
+                  }}
+                  className="text-amber-700 hover:text-amber-800 font-bold transition-colors cursor-pointer hover:underline"
+                  title="পাসওয়ার্ড ছাড়া দ্রুত গেস্ট কেনাকাটা ও বিক্রয়"
+                >
+                  Guest?
                 </button>
               </div>
 
@@ -494,6 +643,192 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
                 </button>
               </div>
 
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* GUEST SCREEN 1: LOGIN (MATCHING 2য়.png)                      */}
+          {/* Password is BLOCKED and Forgot Password is BLOCKED           */}
+          {/* ============================================================ */}
+          {step === 'guest_login' && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden text-left">
+              {/* Card Header matching 2য়.png */}
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="text-xl font-bold text-slate-900">Login</h2>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Back button matching 2য়.png */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('identify');
+                    setFeedbackError(null);
+                  }}
+                  className="text-sm font-bold text-sky-500 hover:text-sky-600 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span>← Back</span>
+                </button>
+
+                <form onSubmit={handleGuestLoginSubmit} className="space-y-5 pt-1">
+                  {/* Mobile Number input matching 2য়.png */}
+                  <div>
+                    <label className="block text-sm font-bold text-slate-900 mb-1.5">
+                      Mobile Number
+                    </label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Phone className="w-4 h-4" />
+                      </div>
+                      <input
+                        type="tel"
+                        value={guestMobile}
+                        onChange={(e) => setGuestMobile(e.target.value)}
+                        placeholder="01332520826"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 text-base outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500 font-medium"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password Field - BLOCKED/DISABLED FOR GUEST as requested */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-sm font-bold text-slate-900">
+                        Password
+                      </label>
+                      <span className="text-[11px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        পাসওয়ার্ড ব্লক (Guest Mode)
+                      </span>
+                    </div>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <Lock className="w-4 h-4 text-slate-400" />
+                      </div>
+                      <input
+                        type="text"
+                        disabled
+                        value="•••••••• (গেস্টদের পাসওয়ার্ড প্রয়োজন নেই)"
+                        className="w-full pl-10 pr-10 py-3 bg-slate-100 border border-slate-200 rounded-lg text-slate-400 text-xs sm:text-sm cursor-not-allowed select-none font-medium"
+                        readOnly
+                      />
+                      <div className="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-300">
+                        <EyeOff className="w-4 h-4" />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      * গেস্ট হিসেবে পণ্য ক্রয় বা বিক্রয়ের জন্য পাসওয়ার্ড প্রয়োজন নেই।
+                    </p>
+                  </div>
+
+                  {/* Forgot Your Password? BLOCKED/CLOSED as requested */}
+                  <div className="flex justify-end pt-0.5">
+                    <span className="text-xs text-slate-300 line-through select-none cursor-not-allowed">
+                      Forgot Your Password? (বন্ধ)
+                    </span>
+                  </div>
+
+                  {/* Login Button matching 2য়.png vibrant button */}
+                  <button
+                    type="submit"
+                    className="w-full bg-[#ff5722] hover:bg-[#f4511e] active:bg-[#e64a19] text-white font-bold text-lg py-3 px-4 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer text-center"
+                  >
+                    Login
+                  </button>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* ============================================================ */}
+          {/* GUEST SCREEN 2: OTP VERIFICATION (MATCHING 3য়.png & 4থ.png)   */}
+          {/* 4 separate boxes, 5-minute timer (4:50, 1:16 style)          */}
+          {/* ============================================================ */}
+          {step === 'guest_otp' && (
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm overflow-hidden text-left">
+              {/* Card Header matching 3য়.png */}
+              <div className="px-6 py-4 border-b border-slate-100">
+                <h2 className="text-xl font-bold text-slate-900">Login</h2>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Back button matching 3য়.png */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('guest_login');
+                    setFeedbackError(null);
+                  }}
+                  className="text-sm font-bold text-sky-500 hover:text-sky-600 flex items-center gap-1 cursor-pointer transition-colors"
+                >
+                  <span>← Back</span>
+                </button>
+
+                {/* Inner verification box matching 3য়.png & 4থ.png */}
+                <div className="bg-[#f8fafc] border border-slate-200/90 rounded-2xl p-6 sm:p-8 text-center space-y-5">
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                      Enter 4-Digit Verification Code
+                    </h3>
+                    <p className="text-sm text-slate-600 mt-1">
+                      Code sent to <b className="text-slate-900 font-bold">{guestMobile}</b>
+                    </p>
+                  </div>
+
+                  {/* 4-Digit Separate Boxes matching 3য়.png & 4থ.png */}
+                  <div className="flex items-center justify-center gap-3 sm:gap-4 py-2">
+                    {[0, 1, 2, 3].map((index) => (
+                      <input
+                        key={index}
+                        ref={guestOtpRefs[index]}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={guestOtpDigits[index]}
+                        onChange={(e) => handleDigitChange(index, e.target.value)}
+                        onKeyDown={(e) => handleDigitKeyDown(index, e)}
+                        className={`w-14 h-16 sm:w-16 sm:h-20 bg-white border-2 rounded-xl text-center text-2xl sm:text-3xl font-black text-slate-900 outline-none transition-all shadow-xs ${
+                          guestOtpDigits[index] 
+                            ? 'border-sky-500 ring-2 ring-sky-200 bg-sky-50/20' 
+                            : 'border-slate-300 focus:border-sky-500 focus:ring-2 focus:ring-sky-200'
+                        }`}
+                        autoFocus={index === 0}
+                      />
+                    ))}
+                  </div>
+
+                  {/* 5-minute countdown timer matching 3য়.png & 4থ.png */}
+                  <div className="text-sm text-slate-600 font-medium pt-1">
+                    {canResendGuestOtp ? (
+                      <button
+                        type="button"
+                        onClick={handleResendGuestOtp}
+                        className="text-sky-600 font-bold hover:underline cursor-pointer"
+                      >
+                        Resend code
+                      </button>
+                    ) : (
+                      <span>
+                        Resend code in <b className="text-sky-600 font-bold font-mono">{formatTimer(guestOtpTimer)}</b>
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-slate-400 bg-slate-100/90 py-1.5 px-3 rounded-lg inline-block font-mono">
+                    টেস্টিং ডেমো ওটিপি কোড: <b className="text-slate-700">{generatedGuestOtp}</b>
+                  </div>
+                </div>
+
+                {/* Verify OTP Button matching 3য়.png & 4থ.png vibrant button */}
+                <button
+                  type="button"
+                  onClick={handleGuestOtpSubmit}
+                  className="w-full bg-[#ff5722] hover:bg-[#f4511e] active:bg-[#e64a19] text-white font-bold text-lg py-3.5 px-4 rounded-lg shadow-sm hover:shadow transition-all cursor-pointer text-center"
+                >
+                  Verify OTP
+                </button>
+              </div>
             </div>
           )}
 
