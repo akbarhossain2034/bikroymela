@@ -113,6 +113,7 @@ export interface User {
   dob?: string;
   gender?: string;
   role: 'user' | 'seller' | 'admin';
+  password?: string;
   loginMethod?: 'phone' | 'email' | 'facebook' | 'google';
   isPhoneVerified: boolean;
   isNidVerified: boolean;

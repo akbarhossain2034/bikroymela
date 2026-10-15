@@ -13,6 +13,7 @@ import { AuthModal } from './components/AuthModal';
 import { AuthView } from './components/AuthView';
 import { ProfileModal } from './components/ProfileModal';
 import { AdminDashboard } from './components/AdminDashboard';
+import { AdminAuthGate } from './components/AdminAuthGate';
 import { MobileNav } from './components/MobileNav';
 import { Footer } from './components/Footer';
 import { WhatsAppSupportWidget } from './components/WhatsAppSupportWidget';
@@ -47,6 +48,8 @@ const MainMarketplace: React.FC = () => {
     setPriceRange,
     resetFilters,
     isAdminMode,
+    setIsAdminMode,
+    isAdminAuthenticated,
     activeModal,
     selectedAd,
     adToDelete,
@@ -55,6 +58,9 @@ const MainMarketplace: React.FC = () => {
   } = useApp();
 
   if (isAdminMode) {
+    if (!isAdminAuthenticated) {
+      return <AdminAuthGate onBackToCustomer={() => setIsAdminMode(false)} />;
+    }
     return <AdminDashboard />;
   }
 

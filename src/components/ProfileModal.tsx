@@ -45,6 +45,7 @@ export const ProfileModal: React.FC = () => {
     lang, 
     currentUser, 
     setCurrentUser, 
+    customerLogout,
     setActiveModal, 
     ads, 
     orders, 
@@ -491,9 +492,7 @@ export const ProfileModal: React.FC = () => {
               <button
                 onClick={() => {
                   if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিত যে লগআউট করতে চান?' : 'Are you sure you want to log out?')) {
-                    localStorage.removeItem('bikroy_user');
-                    setCurrentUser(null);
-                    setActiveModal(null);
+                    customerLogout();
                   }
                 }}
                 className="w-full px-4 py-3.5 text-left flex items-center justify-between text-rose-600 hover:bg-rose-50 transition-colors font-bold cursor-pointer"

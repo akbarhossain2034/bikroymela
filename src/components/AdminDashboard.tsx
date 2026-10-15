@@ -97,10 +97,19 @@ export const AdminDashboard: React.FC = () => {
     adminDeletionLogs,
     pruneExpiredAds,
     setIsOffersModalOpen,
-    setIsPolicyModalOpen
+    setIsPolicyModalOpen,
+    isAdminAuthenticated,
+    adminLogout,
+    activeAdmin,
+    isOwnerUnlocked,
+    setIsOwnerUnlocked
   } = useApp();
 
-  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers'>('ads');
+  if (!isAdminAuthenticated) {
+    return <AdminAuthGate onBackToCustomer={() => setIsAdminMode(false)} />;
+  }
+
+  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers' | 'owner' | 'audit'>('ads');
   const [filterAdStatus, setFilterAdStatus] = useState<string>('all');
   const [adminSearch, setAdminSearch] = useState<string>('');
   const [copiedCustomerLink, setCopiedCustomerLink] = useState(false);
@@ -335,53 +344,91 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-slate-100 text-slate-800 pb-16">
       
       {/* Admin Top Navigation Bar */}
-      <div className="bg-slate-900 text-white border-b border-slate-800 px-4 sm:px-6 py-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="bg-[#007460] text-white border-b border-[#005e4e] px-4 sm:px-6 py-4 shadow-md">
+        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold">
+            <div className="w-10 h-10 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight">
+                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
                   {siteName} {lang === 'bn' ? 'কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল' : 'Central Admin Control Panel'}
                 </h1>
-                <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded uppercase">
-                  SUPER ADMIN
+                <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded uppercase flex items-center gap-1 shadow-xs">
+                  {activeAdmin?.isOwner && <Crown className="w-3 h-3 text-slate-950" />}
+                  <span>{activeAdmin?.role ? activeAdmin.role.toUpperCase() : 'SUPER ADMIN'}</span>
                 </span>
+
+                {activeAdmin && (
+                  <span className="text-[11px] font-semibold bg-black/20 text-emerald-100 border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
+                    <span>{activeAdmin.name} ({activeAdmin.id})</span>
+                  </span>
+                )}
+
                 <button 
                   onClick={() => setActiveTab('settings')}
-                  className="text-[11px] font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-500/50 hover:border-emerald-400 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="text-[11px] font-semibold bg-black/20 hover:bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="ক্লিক করে সাইট ও ডোমেইন নাম পরিবর্তন করুন"
                 >
-                  <Globe className="w-3 h-3 text-emerald-400" />
-                  <span>সাইট: <strong className="text-white">{siteName}</strong></span>
+                  <Globe className="w-3 h-3 text-emerald-300" />
+                  <span>সাইট: <strong className="text-amber-300">{siteName}</strong></span>
                   <span className="text-[9px] underline text-emerald-200">পরিবর্তন</span>
                 </button>
 
                 <button 
                   onClick={() => setActiveTab('backup')}
-                  className="text-[11px] font-semibold bg-blue-950/80 text-blue-300 border border-blue-500/50 hover:border-blue-400 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
+                  className="text-[11px] font-semibold bg-black/20 hover:bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
                   title="ডাটা ব্যাকআপ ও ডাউনলোড করুন"
                 >
                   <Database className="w-3 h-3 text-cyan-300" />
                   <span>💾 ব্যাকআপ: <strong className="text-white">ডাউনলোড</strong></span>
                 </button>
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-emerald-100 mt-0.5">
                 {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো সিকিউরিটি ব্যবস্থাপনা' : 'Ad Moderation, Escrow Monitoring & Platform Governance'}
               </p>
             </div>
           </div>
 
-          <button
-            onClick={() => setIsAdminMode(false)}
-            className="self-start sm:self-center px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors border border-slate-700"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>{t.switchToUser}</span>
-          </button>
+          <div className="flex items-center gap-2 flex-wrap self-start lg:self-center">
+            {/* Quick button to jump to (C) Owner Master Control */}
+            <button
+              onClick={() => setActiveTab('owner')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                activeTab === 'owner'
+                  ? 'bg-amber-400 text-slate-950 font-black'
+                  : 'bg-black/25 hover:bg-black/35 text-amber-300 border border-amber-300/40'
+              }`}
+              title="মালিকের ৪ ডিজিট পিন দ্বারা বিশেষ নিয়ন্ত্রণ ও লাভ-ক্ষতি প্যানেল"
+            >
+              <Crown className="w-3.5 h-3.5 text-amber-300" />
+              <span>মালিকের নিয়ন্ত্রণ (PIN)</span>
+              {!isOwnerUnlocked && <Lock className="w-3 h-3 text-amber-300" />}
+            </button>
+
+            {/* Switch to public customer view */}
+            <button
+              onClick={() => setIsAdminMode(false)}
+              className="px-3 py-1.5 bg-black/20 hover:bg-black/30 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer"
+              title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>{t.switchToUser}</span>
+            </button>
+
+            {/* Secure Admin Logout Button */}
+            <button
+              onClick={adminLogout}
+              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
+              title="এডমিন সেশন সমাপ্ত করে সম্পূর্ণ লগআউট করুন (পরবর্তীতে প্রবেশ করতে ওটিপি লাগবে)"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>লগআউট</span>
+            </button>
+          </div>
 
         </div>
       </div>
@@ -449,8 +496,10 @@ export const AdminDashboard: React.FC = () => {
                     কন্ট্রোল ও এসক্রো
                   </span>
                 </div>
-                <p className="text-[11px] text-amber-800 mt-1">
-                  {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো রিলিজ করতে এই লিংক ব্যবহার করুন।' : 'Use this URL to access full admin controls directly.'}
+                <p className="text-[11px] text-amber-900 mt-1 font-medium">
+                  {lang === 'bn' 
+                    ? '🔒 এই লিংকে প্রবেশ করলে সুরক্ষিত সিকিউরিটি গেট প্রদর্শিত হবে। আইডি, পাসওয়ার্ড ও ওটিপি ভেরিফিকেশন ছাড়া কেউ কোনো তথ্য দেখতে পারবে না।' 
+                    : '🔒 Protected Gateway: Requires Admin ID, Password & OTP verification to view any data.'}
                 </p>
                 <div className="mt-2 p-2 bg-white rounded border border-amber-200 font-mono text-xs text-slate-800 break-all select-all">
                   {adminUrl || '/?admin=true'}
@@ -569,6 +618,29 @@ export const AdminDashboard: React.FC = () => {
             >
               <Users className="w-4 h-4" />
               <span>{t.userVerification}</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab('owner')}
+              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
+                activeTab === 'owner' ? 'border-amber-500 text-amber-950 font-black bg-amber-50/90 shadow-2xs' : 'border-transparent text-amber-800 hover:text-amber-950 bg-amber-50/30'
+              }`}
+              title="মালিকের ৪ ডিজিট পিন সুরক্ষা ও অভ্যন্তরীণ আর্থিক লাভ-ক্ষতি প্যানেল"
+            >
+              <Crown className="w-4 h-4 text-amber-600" />
+              <span>👑 (C) মালিকের নিয়ন্ত্রণ প্যানেল</span>
+              {!isOwnerUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
+            </button>
+
+            <button
+              onClick={() => setActiveTab('audit')}
+              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
+                activeTab === 'audit' ? 'border-[#007460] text-[#007460] font-bold bg-white shadow-2xs' : 'border-transparent text-slate-600 hover:text-slate-900'
+              }`}
+              title="কর্মকর্তারা কোন বিজ্ঞাপনে কি অনুমোদন দিয়েছেন তার স্থায়ী অডিট রেকর্ড"
+            >
+              <FileCheck className="w-4 h-4 text-emerald-600" />
+              <span>📋 এডমিন অডিট ও অ্যাকশন হিস্ট্রি লগ</span>
             </button>
 
             <button
@@ -1927,7 +1999,7 @@ export const AdminDashboard: React.FC = () => {
                       </div>
                       
                       {/* Mini Mock Header */}
-                      <div className="bg-[#008ecc] text-white p-2.5 rounded shadow-xs flex items-center justify-between">
+                      <div className="bg-[#007460] text-white p-2.5 rounded shadow-xs flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <div className="w-3.5 h-3.5 border-t-2 border-b-2 border-white"></div>
                           <span className="font-extrabold text-sm lowercase tracking-tight">
@@ -2996,6 +3068,12 @@ export const AdminDashboard: React.FC = () => {
 
             </div>
           )}
+
+          {/* TAB 9: (C) OWNER MASTER CONTROL PANEL (মালিকের বিশেষ নিয়ন্ত্রণ ও অভ্যন্তরীণ হিসাব) */}
+          {activeTab === 'owner' && <AdminOwnerControlPanel />}
+
+          {/* TAB 10: AUDIT & ACTION HISTORY LOGS (এডমিন অ্যাকশন ও অডিট হিস্ট্রি লগ) */}
+          {activeTab === 'audit' && <AdminAuditLogsTab />}
 
         </div>
 

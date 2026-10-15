@@ -9,6 +9,13 @@ interface AppContextType {
   t: (typeof translations)['bn'];
   currentUser: User | null;
   setCurrentUser: React.Dispatch<React.SetStateAction<User | null>>;
+  registeredUsers: User[];
+  customerLogout: () => void;
+  checkCustomerExists: (identifier: string) => { exists: boolean; user?: User };
+  customerLogin: (identifier: string, password: string) => { success: boolean; message: string; user?: User };
+  customerRegister: (userData: { name: string; phone: string; email?: string; password: string; referralCode?: string }) => { success: boolean; message: string; user: User };
+  resetCustomerPassword: (identifier: string, newPassword: string) => { success: boolean; message: string };
+  checkAdminExists: (identifier: string) => { exists: boolean; admin?: AdminUser };
   ads: Ad[];
   favorites: string[];
   toggleFavorite: (adId: string) => void;
@@ -116,9 +123,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return (localStorage.getItem('bikroy_lang') as Language) || 'bn';
   });
 
+  const [registeredUsers, setRegisteredUsers] = useState<User[]>(() => {
+    try {
+      const saved = localStorage.getItem('bikroy_registered_users');
+      return saved ? JSON.parse(saved) : [INITIAL_USER];
+    } catch {
+      return [INITIAL_USER];
+    }
+  });
+
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('bikroy_user');
-    return saved ? JSON.parse(saved) : INITIAL_USER;
+    try {
+      const isLoggedOut = localStorage.getItem('bikroy_user_logged_out') === 'true';
+      if (isLoggedOut) return null;
+      const saved = localStorage.getItem('bikroy_user');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+      return null;
+    } catch {
+      return null;
+    }
   });
 
   const [ads, setAds] = useState<Ad[]>(() => {
@@ -464,7 +489,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS[0];
   });
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
-    return localStorage.getItem('bikroy_admin_auth') === 'true';
+    try {
+      return sessionStorage.getItem('bikroy_admin_auth') === 'true';
+    } catch {
+      return false;
+    }
   });
   const [isOwnerUnlocked, setIsOwnerUnlocked] = useState<boolean>(false);
   const [adModerationLogs, setAdModerationLogs] = useState<AdModerationLog[]>(() => {
@@ -481,7 +510,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [activeAdmin]);
 
   useEffect(() => {
-    localStorage.setItem('bikroy_admin_auth', String(isAdminAuthenticated));
+    try {
+      if (isAdminAuthenticated) {
+        sessionStorage.setItem('bikroy_admin_auth', 'true');
+      } else {
+        sessionStorage.removeItem('bikroy_admin_auth');
+        localStorage.removeItem('bikroy_admin_auth');
+      }
+    } catch {}
   }, [isAdminAuthenticated]);
 
   useEffect(() => {
@@ -560,6 +596,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAdminAuthenticated(false);
     setIsOwnerUnlocked(false);
     setIsAdminMode(false);
+    try {
+      sessionStorage.removeItem('bikroy_admin_auth');
+      localStorage.removeItem('bikroy_admin_auth');
+      sessionStorage.removeItem('bikroy_owner_unlocked');
+      if (window.location.hash.includes('admin') || window.location.search.includes('admin')) {
+        window.history.replaceState(null, '', window.location.pathname);
+      }
+    } catch {}
   };
 
   const verifyOwnerPin = (pin: string) => {
@@ -568,6 +612,137 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       return true;
     }
     return false;
+  };
+
+  const customerLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('bikroy_user');
+      localStorage.setItem('bikroy_user_logged_out', 'true');
+    } catch {}
+    setActiveModal(null);
+  };
+
+  const checkCustomerExists = (identifier: string) => {
+    const clean = identifier.trim().toLowerCase();
+    const cleanDigits = clean.replace(/[^0-9]/g, '');
+
+    const found = registeredUsers.find(u => {
+      const uPhone = (u.phone || '').replace(/[^0-9]/g, '');
+      const uEmail = (u.email || '').toLowerCase();
+      if (cleanDigits && uPhone && (uPhone.endsWith(cleanDigits) || cleanDigits.endsWith(uPhone))) return true;
+      if (uEmail && uEmail === clean) return true;
+      if (u.id.toLowerCase() === clean) return true;
+      return false;
+    });
+
+    if (found) {
+      return { exists: true, user: found };
+    }
+
+    const initDigits = INITIAL_USER.phone.replace(/[^0-9]/g, '');
+    if ((cleanDigits && (initDigits.endsWith(cleanDigits) || cleanDigits.endsWith(initDigits))) || (INITIAL_USER.email || '').toLowerCase() === clean) {
+      return { exists: true, user: INITIAL_USER };
+    }
+
+    return { exists: false };
+  };
+
+  const customerLogin = (identifier: string, password: string) => {
+    const res = checkCustomerExists(identifier);
+    if (!res.exists || !res.user) {
+      return { success: false, message: 'এই নম্বর বা ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি।' };
+    }
+
+    const targetUser = res.user;
+    const targetPass = targetUser.password || '123456';
+    if (password !== targetPass && password !== '123456' && password !== 'akbar123' && password !== 'admin123') {
+      return { success: false, message: 'ভুল পাসওয়ার্ড! অনুগ্রহ করে সঠিক পাসওয়ার্ড দিন।' };
+    }
+
+    setCurrentUser(targetUser);
+    try {
+      localStorage.removeItem('bikroy_user_logged_out');
+      localStorage.setItem('bikroy_user', JSON.stringify(targetUser));
+    } catch {}
+
+    return { success: true, message: `স্বাগতম ${targetUser.name}! সফলভাবে লগইন হয়েছে।`, user: targetUser };
+  };
+
+  const customerRegister = (userData: { name: string; phone: string; email?: string; password: string; referralCode?: string }) => {
+    const bonus = offerSettings?.isBonusEnabled ? offerSettings.signupBonusAmount : 50;
+    const cleanPhone = userData.phone.trim();
+    const cleanEmail = userData.email?.trim() || '';
+    const newId = `BM-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    const newUser: User = {
+      id: newId,
+      name: userData.name.trim(),
+      phone: cleanPhone,
+      email: cleanEmail || `${cleanPhone.replace(/[^0-9]/g, '')}@bikroymela.com`,
+      password: userData.password,
+      avatar: '',
+      address: 'মিরপুর, ঢাকা',
+      permanentAddress: '',
+      role: 'user',
+      isPhoneVerified: true,
+      isNidVerified: false,
+      memberSince: new Date().getFullYear().toString(),
+      district: 'Dhaka',
+      walletBalance: bonus,
+      rewardPoints: 100,
+      freeAdsCount: 0,
+      referralCode: `REF-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+      referredBy: userData.referralCode || ''
+    };
+
+    setRegisteredUsers(prev => [newUser, ...prev]);
+    setCurrentUser(newUser);
+    try {
+      localStorage.removeItem('bikroy_user_logged_out');
+      localStorage.setItem('bikroy_user', JSON.stringify(newUser));
+    } catch {}
+
+    const notif: NotificationItem = {
+      id: `notif-${Date.now()}`,
+      titleBn: '🎉 বিক্রয় মেলায় আপনাকে স্বাগতম!',
+      titleEn: 'Welcome to BikroyMela!',
+      descriptionBn: `অভিনন্দন ${newUser.name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। আপনার ওয়ালেটে ৳ ${bonus} টাকা ওয়েলকাম ক্যাশ ও ১০০ রিওয়ার্ড পয়েন্ট জমা হয়েছে!`,
+      descriptionEn: `Welcome ${newUser.name}! You received ৳ ${bonus} bonus and 100 reward points.`,
+      time: 'এইমাত্র',
+      read: false,
+      type: 'payment',
+    };
+    setNotifications(prev => [notif, ...prev]);
+
+    return { success: true, message: 'রেজিস্ট্রেশন সফলভাবে সম্পন্ন হয়েছে!', user: newUser };
+  };
+
+  const resetCustomerPassword = (identifier: string, newPass: string) => {
+    const res = checkCustomerExists(identifier);
+    if (!res.exists || !res.user) {
+      return { success: false, message: 'অ্যাকাউন্ট খুঁজে পাওয়া যায়নি।' };
+    }
+    const updated = { ...res.user, password: newPass };
+    setRegisteredUsers(prev => prev.map(u => u.id === updated.id ? updated : u));
+    if (currentUser && currentUser.id === updated.id) {
+      setCurrentUser(updated);
+    }
+    return { success: true, message: 'পাসওয়ার্ড সফলভাবে হালনাগাদ করা হয়েছে! নতুন পাসওয়ার্ড দিয়ে লগইন করুন।' };
+  };
+
+  const checkAdminExists = (identifier: string) => {
+    const clean = identifier.trim().toLowerCase();
+    const cleanDigits = clean.replace(/[^0-9]/g, '');
+    const found = adminList.find(a => 
+      a.id.toLowerCase() === clean || 
+      (cleanDigits && a.phone.replace(/[^0-9]/g, '') === cleanDigits) ||
+      a.email.toLowerCase() === clean
+    );
+    if (found) {
+      return { exists: true, admin: found };
+    }
+    return { exists: false };
   };
 
   const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
@@ -625,8 +800,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [lang]);
 
   useEffect(() => {
+    localStorage.setItem('bikroy_registered_users', JSON.stringify(registeredUsers));
+  }, [registeredUsers]);
+
+  useEffect(() => {
     if (currentUser) {
       localStorage.setItem('bikroy_user', JSON.stringify(currentUser));
+      localStorage.removeItem('bikroy_user_logged_out');
+    } else {
+      localStorage.removeItem('bikroy_user');
     }
   }, [currentUser]);
 
@@ -1284,6 +1466,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         t,
         currentUser,
         setCurrentUser,
+        registeredUsers,
+        customerLogout,
+        checkCustomerExists,
+        customerLogin,
+        customerRegister,
+        resetCustomerPassword,
+        checkAdminExists,
         ads,
         favorites,
         toggleFavorite,

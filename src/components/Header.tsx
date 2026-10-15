@@ -28,6 +28,7 @@ export const Header: React.FC = () => {
     t, 
     currentUser, 
     setCurrentUser,
+    customerLogout,
     isAdminMode, 
     setIsAdminMode, 
     notifications, 
@@ -301,6 +302,18 @@ export const Header: React.FC = () => {
               <span>{t.chatSupport}</span>
               <MessageSquare className="w-4 h-4" />
             </button>
+            {currentUser && (
+              <button
+                onClick={() => {
+                  customerLogout();
+                  setMobileMenuOpen(false);
+                }}
+                className="text-left py-2 px-2 text-sm text-rose-300 font-semibold hover:bg-emerald-800/50 rounded flex items-center justify-between"
+              >
+                <span>লগ আউট</span>
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
             {isAdminMode && (
               <button
                 onClick={() => { setIsAdminMode(false); setMobileMenuOpen(false); }}
