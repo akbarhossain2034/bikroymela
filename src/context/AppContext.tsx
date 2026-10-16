@@ -103,7 +103,30 @@ interface AppContextType {
   setIsAdminAuthenticated: (auth: boolean) => void;
   adminLogin: (idOrPhone: string, password: string, otp: string) => { success: boolean; message: string; admin?: AdminUser };
   adminRegister: (staffData: { name: string; phone: string; email: string; role: 'Moderator' | 'Quality Officer'; department: string; password?: string }) => { success: boolean; message: string; generatedId: string };
+  recruitStaff: (staffData: {
+    name: string;
+    role: string;
+    salary: string;
+    phone: string;
+    dob: string;
+    telephone?: string;
+    nid: string;
+    presentAddress: string;
+    permanentAddress: string;
+    gender?: string;
+    emergencyContact: {
+      name: string;
+      phone: string;
+      relation: string;
+    };
+    username: string;
+    password?: string;
+    email?: string;
+    id?: string;
+  }) => { success: boolean; message: string; generatedId: string };
+  generateNextStaffId: () => string;
   toggleAdminApproval: (adminId: string, approved: boolean) => void;
+  updateAdminProfile: (adminId: string, updatedData: Partial<AdminUser>) => { success: boolean; message: string };
   adminLogout: () => void;
   verifyOwnerPin: (pin: string) => boolean;
   isOwnerUnlocked: boolean;
@@ -482,11 +505,49 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [adminAdToDelete, setAdminAdToDelete] = useState<Ad | null>(null);
   const [adminList, setAdminList] = useState<AdminUser[]>(() => {
     const saved = localStorage.getItem('bikroy_admin_list');
-    return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS;
+    if (saved) {
+      try {
+        const parsed: AdminUser[] = JSON.parse(saved);
+        return parsed.map(a => {
+          if (a.isOwner || a.role === 'Super Admin' || a.id === 'ADM-101') {
+            return {
+              ...a,
+              id: a.id === 'ADM-101' ? 'ID-00009' : (a.id || 'ID-00009'),
+              name: a.name || 'Md. Akbar Hossain',
+              phone: a.phone === '01332520826' ? '+8801851554333' : (a.phone || '+8801851554333'),
+              email: a.email === 'akbar.office10@gmail.com' ? '' : (a.email ?? ''),
+              password: a.password || 'admin',
+              isOwner: true,
+              isApprovedByOwner: true
+            };
+          }
+          return a;
+        });
+      } catch {}
+    }
+    return INITIAL_ADMIN_USERS;
   });
   const [activeAdmin, setActiveAdmin] = useState<AdminUser>(() => {
     const saved = localStorage.getItem('bikroy_active_admin');
-    return saved ? JSON.parse(saved) : INITIAL_ADMIN_USERS[0];
+    if (saved) {
+      try {
+        const parsed: AdminUser = JSON.parse(saved);
+        if (parsed.isOwner || parsed.role === 'Super Admin' || parsed.id === 'ADM-101') {
+          return {
+            ...parsed,
+            id: parsed.id === 'ADM-101' ? 'ID-00009' : (parsed.id || 'ID-00009'),
+            name: parsed.name || 'Md. Akbar Hossain',
+            phone: parsed.phone === '01332520826' ? '+8801851554333' : (parsed.phone || '+8801851554333'),
+            email: parsed.email === 'akbar.office10@gmail.com' ? '' : (parsed.email ?? ''),
+            password: parsed.password || 'admin',
+            isOwner: true,
+            isApprovedByOwner: true
+          };
+        }
+        return parsed;
+      } catch {}
+    }
+    return INITIAL_ADMIN_USERS[0];
   });
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
@@ -527,16 +588,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const adminLogin = (idOrPhone: string, pass: string, otp: string) => {
     const cleanQuery = idOrPhone.trim().toLowerCase();
     const cleanDigits = cleanQuery.replace(/[^0-9]/g, '');
+    const cleanNorm = cleanQuery.replace(/[^a-z0-9]/g, '');
 
     const found = adminList.find(a => {
       const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
       const aEmail = (a.email || '').toLowerCase();
-      if (cleanDigits && aPhone && (aPhone.endsWith(cleanDigits) || cleanDigits.endsWith(aPhone))) return true;
-      if (aEmail && aEmail === cleanQuery) return true;
-      if (a.id.toLowerCase() === cleanQuery) return true;
-      if (a.isOwner && (cleanQuery === 'akbarhossain2034@gmail.com' || cleanQuery === 'admin' || cleanQuery === 'owner')) return true;
+      const aNorm = (a.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      // Check phone match (last 10 digits match handles 01851554333 vs +8801851554333)
+      if (cleanDigits.length >= 7 && aPhone.length >= 7) {
+        if (aPhone.slice(-10) === cleanDigits.slice(-10) || aPhone.endsWith(cleanDigits) || cleanDigits.endsWith(aPhone)) return true;
+      }
+      // Check email match
+      if (aEmail && cleanQuery && aEmail === cleanQuery) return true;
+      // Check ID match
+      if (a.id.toLowerCase() === cleanQuery || aNorm === cleanNorm || (aNorm.endsWith(cleanNorm) && cleanNorm.length >= 4)) return true;
+      // Check owner shortcuts
+      if (a.isOwner && (
+        cleanQuery === 'akbarhossain2034@gmail.com' || 
+        cleanQuery === 'admin' || 
+        cleanQuery === 'owner' || 
+        cleanNorm === 'id00009' || 
+        cleanNorm === '00009' || 
+        cleanNorm === '9' ||
+        (cleanDigits.length >= 10 && cleanDigits.endsWith('1851554333'))
+      )) return true;
+
       return false;
-    }) || (cleanQuery === 'akbarhossain2034@gmail.com' || cleanQuery === 'admin' ? adminList[0] : null);
+    }) || (cleanQuery === 'akbarhossain2034@gmail.com' || cleanQuery === 'admin' || cleanNorm === 'id00009' || cleanNorm === '00009' ? adminList.find(a => a.isOwner) || adminList[0] : null);
 
     if (!found) {
       return { success: false, message: 'এডমিন আইডি, মোবাইল বা ইমেইল সঠিক নয়।' };
@@ -592,6 +671,78 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   };
 
+  const generateNextStaffId = () => {
+    const numbers = adminList.map(a => {
+      const digits = a.id.replace(/[^0-9]/g, '');
+      return digits ? parseInt(digits, 10) : 0;
+    }).filter(n => n > 0 && n < 99999);
+
+    let candidate = 2;
+    while (numbers.includes(candidate)) {
+      candidate++;
+    }
+    return String(candidate).padStart(5, '0');
+  };
+
+  const recruitStaff = (staffData: {
+    name: string;
+    role: string;
+    salary: string;
+    phone: string;
+    dob: string;
+    telephone?: string;
+    nid: string;
+    presentAddress: string;
+    permanentAddress: string;
+    gender?: string;
+    emergencyContact: {
+      name: string;
+      phone: string;
+      relation: string;
+    };
+    username: string;
+    password?: string;
+    email?: string;
+    id?: string;
+  }) => {
+    const assignedId = (staffData.id && staffData.id.trim()) 
+      ? staffData.id.trim() 
+      : generateNextStaffId();
+
+    const newStaff: AdminUser = {
+      id: assignedId,
+      name: staffData.name.trim(),
+      username: staffData.username.trim(),
+      role: staffData.role || 'Moderator',
+      department: staffData.role === 'Quality Officer' ? 'এসক্রো নিরাপত্তা ও কোয়ালিটি' : 'বিজ্ঞাপন যাচাই ও অ্যাডমিনিস্ট্রেশন',
+      salary: staffData.salary.trim(),
+      phone: staffData.phone.trim(),
+      email: staffData.email?.trim() || `${staffData.phone.replace(/[^0-9]/g, '')}@staff.bikroymela.com`,
+      dob: staffData.dob.trim(),
+      telephone: staffData.telephone?.trim() || '',
+      nid: staffData.nid.trim(),
+      gender: staffData.gender || 'Male',
+      presentAddress: staffData.presentAddress.trim(),
+      permanentAddress: staffData.permanentAddress.trim(),
+      emergencyContact: {
+        name: staffData.emergencyContact.name.trim(),
+        phone: staffData.emergencyContact.phone.trim(),
+        relation: staffData.emergencyContact.relation.trim()
+      },
+      password: staffData.password?.trim() || 'staff',
+      isOwner: false,
+      isApprovedByOwner: false, // Requirement B: Owner approval needed!
+      registeredAt: new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'long', year: 'numeric' })
+    };
+
+    setAdminList(prev => [...prev, newStaff]);
+    return {
+      success: true,
+      message: `নতুন কর্মী "${newStaff.name}" এর নিয়োগ সম্পন্ন হয়েছে! আইডি: ${newStaff.id}। মালিকের অনুমোদনের অপেক্ষায় আছে।`,
+      generatedId: newStaff.id
+    };
+  };
+
   const toggleAdminApproval = (adminId: string, approved: boolean) => {
     setAdminList(prev => prev.map(a => a.id === adminId ? { ...a, isApprovedByOwner: approved } : a));
     // If the active admin was this staff and approval was revoked, lock them out immediately!
@@ -599,6 +750,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAdminAuthenticated(false);
       setIsOwnerUnlocked(false);
     }
+  };
+
+  const updateAdminProfile = (adminId: string, updatedData: Partial<AdminUser>) => {
+    setAdminList(prev => prev.map(a => {
+      const isTarget = a.id === adminId || 
+        (a.isOwner && (adminId === 'ID-00009' || adminId === '00009' || a.id === 'ID-00009' || adminId === activeAdmin.id));
+      if (isTarget) {
+        return { ...a, ...updatedData };
+      }
+      return a;
+    }));
+    if (activeAdmin.id === adminId || activeAdmin.isOwner) {
+      setActiveAdmin(prev => ({ ...prev, ...updatedData }));
+    }
+    return { success: true, message: 'মালিকের প্রোফাইল ও তথ্য সফলভাবে সংরক্ষণ করা হয়েছে!' };
   };
 
   const adminLogout = () => {
@@ -747,16 +913,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const checkAdminExists = (identifier: string) => {
     const clean = identifier.trim().toLowerCase();
     const cleanDigits = clean.replace(/[^0-9]/g, '');
+    const cleanNorm = clean.replace(/[^a-z0-9]/g, '');
 
     const found = adminList.find(a => {
       const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
       const aEmail = (a.email || '').toLowerCase();
-      if (cleanDigits && aPhone && (aPhone.endsWith(cleanDigits) || cleanDigits.endsWith(aPhone))) return true;
-      if (aEmail && aEmail === clean) return true;
-      if (a.id.toLowerCase() === clean) return true;
-      if (a.isOwner && (clean === 'akbarhossain2034@gmail.com' || clean === 'admin' || clean === 'owner')) return true;
+      const aNorm = (a.id || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+      // Check phone match (last 10 digits match handles 01851554333 vs +8801851554333)
+      if (cleanDigits.length >= 7 && aPhone.length >= 7) {
+        if (aPhone.slice(-10) === cleanDigits.slice(-10) || aPhone.endsWith(cleanDigits) || cleanDigits.endsWith(aPhone)) return true;
+      }
+      // Check email match
+      if (aEmail && clean && aEmail === clean) return true;
+      // Check ID match
+      if (a.id.toLowerCase() === clean || aNorm === cleanNorm || (aNorm.endsWith(cleanNorm) && cleanNorm.length >= 4)) return true;
+      // Check owner shortcuts
+      if (a.isOwner && (
+        clean === 'akbarhossain2034@gmail.com' || 
+        clean === 'admin' || 
+        clean === 'owner' || 
+        cleanNorm === 'id00009' || 
+        cleanNorm === '00009' || 
+        cleanNorm === '9' ||
+        (cleanDigits.length >= 10 && cleanDigits.endsWith('1851554333'))
+      )) return true;
+
       return false;
-    }) || (clean === 'akbarhossain2034@gmail.com' || clean === 'admin' ? adminList[0] : null);
+    }) || (clean === 'akbarhossain2034@gmail.com' || clean === 'admin' || cleanNorm === 'id00009' || cleanNorm === '00009' ? adminList.find(a => a.isOwner) || adminList[0] : null);
 
     if (found) {
       return { exists: true, admin: found };
@@ -1578,7 +1762,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAdminAuthenticated,
         adminLogin,
         adminRegister,
+        recruitStaff,
+        generateNextStaffId,
         toggleAdminApproval,
+        updateAdminProfile,
         adminLogout,
         verifyOwnerPin,
         isOwnerUnlocked,

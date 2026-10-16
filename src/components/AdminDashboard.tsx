@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { SystemBackup, ValidationStatus } from '../types';
+import { SystemBackup, ValidationStatus, AdminUser } from '../types';
 import { AdminDeleteAdModal } from './AdminDeleteAdModal';
 import { BusinessPolicyModal } from './BusinessPolicyModal';
 import { OffersShowcaseModal } from './OffersShowcaseModal';
 import { AdminAuthGate } from './AdminAuthGate';
 import { AdminOwnerControlPanel } from './AdminOwnerControlPanel';
 import { AdminAuditLogsTab } from './AdminAuditLogsTab';
+import { AdminManageAccountView } from './AdminManageAccountView';
+import { StaffRecruitModal } from './StaffRecruitModal';
+import { StaffDetailModal } from './StaffDetailModal';
 import { 
   ShieldCheck, 
   Crown,
   Lock,
   Unlock,
   LogOut,
+  UserPlus,
   FileCheck,
   Layers, 
   CreditCard, 
@@ -62,8 +66,12 @@ import {
   BadgePercent,
   ArrowDownToLine,
   Send,
+  Coins,
   Megaphone,
-  Coins
+  UserCog,
+  Edit3,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
@@ -101,13 +109,85 @@ export const AdminDashboard: React.FC = () => {
     isAdminAuthenticated,
     adminLogout,
     activeAdmin,
+    adminList,
+    toggleAdminApproval,
+    updateAdminProfile,
     isOwnerUnlocked,
     setIsOwnerUnlocked
   } = useApp();
 
+  // Manage Account View toggle (Requirement C)
+  const [isManageAccountOpen, setIsManageAccountOpen] = useState(false);
+  const [adminDropdownOpen, setAdminDropdownOpen] = useState(false);
+
+  // Staff Recruitment & View Detail Modals (Requirement B)
+  const [isRecruitModalOpen, setIsRecruitModalOpen] = useState(false);
+  const [staffToEdit, setStaffToEdit] = useState<AdminUser | null>(null);
+  const [selectedStaffForView, setSelectedStaffForView] = useState<AdminUser | null>(null);
+  const [isStaffDetailOpen, setIsStaffDetailOpen] = useState(false);
+  const [staffToast, setStaffToast] = useState<string | null>(null);
+
   if (!isAdminAuthenticated) {
     return <AdminAuthGate onBackToCustomer={() => setIsAdminMode(false)} />;
   }
+
+  // If user clicked "Manage Accounts", render the dedicated Manage Account page (Requirement C)
+  if (isManageAccountOpen) {
+    return <AdminManageAccountView onBackToDashboard={() => setIsManageAccountOpen(false)} />;
+  }
+
+  // Owner Profile Edit Modal State
+  const [isOwnerProfileModalOpen, setIsOwnerProfileModalOpen] = useState(false);
+  const [profileName, setProfileName] = useState(activeAdmin?.name || 'Md. Akbar Hossain');
+  const [profilePhone, setProfilePhone] = useState(activeAdmin?.phone || '+8801851554333');
+  const [profileId, setProfileId] = useState(activeAdmin?.id || 'ID-00009');
+  const [profilePassword, setProfilePassword] = useState(activeAdmin?.password || 'admin');
+  const [profileEmail, setProfileEmail] = useState(activeAdmin?.email || '');
+  const [showProfilePass, setShowProfilePass] = useState(false);
+  const [profileSavedMsg, setProfileSavedMsg] = useState<string | null>(null);
+
+  // Sync profile fields when activeAdmin changes or modal opens
+  React.useEffect(() => {
+    if (activeAdmin) {
+      setProfileName(activeAdmin.name || '');
+      setProfilePhone(activeAdmin.phone || '');
+      setProfileId(activeAdmin.id || '');
+      setProfilePassword(activeAdmin.password || 'admin');
+      setProfileEmail(activeAdmin.email || '');
+    }
+  }, [activeAdmin, isOwnerProfileModalOpen]);
+
+  const handleSaveOwnerProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!profileName.trim()) {
+      alert('অনুগ্রহ করে নাম দিন।');
+      return;
+    }
+    if (!profilePhone.trim()) {
+      alert('অনুগ্রহ করে মোবাইল নম্বর দিন।');
+      return;
+    }
+    if (!profileId.trim()) {
+      alert('অনুগ্রহ করে এডমিন আইডি (ID) দিন।');
+      return;
+    }
+    if (!profilePassword.trim()) {
+      alert('অনুগ্রহ করে পাসওয়ার্ড দিন।');
+      return;
+    }
+    const res = updateAdminProfile(activeAdmin.id, {
+      name: profileName.trim(),
+      phone: profilePhone.trim(),
+      id: profileId.trim(),
+      password: profilePassword.trim(),
+      email: profileEmail.trim()
+    });
+    setProfileSavedMsg(res.message);
+    setTimeout(() => {
+      setProfileSavedMsg(null);
+      setIsOwnerProfileModalOpen(false);
+    }, 1500);
+  };
 
   const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers' | 'owner' | 'audit'>('ads');
   const [filterAdStatus, setFilterAdStatus] = useState<string>('all');
@@ -362,10 +442,18 @@ export const AdminDashboard: React.FC = () => {
                 </span>
 
                 {activeAdmin && (
-                  <span className="text-[11px] font-semibold bg-black/20 text-emerald-100 border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5">
+                  <button
+                    onClick={() => setIsOwnerProfileModalOpen(true)}
+                    className="text-[11px] font-semibold bg-black/25 hover:bg-black/40 text-emerald-100 hover:text-white border border-white/20 hover:border-amber-400/80 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="মালিকের নাম, মোবাইল, আইডি ও পাসওয়ার্ড পরিবর্তন করুন"
+                  >
                     <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
                     <span>{activeAdmin.name} ({activeAdmin.id})</span>
-                  </span>
+                    <span className="text-[9px] text-amber-300 font-bold bg-amber-400/20 px-1 py-0.2 rounded border border-amber-300/40 flex items-center gap-0.5">
+                      <Edit3 className="w-2.5 h-2.5" />
+                      <span>তথ্য পরিবর্তন</span>
+                    </span>
+                  </button>
                 )}
 
                 <button 
@@ -394,6 +482,102 @@ export const AdminDashboard: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 flex-wrap self-start lg:self-center">
+            {/* Manage Accounts Button (Requirement C) */}
+            <button
+              onClick={() => setIsManageAccountOpen(true)}
+              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-[1.02]"
+              title="Manage Accounts (আইডির সকল তথ্য দেখুন ও পরিবর্তন করুন)"
+            >
+              <UserCog className="w-4 h-4 text-slate-950" />
+              <span>Manage Accounts</span>
+            </button>
+
+            {/* User Profile Badge & Dropdown (Right Corner - Requirement C) */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
+                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 text-xs font-semibold text-white bg-black/25 hover:bg-black/35 rounded-full transition-all group cursor-pointer border border-white/20 hover:border-amber-400 shadow-xs"
+                title="লগইনকৃত অ্যাডমিন অ্যাকাউন্ট তথ্য"
+              >
+                {/* Circular Avatar */}
+                <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center shadow-md ring-2 ring-emerald-300/80 group-hover:scale-105 transition-transform shrink-0">
+                  {activeAdmin.name ? activeAdmin.name.charAt(0) : 'A'}
+                  {activeAdmin.isOwner && (
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center ring-1 ring-white" title="মালিক">
+                      <Crown className="w-2.5 h-2.5 text-slate-950" />
+                    </span>
+                  )}
+                </div>
+
+                <div className="hidden sm:flex flex-col text-left leading-tight pr-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-mono font-bold text-amber-300">{activeAdmin.id}</span>
+                    <span className="text-[9px] bg-emerald-950/70 text-emerald-200 px-1 py-0.2 rounded font-sans">
+                      {activeAdmin.isOwner ? 'মালিক' : (activeAdmin.role || 'স্টাফ')}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-white font-medium truncate max-w-[120px]">
+                    {activeAdmin.name}
+                  </span>
+                </div>
+
+                <ChevronDown className="w-3.5 h-3.5 opacity-80" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {adminDropdownOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 text-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 text-xs">
+                  <div className="px-4 py-2 border-b border-slate-100 bg-slate-50">
+                    <span className="text-[10px] text-slate-400 block font-medium">লগইনকৃত আইডি:</span>
+                    <strong className="text-slate-900 font-mono text-sm block">{activeAdmin.id}</strong>
+                    <span className="text-[11px] text-slate-700 font-bold block truncate mt-0.5">{activeAdmin.name}</span>
+                    <span className="text-[10px] text-emerald-700 font-mono font-bold">ইউনিক: {activeAdmin.username || 'N/A'}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsManageAccountOpen(true);
+                      setAdminDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 text-slate-900 font-bold flex items-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <UserCog className="w-4 h-4 text-[#007460]" />
+                    <span>Manage Accounts</span>
+                    <span className="ml-auto text-[9px] bg-emerald-100 text-[#007460] px-1.5 py-0.5 rounded font-bold">ওপেন</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStaffToEdit(null);
+                      setIsRecruitModalOpen(true);
+                      setAdminDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-slate-100 font-medium text-slate-800 flex items-center gap-2 cursor-pointer"
+                  >
+                    <UserPlus className="w-4 h-4 text-emerald-600" />
+                    <span>নতুন কর্মী নিয়োগ (+ Recruit)</span>
+                  </button>
+
+                  <div className="border-t border-slate-100 my-1"></div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      adminLogout();
+                      setAdminDropdownOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-bold flex items-center gap-2 cursor-pointer"
+                  >
+                    <LogOut className="w-4 h-4 text-rose-600" />
+                    <span>লগআউট (Log Out)</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {/* Quick button to jump to (C) Owner Master Control */}
             <button
               onClick={() => setActiveTab('owner')}
@@ -613,11 +797,11 @@ export const AdminDashboard: React.FC = () => {
             <button
               onClick={() => setActiveTab('users')}
               className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'users' ? 'border-[#007460] text-[#007460]' : 'border-transparent text-slate-500 hover:text-slate-900'
+                activeTab === 'users' ? 'border-[#007460] text-[#007460] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'
               }`}
             >
               <Users className="w-4 h-4" />
-              <span>{t.userVerification}</span>
+              <span>কর্মকর্তা-কর্মী নিয়োগ ও ইউজার ({adminList.length})</span>
             </button>
 
             <button
@@ -629,6 +813,11 @@ export const AdminDashboard: React.FC = () => {
             >
               <Crown className="w-4 h-4 text-amber-600" />
               <span>👑 (C) মালিকের নিয়ন্ত্রণ প্যানেল</span>
+              {adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length > 0 && (
+                <span className="bg-amber-400 text-slate-950 font-mono font-bold text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
+                  {adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length} অপেক্ষমাণ
+                </span>
+              )}
               {!isOwnerUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
             </button>
 
@@ -1502,19 +1691,174 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 4: USERS & NID VERIFICATION */}
+          {/* TAB 4: USERS & STAFF MANAGEMENT */}
           {activeTab === 'users' && (
-            <div className="p-4 sm:p-6 space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">
-                    নিবন্ধিত গ্রাহক ও জাতীয় পরিচয়পত্র (NID) ভেরিফিকেশন
-                  </h3>
-                  <p className="text-xs text-slate-500">
-                    প্রতারণা প্রতিরোধে ভেরিফাইড সেলার অনুমোদন নিয়ন্ত্রণ করুন
-                  </p>
+            <div className="p-4 sm:p-6 space-y-6">
+              
+              {/* SECTION A: COMPANY STAFF RECRUITMENT & MANAGEMENT (Requirement B) */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#007460]" />
+                      <span>কোম্পানির কর্মকর্তা ও কর্মচারী নিয়োগ ব্যবস্থাপনা (Company Staff Recruitment)</span>
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      নিয়োগের সময় সকল তথ্য নির্ধারণ করুন (আইডি সিস্টেম অটো-জেনারেট করবে)। নিয়োগের পর মালিকের কাছে অনুমোদন চেকবক্স যাবে, মালিক অনুমোদন দিলে কর্মী লগইন করতে পারবে।
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setStaffToEdit(null);
+                      setIsRecruitModalOpen(true);
+                    }}
+                    className="px-3.5 py-2 bg-[#007460] hover:bg-[#005e4e] text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer self-start sm:self-auto"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>নতুন কর্মী নিয়োগ (+ Recruit Staff)</span>
+                  </button>
+                </div>
+
+                {staffToast && (
+                  <div className="p-3 bg-emerald-50 border border-emerald-300 text-[#007460] rounded-xl text-xs font-bold flex items-center gap-2">
+                    <CheckCircle className="w-4 h-4 text-[#007460] shrink-0" />
+                    <span>{staffToast}</span>
+                  </div>
+                )}
+
+                {/* Staff Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border border-slate-200 rounded-xl overflow-hidden">
+                    <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200 uppercase tracking-wider text-[11px]">
+                      <tr>
+                        <th className="p-3">অটো আইডি (৫ সংখ্যার)</th>
+                        <th className="p-3">ইউনিক নেম</th>
+                        <th className="p-3">নাম ও ডিপার্টমেন্ট (ক্লিক করে বিস্তারিত দেখুন)</th>
+                        <th className="p-3">পদবী</th>
+                        <th className="p-3">বেতন</th>
+                        <th className="p-3">মোবাইল নম্বর</th>
+                        <th className="p-3 text-center">মালিকের অনুমোদন স্ট্যাটাস</th>
+                        <th className="p-3 text-center">অ্যাকশন</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {adminList.map((staff) => {
+                        const isApproved = staff.isApprovedByOwner ?? true;
+                        const isOwnerStaff = staff.isOwner || staff.role === 'Super Admin';
+
+                        return (
+                          <tr key={staff.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3 font-mono font-bold text-slate-900">
+                              <div className="flex items-center gap-1.5">
+                                {isOwnerStaff && <Crown className="w-3.5 h-3.5 text-amber-500" />}
+                                <span>{staff.id}</span>
+                              </div>
+                            </td>
+
+                            <td className="p-3 font-mono font-bold text-emerald-800">
+                              {staff.username || 'সেট করা নেই'}
+                            </td>
+
+                            <td className="p-3">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedStaffForView(staff);
+                                  setIsStaffDetailOpen(true);
+                                }}
+                                className="font-bold text-slate-900 hover:text-[#007460] hover:underline text-left cursor-pointer flex items-center gap-1 group"
+                                title="ক্লিক করে সম্পূর্ণ নিয়োগ তথ্য দেখুন"
+                              >
+                                <span>{staff.name}</span>
+                                <ExternalLink className="w-3 h-3 text-slate-400 group-hover:text-[#007460]" />
+                              </button>
+                              <span className="text-[10px] text-slate-400 block">{staff.department || 'এডমিন স্টাফ'}</span>
+                            </td>
+
+                            <td className="p-3">
+                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                staff.role === 'Super Admin' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                                staff.role === 'Moderator' ? 'bg-sky-100 text-sky-800' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
+                                {staff.role}
+                              </span>
+                            </td>
+
+                            <td className="p-3 font-mono font-bold text-slate-800">
+                              ৳ {staff.salary || 'নির্ধারিত নয়'}
+                            </td>
+
+                            <td className="p-3 font-mono text-slate-800">
+                              {staff.phone}
+                            </td>
+
+                            <td className="p-3 text-center">
+                              {isOwnerStaff ? (
+                                <span className="text-[10px] font-bold bg-amber-50 text-amber-900 border border-amber-200 px-2 py-0.5 rounded-full inline-block">
+                                  মালিক (কনফার্মড)
+                                </span>
+                              ) : isApproved ? (
+                                <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1">
+                                  <CheckCircle className="w-3 h-3 text-emerald-700" />
+                                  <span>মালিক কর্তৃক অনুমোদিত</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2.5 py-0.5 rounded-full inline-flex items-center gap-1 animate-pulse">
+                                  <span>মালিকের অনুমোদন অপেক্ষমাণ</span>
+                                </span>
+                              )}
+                            </td>
+
+                            <td className="p-3 text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedStaffForView(staff);
+                                    setIsStaffDetailOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-slate-100 hover:bg-[#007460] hover:text-white text-slate-700 font-bold rounded text-[10px] transition-colors cursor-pointer"
+                                  title="সব তথ্য দেখুন"
+                                >
+                                  তথ্য দেখুন
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setStaffToEdit(staff);
+                                    setIsRecruitModalOpen(true);
+                                  }}
+                                  className="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold rounded text-[10px] border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                  title="এডমিন তথ্য পরিবর্তন করুন"
+                                >
+                                  <Edit3 className="w-3 h-3" />
+                                  <span>তথ্য পরিবর্তন</span>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
+
+              {/* SECTION B: REGISTERED CUSTOMERS & NID VERIFICATION */}
+              <div className="bg-white rounded-xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-2xs">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div>
+                    <h3 className="text-sm font-bold text-slate-900">
+                      নিবন্ধিত গ্রাহক ও জাতীয় পরিচয়পত্র (NID) ভেরিফিকেশন
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      প্রতারণা প্রতিরোধে ভেরিফাইড সেলার অনুমোদন নিয়ন্ত্রণ করুন
+                    </p>
+                  </div>
+                </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -1587,6 +1931,7 @@ export const AdminDashboard: React.FC = () => {
                 </table>
               </div>
             </div>
+          </div>
           )}
 
           {/* TAB 5: MONETIZATION & REVENUE MANAGEMENT */}
@@ -3083,6 +3428,186 @@ export const AdminDashboard: React.FC = () => {
       {adminAdToDelete && <AdminDeleteAdModal />}
       <BusinessPolicyModal />
       <OffersShowcaseModal />
+
+      {/* OWNER PROFILE & INFORMATION EDIT MODAL */}
+      {isOwnerProfileModalOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in duration-200">
+            {/* Modal Header */}
+            <div className="bg-linear-to-r from-[#007460] to-emerald-800 text-white p-5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shadow-md">
+                  <Crown className="w-5 h-5 text-slate-950" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base sm:text-lg flex items-center gap-2">
+                    <span>মালিকের প্রোফাইল ও তথ্য পরিবর্তন</span>
+                  </h3>
+                  <p className="text-xs text-emerald-100">
+                    এডমিন অ্যাকাউন্টের নাম, মোবাইল, আইডি ও পাসওয়ার্ড পরিবর্তন করুন
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOwnerProfileModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center cursor-pointer transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleSaveOwnerProfile} className="p-5 sm:p-6 space-y-4">
+              {profileSavedMsg && (
+                <div className="p-3 bg-emerald-50 border border-emerald-300 rounded-xl text-xs text-[#007460] font-bold flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 text-[#007460] shrink-0" />
+                  <span>{profileSavedMsg}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Full Name */}
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    মালিকের পুরো নাম (Full Name) *
+                  </label>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    placeholder="Md. Akbar Hossain"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-medium"
+                    required
+                  />
+                </div>
+
+                {/* Mobile Number */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    মোবাইল নম্বর (Mobile) *
+                  </label>
+                  <input
+                    type="text"
+                    value={profilePhone}
+                    onChange={(e) => setProfilePhone(e.target.value)}
+                    placeholder="+8801851554333"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-mono font-medium"
+                    required
+                  />
+                </div>
+
+                {/* Admin ID */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    এডমিন আইডি (Admin ID) *
+                  </label>
+                  <input
+                    type="text"
+                    value={profileId}
+                    onChange={(e) => setProfileId(e.target.value)}
+                    placeholder="ID-00009"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-mono font-bold text-[#007460]"
+                    required
+                  />
+                </div>
+
+                {/* Password with Eye Toggle */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    লগইন পাসওয়ার্ড (Password) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showProfilePass ? 'text' : 'password'}
+                      value={profilePassword}
+                      onChange={(e) => setProfilePassword(e.target.value)}
+                      placeholder="admin"
+                      className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-mono pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowProfilePass(!showProfilePass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    >
+                      {showProfilePass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Email Address */}
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                    ইমেইল এড্রেস (Email - ঐচ্ছিক)
+                  </label>
+                  <input
+                    type="email"
+                    value={profileEmail}
+                    onChange={(e) => setProfileEmail(e.target.value)}
+                    placeholder="akbar.office10@gmail.com"
+                    className="w-full px-3.5 py-2.5 text-sm bg-slate-50 border border-slate-300 rounded-xl text-slate-900 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] font-medium"
+                  />
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 flex items-start gap-2">
+                <Crown className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <span>
+                  <strong>সতর্কতা:</strong> আপনি এই তথ্যগুলো পরিবর্তন করলে পরবর্তী প্রতিটি লগইনে নতুন মোবাইল, আইডি ও পাসওয়ার্ড ব্যবহার করতে হবে।
+                </span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setIsOwnerProfileModalOpen(false)}
+                  className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  বাতিল
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#007460] hover:bg-[#005e4e] text-white text-xs sm:text-sm font-bold rounded-xl transition-colors cursor-pointer shadow-sm flex items-center gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>তথ্য সংরক্ষণ করুন</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Staff Detail Modal (Requirement B) */}
+      <StaffDetailModal
+        staff={selectedStaffForView}
+        isOpen={isStaffDetailOpen}
+        onClose={() => {
+          setIsStaffDetailOpen(false);
+          setSelectedStaffForView(null);
+        }}
+        onToggleApproval={toggleAdminApproval}
+        onEditStaff={(s) => {
+          setStaffToEdit(s);
+          setIsRecruitModalOpen(true);
+        }}
+      />
+
+      {/* Staff Recruit / Edit Modal (Requirement B) */}
+      <StaffRecruitModal
+        isOpen={isRecruitModalOpen}
+        onClose={() => {
+          setIsRecruitModalOpen(false);
+          setStaffToEdit(null);
+        }}
+        editStaff={staffToEdit}
+        onSuccess={(msg) => {
+          setStaffToast(msg);
+          setTimeout(() => setStaffToast(null), 4000);
+        }}
+      />
     </div>
   );
 };

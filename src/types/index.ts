@@ -90,10 +90,23 @@ export interface AdModerationLog {
 export interface AdminUser {
   id: string;
   name: string;
-  role: 'Super Admin' | 'Moderator' | 'Quality Officer';
+  username?: string; // Unique Name e.g. Arifhossain388@
+  role: 'Super Admin' | 'Moderator' | 'Quality Officer' | 'Account Manager' | 'Support Executive' | string;
   phone: string;
   email: string;
   department?: string;
+  salary?: string | number;
+  dob?: string;
+  telephone?: string;
+  nid?: string;
+  presentAddress?: string;
+  permanentAddress?: string;
+  gender?: string;
+  emergencyContact?: {
+    name: string;
+    phone: string;
+    relation: string;
+  };
   isOwner?: boolean;
   isApprovedByOwner?: boolean;
   password?: string;

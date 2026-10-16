@@ -37,8 +37,10 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
 
   // Input Mode in 1.png: Toggle between Mobile and Email
   const [inputMode, setInputMode] = useState<'mobile' | 'email'>('mobile');
+  const [uniqueName, setUniqueName] = useState('');
   const [mobileOrEmail, setMobileOrEmail] = useState('');
   const [adminId, setAdminId] = useState('');
+  const [showAdminId, setShowAdminId] = useState(false);
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
@@ -88,15 +90,45 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     onBackToCustomer();
   };
 
-  // Step 1: Intelligent Checking (Matching Photo 1)
+  // Step 1: Intelligent Checking (Dual validation: Mobile/Email + ID number)
   const handleIdentifySubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFeedbackError(null);
     setFeedbackSuccess(null);
 
-    const cleanInput = (adminId || mobileOrEmail).trim();
-    if (!cleanInput) {
-      setFeedbackError('অনুগ্রহ করে আপনার এডমিন আইডি (ID) অথবা মোবাইল/ইমেইল দিন।');
+    const uNameVal = uniqueName.trim();
+    const contactVal = mobileOrEmail.trim();
+    const idVal = adminId.trim();
+
+    if (!uNameVal) {
+      setFeedbackError('অনুগ্রহ করে ইউনিক নেম (যেমন: Arifhossain388@) দিন।');
+      return;
+    }
+
+    if (uNameVal.length > 20) {
+      setFeedbackError('ইউনিক নেম সর্বোচ্চ ২০ অক্ষরের হতে হবে।');
+      return;
+    }
+
+    const disallowedRegex = /[.,<>?/:;'"[\]{}ৎঃ\-_=+() ]/;
+    if (disallowedRegex.test(uNameVal)) {
+      setFeedbackError('ইউনিক নামে কোনো স্পেস বা .,<>?/:;\'"[]{}ৎঃ-_=+() চিহ্ন গ্রহণযোগ্য নয়।');
+      return;
+    }
+
+    const validCharsetRegex = /^[A-Za-z0-9!@#$^&*]+$/;
+    if (!validCharsetRegex.test(uNameVal)) {
+      setFeedbackError('ইউনিক নামে শুধুমাত্র বড়/ছোট হাতের অক্ষর, সংখ্যা এবং !@#$^&* চিহ্ন ব্যবহার করুন।');
+      return;
+    }
+
+    if (!contactVal) {
+      setFeedbackError(inputMode === 'mobile' ? 'অনুগ্রহ করে আপনার মোবাইল নম্বর দিন।' : 'অনুগ্রহ করে আপনার ইমেইল এড্রেস দিন।');
+      return;
+    }
+
+    if (!idVal) {
+      setFeedbackError('অনুগ্রহ করে আপনার সঠিক আইডি (ID) নম্বর দিন। সঠিক আইডি ছাড়া লগইন হবে না।');
       return;
     }
 
@@ -104,28 +136,87 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
 
     setTimeout(() => {
       setIsChecking(false);
-      
-      if (!mobileOrEmail && adminId) {
-        setMobileOrEmail(adminId);
-      }
 
-      // Check admin list (includes ID, phone, email, owner email)
-      const res = checkAdminExists(cleanInput);
+      const cleanContact = contactVal.toLowerCase();
+      const cleanDigits = cleanContact.replace(/[^0-9]/g, '');
+      const normalize = (val: string) => val.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      const inputNormId = normalize(idVal);
 
-      if (res.exists && res.admin) {
-        // Registered Admin -> Go to Password Screen (matching 2য়.png)
-        setMatchedAdmin(res.admin);
+      // Check if contact matches any admin in database
+      const matchedByContact = adminList.find(a => {
+        const aPhone = (a.phone || '').replace(/[^0-9]/g, '');
+        const aEmail = (a.email || '').toLowerCase();
+        if (cleanDigits.length >= 7 && aPhone.length >= 7) {
+          if (aPhone.slice(-10) === cleanDigits.slice(-10) || aPhone.endsWith(cleanDigits) || cleanDigits.endsWith(aPhone)) return true;
+        }
+        if (aEmail && cleanContact && aEmail === cleanContact) return true;
+        if (a.isOwner && (cleanContact === 'akbarhossain2034@gmail.com' || cleanContact === 'admin' || (cleanDigits.length >= 10 && cleanDigits.endsWith('1851554333')))) return true;
+        return false;
+      });
+
+      if (matchedByContact) {
+        // Verify Unique Name
+        const adminUName = (matchedByContact.username || '').toLowerCase();
+        const inputUNameNorm = uNameVal.toLowerCase();
+        const isOwner = matchedByContact.isOwner;
+        const isUNameMatch = (adminUName && adminUName === inputUNameNorm) ||
+          (isOwner && (inputUNameNorm === 'arifhossain388@' || inputUNameNorm === 'akbarhossain388@' || !adminUName || adminUName === inputUNameNorm));
+
+        if (!isUNameMatch && adminUName) {
+          setFeedbackError('ইউনিক নেম সঠিক নয়! আপনার অ্যাকাউন্টের জন্য নির্ধারিত সঠিক ইউনিক নেম প্রদান করুন।');
+          return;
+        }
+
+        const aNormId = normalize(matchedByContact.id);
+        const isIdCorrect = aNormId === inputNormId || 
+          aNormId.endsWith(inputNormId) || 
+          inputNormId.endsWith(aNormId) ||
+          (matchedByContact.isOwner && (
+            inputNormId === 'ID00009' || 
+            inputNormId === '00009' || 
+            inputNormId === '9' || 
+            inputNormId === '101' || 
+            inputNormId === 'ADM101' || 
+            inputNormId === 'ADMIN' || 
+            inputNormId === 'OWNER'
+          ));
+
+        if (!isIdCorrect) {
+          setFeedbackError('সঠিক আইডি (ID) নম্বর দিন! প্রদত্ত তথ্যের সাথে এই আইডি নম্বর মিলছে না।');
+          return;
+        }
+
+        // Owner Approval check (Requirement B)
+        if (!matchedByContact.isApprovedByOwner && !matchedByContact.isOwner) {
+          setFeedbackError('⚠️ আপনার নিয়োগ এখনও মালিক কর্তৃক অনুমোদিত হয়নি। মালিক আপনার সকল তথ্য যাচাই করে অনুমোদন (Approval) দিলে আপনি এই আইডিতে প্রবেশ করতে পারবেন।');
+          return;
+        }
+
+        // All 3 (Unique Name, Contact, ID) verified & Approved!
+        setMatchedAdmin(matchedByContact);
         setStep('password');
         setPassword('');
-      } else {
-        // Not registered as Admin -> Go to 3-step staff application (matching 3, 4, 5)
-        const newCode = Math.floor(1000 + Math.random() * 9000).toString();
-        setGeneratedOtp(newCode);
-        setOtpInput('');
-        setOtpTimer(59);
-        setCanResendOtp(false);
-        setStep('otp_verify');
+        return;
       }
+
+      // Check if ID matches an existing admin whose contact was different
+      const matchedById = adminList.find(a => {
+        const aNormId = normalize(a.id);
+        return aNormId === inputNormId || aNormId.endsWith(inputNormId);
+      });
+
+      if (matchedById) {
+        setFeedbackError('প্রদত্ত মোবাইল/ইমেইলের সাথে এই এডমিন আইডি (ID) মেলেনি। সঠিক তথ্য দিন।');
+        return;
+      }
+
+      // If not an existing registered admin, proceed to staff application flow with OTP
+      const newCode = Math.floor(1000 + Math.random() * 9000).toString();
+      setGeneratedOtp(newCode);
+      setOtpInput('');
+      setOtpTimer(59);
+      setCanResendOtp(false);
+      setStep('otp_verify');
     }, 400);
   };
 
@@ -142,7 +233,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
     setIsChecking(true);
     setTimeout(() => {
       setIsChecking(false);
-      const targetQuery = (adminId || mobileOrEmail).trim();
+      const targetQuery = matchedAdmin?.id || (adminId || mobileOrEmail).trim();
       const res = adminLogin(targetQuery, password, '7845');
       if (res.success) {
         setFeedbackSuccess(res.message);
@@ -370,33 +461,56 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
               </div>
 
               <form onSubmit={handleIdentifySubmit} className="space-y-3.5">
-                {/* Input box matching 1.png: "Please enter a mobile number" / "Please enter your email" */}
+                {/* 1. Unique Name (ইউনিক নেম - Matching Requirement A) */}
+                <div>
+                  <input
+                    type="text"
+                    maxLength={20}
+                    value={uniqueName}
+                    onChange={(e) => setUniqueName(e.target.value)}
+                    placeholder="ইউনিক নেম (যেমন: Arifhossain388@)"
+                    className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal font-mono"
+                    autoFocus
+                  />
+                  <div className="flex items-center justify-between mt-1 px-1 text-[11px] text-slate-400">
+                    <span>সর্বোচ্চ ২০ অক্ষর (A-Z, a-z, 0-9 এবং !@#$^&*)</span>
+                    <span className="font-mono">{uniqueName.length}/20</span>
+                  </div>
+                </div>
+
+                {/* 2. Input box matching 1.png: "Please enter a mobile number" / "Please enter your email" */}
                 <div>
                   <input
                     type={inputMode === 'mobile' ? 'tel' : 'email'}
                     value={mobileOrEmail}
-                    onChange={(e) => {
-                      setMobileOrEmail(e.target.value);
-                      if (e.target.value) setAdminId('');
-                    }}
+                    onChange={(e) => setMobileOrEmail(e.target.value)}
                     placeholder={inputMode === 'mobile' ? 'Please enter a mobile number' : 'Please enter your email'}
                     className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal"
                     autoFocus
                   />
                 </div>
 
-                {/* Single box named 'ID' replacing Google & Facebook, placed above Sign Up/Login */}
-                <div>
+                {/* Single box named 'ID' placed above Sign Up/Login with Eye open/close toggle */}
+                <div className="relative">
                   <input
-                    type="text"
+                    type={showAdminId ? 'text' : 'password'}
                     value={adminId}
-                    onChange={(e) => {
-                      setAdminId(e.target.value);
-                      if (e.target.value) setMobileOrEmail('');
-                    }}
+                    onChange={(e) => setAdminId(e.target.value)}
                     placeholder="ID"
-                    className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal font-mono"
+                    className="w-full px-4 py-3 text-sm sm:text-base bg-[#fcfcfc] border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] transition-all font-normal font-mono pr-11"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminId(!showAdminId)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1 transition-colors"
+                    title={showAdminId ? 'আইডি লুকান' : 'আইডি দেখুন'}
+                  >
+                    {showAdminId ? (
+                      <EyeOff className="w-5 h-5 text-slate-500" />
+                    ) : (
+                      <Eye className="w-5 h-5 text-slate-500" />
+                    )}
+                  </button>
                 </div>
 
                 {/* Primary Button: "Sign Up/Login" moved slightly downward */}
@@ -467,7 +581,7 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
               <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-lg flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2 truncate">
                   <CheckCircle2 className="w-4 h-4 text-[#007460] shrink-0" />
-                  <span className="font-semibold text-slate-800 font-mono truncate">{adminId || mobileOrEmail}</span>
+                  <span className="font-semibold text-slate-800 font-mono truncate">{uniqueName ? `${uniqueName} | ` : ''}ID: {adminId} ({mobileOrEmail})</span>
                 </div>
                 <button
                   type="button"

@@ -724,52 +724,104 @@ export const INITIAL_ADMIN_DELETION_LOGS: AdminAdDeletionLog[] = [
 
 export const INITIAL_ADMIN_USERS: AdminUser[] = [
   {
-    id: 'ADM-101',
+    id: 'ID-00009',
     name: 'Md. Akbar Hossain',
+    username: 'Arifhossain388@',
     role: 'Super Admin',
-    phone: '01332520826',
-    email: 'akbar.office10@gmail.com',
+    phone: '+8801851554333',
+    email: 'Akbarhossain2044@gmail.com',
     department: 'ম্যানেজমেন্ট ও পলিসি (মালিক)',
+    salary: '৫০,০০০',
+    dob: '১৯৮৮-০৫-১২',
+    telephone: '০২-৯৮৭৬৫৪৩',
+    nid: '১৯৮৮১২৩৪৫৬৭৮৯',
+    gender: 'Male',
+    presentAddress: 'ধানমন্ডি, রোড ৭, ঢাকা',
+    permanentAddress: 'মিরপুর ২, ঢাকা',
+    emergencyContact: {
+      name: 'সালমা বেগম',
+      phone: '01711-223344',
+      relation: 'স্ত্রী'
+    },
     isOwner: true,
     isApprovedByOwner: true,
     password: 'admin',
     registeredAt: '০১ অক্টোবর ২০২৬'
   },
   {
-    id: 'ADM-102',
+    id: '00002',
     name: 'কায়সার আহমেদ',
+    username: 'Kaysar2026!',
     role: 'Moderator',
     phone: '01712-334455',
     email: 'kaysar.moderator@bikroymela.com',
     department: 'বিজ্ঞাপন যাচাই ও কোয়ালিটি',
+    salary: '২২,০০০',
+    dob: '১৯৯৫-০৩-১৫',
+    telephone: '০১৭০০-১২২৩৩৪',
+    nid: '১৯৯৫৯৮৭৬৫৪২১৩',
+    gender: 'Male',
+    presentAddress: 'উত্তরা সেক্টর ৪, ঢাকা',
+    permanentAddress: 'চাটখিল, নোয়াখালী',
+    emergencyContact: {
+      name: 'মোবারক হোসেন',
+      phone: '01811-998877',
+      relation: 'পিতা'
+    },
     isOwner: false,
     isApprovedByOwner: true,
     password: 'staff',
     registeredAt: '০৫ অক্টোবর ২০২৬'
   },
   {
-    id: 'ADM-103',
+    id: '00003',
     name: 'সুমাইয়া আক্তার',
+    username: 'Sumaiya99#',
     role: 'Quality Officer',
     phone: '01822-445566',
     email: 'sumaiya.qa@bikroymela.com',
     department: 'এসক্রো নিরাপত্তা ও গ্রাহক সেবা',
+    salary: '২৫,০০০',
+    dob: '১৯৯৭-০৮-২২',
+    telephone: '',
+    nid: '১৯৯৭৪৫৬৭৮৯১২৩',
+    gender: 'Female',
+    presentAddress: 'বনশ্রী ব্লক সি, ঢাকা',
+    permanentAddress: 'সদর, কুমিল্লা',
+    emergencyContact: {
+      name: 'রহিমা খাতুন',
+      phone: '01922-334455',
+      relation: 'মাতা'
+    },
     isOwner: false,
     isApprovedByOwner: true,
     password: 'staff',
     registeredAt: '০৮ অক্টোবর ২০২৬'
   },
   {
-    id: 'ADM-104',
+    id: '00004',
     name: 'তানভীর হাসান',
+    username: 'Tanvir777$',
     role: 'Moderator',
     phone: '01911-223344',
     email: 'tanvir.mod@bikroymela.com',
     department: 'বিজ্ঞাপন নিরীক্ষা (নতুন আবেদনকারী)',
+    salary: '২০,০০০',
+    dob: '১৯৯৮-১১-১০',
+    telephone: '',
+    nid: '১৯৯৮৬৫৪১২৩৪৮৯',
+    gender: 'Male',
+    presentAddress: 'মোহাম্মদপুর, ঢাকা',
+    permanentAddress: 'সদর, বগুড়া',
+    emergencyContact: {
+      name: 'আব্দুল হাসান',
+      phone: '01733-445566',
+      relation: 'পিতা'
+    },
     isOwner: false,
     isApprovedByOwner: false, // অপেক্ষমাণ - মালিক টিক দিলে তবেই লগইন এক্সেস পাবে
     password: 'staff',
-    registeredAt: '১৩ অক্টোবর ২০২৬'
+    registeredAt: '১২ অক্টোবর ২০২৬'
   }
 ];
 
