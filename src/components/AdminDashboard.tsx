@@ -57,6 +57,8 @@ import {
   Clock,
   DownloadCloud,
   ChevronDown,
+  ChevronUp,
+  ChevronRight,
   FileText,
   BookOpen,
   CheckSquare,
@@ -127,15 +129,6 @@ export const AdminDashboard: React.FC = () => {
   const [isStaffDetailOpen, setIsStaffDetailOpen] = useState(false);
   const [staffToast, setStaffToast] = useState<string | null>(null);
 
-  if (!isAdminAuthenticated) {
-    return <AdminAuthGate onBackToCustomer={() => setIsAdminMode(false)} />;
-  }
-
-  // If user clicked "Manage Accounts", render the dedicated Manage Account page (Requirement C)
-  if (isManageAccountOpen) {
-    return <AdminManageAccountView onBackToDashboard={() => setIsManageAccountOpen(false)} />;
-  }
-
   // Owner Profile Edit Modal State
   const [isOwnerProfileModalOpen, setIsOwnerProfileModalOpen] = useState(false);
   const [profileName, setProfileName] = useState(activeAdmin?.name || 'Md. Akbar Hossain');
@@ -189,7 +182,7 @@ export const AdminDashboard: React.FC = () => {
     }, 1500);
   };
 
-  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers' | 'owner' | 'audit'>('ads');
+  const [activeTab, setActiveTab] = useState<'ads' | 'transactions' | 'users' | 'orders' | 'revenue' | 'settings' | 'backup' | 'offers' | 'owner' | 'audit' | 'links'>('ads');
   const [filterAdStatus, setFilterAdStatus] = useState<string>('all');
   const [adminSearch, setAdminSearch] = useState<string>('');
   const [copiedCustomerLink, setCopiedCustomerLink] = useState(false);
@@ -240,6 +233,20 @@ export const AdminDashboard: React.FC = () => {
   // Excel Data Validation State (বিজ্ঞাপন অনুমোদন ও নিয়ন্ত্রণ)
   const [openValidationMenuAdId, setOpenValidationMenuAdId] = useState<string | null>(null);
   const [showValidationGuideModal, setShowValidationGuideModal] = useState(false);
+  // Direct Access Links Collapse / Hide State with persistence
+  const [isDirectLinksOpen, setIsDirectLinksOpen] = useState<boolean>(() => {
+    const saved = localStorage.getItem('bikroy_admin_direct_links_open');
+    return saved !== null ? saved === 'true' : true;
+  });
+
+  const toggleDirectLinks = () => {
+    setIsDirectLinksOpen(prev => {
+      const nextVal = !prev;
+      localStorage.setItem('bikroy_admin_direct_links_open', String(nextVal));
+      return nextVal;
+    });
+  };
+
   const [validationToast, setValidationToast] = useState<string | null>(null);
 
   const triggerDownload = (content: string, filename: string, mimeType: string) => {
@@ -401,306 +408,422 @@ export const AdminDashboard: React.FC = () => {
 
   // Calculations & Validation Counts
   const totalVolume = transactions.reduce((acc, curr) => acc + curr.amount, 0);
-  const pendingAdsCount = ads.filter(a => a.status === 'pending').length;
-  const activeAdsCount = ads.filter(a => a.status === 'active').length;
+  const pendingAdsCount = ads.filter(a => a.status === 'pending' || a.validationStatus === 'Received' || a.validationStatus === 'Verified' || a.validationStatus === 'Processed').length;
+  const activeAdsCount = ads.filter(a => a.status === 'active' || a.validationStatus === 'Approved').length;
   const receivedAdsCount = ads.filter(a => a.validationStatus === 'Received' || (!a.validationStatus && a.status === 'pending')).length;
   const verifiedAdsCount = ads.filter(a => a.validationStatus === 'Verified').length;
   const processedAdsCount = ads.filter(a => a.validationStatus === 'Processed').length;
   const approvedAdsCount = ads.filter(a => a.validationStatus === 'Approved' || a.status === 'active').length;
   const rejectedAdsCount = ads.filter(a => a.validationStatus === 'Rejected' || a.status === 'rejected').length;
+  const unapprovedStaffCount = adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length;
+  const pendingWithdrawalsCount = withdrawalRequests.filter(w => w.status === 'Pending').length;
+
+  const adminNavModules = [
+    { 
+      id: 'ads' as const, 
+      serial: '01', 
+      title: 'বিজ্ঞাপন অনুমোদন ও নিয়ন্ত্রণ', 
+      count: `${ads.length}`,
+      badge: pendingAdsCount > 0 ? `${pendingAdsCount} অপেক্ষমাণ` : null,
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+      icon: Layers,
+      desc: 'বিজ্ঞাপনের অনুমোদন, Excel ভেলিডেশন ও ফিল্টার'
+    },
+    { 
+      id: 'transactions' as const, 
+      serial: '02', 
+      title: 'সব লেনদেন মনিটর', 
+      count: `${transactions.length}`,
+      badge: `৳ ${totalVolume.toLocaleString()}`,
+      badgeColor: 'bg-sky-100 text-sky-800 border-sky-300',
+      icon: CreditCard,
+      desc: 'এসক্রো ফান্ড, বিকাশ/নগদ পেমেন্ট ভেরিফিকেশন'
+    },
+    { 
+      id: 'orders' as const, 
+      serial: '03', 
+      title: 'কুরিয়ার ও ডেলিভারি ট্র্যাকিং', 
+      count: `${orders.length}`,
+      badge: 'স্টেডফাস্ট/পাঠাও',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      icon: Truck,
+      desc: 'পার্সেল ট্র্যাকিং ও ডেলিভারি স্ট্যাটাস'
+    },
+    { 
+      id: 'users' as const, 
+      serial: '04', 
+      title: 'কর্মকর্তা-কর্মী নিয়োগ ও ইউজার', 
+      count: `${adminList.length}`,
+      badge: null,
+      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+      icon: Users,
+      desc: 'কোম্পানি কর্মী নিয়োগ, সম্পাদনা ও ইউজার তালিকা'
+    },
+    { 
+      id: 'owner' as const, 
+      serial: '05', 
+      title: 'মালিকের নিয়ন্ত্রণ প্যানেল (মাস্টার PIN)', 
+      count: null,
+      badge: unapprovedStaffCount > 0 ? `${unapprovedStaffCount} অপেক্ষমাণ` : (!isOwnerUnlocked ? 'PIN লক' : 'আনলক'),
+      badgeColor: unapprovedStaffCount > 0 ? 'bg-amber-400 text-slate-950 font-bold animate-pulse' : 'bg-amber-100 text-amber-900 border-amber-300',
+      icon: Crown,
+      desc: 'আর্থিক হিসাব, কর্মী অনুমোদন ও মালিকের মাস্টার কন্ট্রোল'
+    },
+    { 
+      id: 'audit' as const, 
+      serial: '06', 
+      title: 'এডমিন অডিট ও অ্যাকশন হিস্ট্রি লগ', 
+      count: `${adminDeletionLogs.length}`,
+      badge: 'স্থায়ী রেকর্ড',
+      badgeColor: 'bg-slate-100 text-slate-700 border-slate-300',
+      icon: FileCheck,
+      desc: 'কর্মকর্তা ও এডমিনদের সকল কার্যক্রমের অডিট হিস্ট্রি'
+    },
+    { 
+      id: 'revenue' as const, 
+      serial: '07', 
+      title: 'আয় ও কমিশন ব্যবস্থাপনা', 
+      count: 'Revenue',
+      badge: 'কমিশন ২.৫%',
+      badgeColor: 'bg-amber-100 text-amber-800 border-amber-300',
+      icon: CircleDollarSign,
+      desc: 'প্ল্যাটফর্ম কমিশন ও উইথড্রয়াল সেটআপ'
+    },
+    { 
+      id: 'offers' as const, 
+      serial: '08', 
+      title: 'অফার ও ওয়েলকাম বোনাস', 
+      count: `${withdrawalRequests.length}`,
+      badge: pendingWithdrawalsCount > 0 ? `${pendingWithdrawalsCount} রিকুয়েস্ট` : 'সক্রিয়',
+      badgeColor: pendingWithdrawalsCount > 0 ? 'bg-rose-100 text-rose-800 border-rose-300 font-bold' : 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      icon: Gift,
+      desc: '১০০ টাকা সাইনআপ বোনাস ও ক্যাশআউট অনুমোদন'
+    },
+    { 
+      id: 'settings' as const, 
+      serial: '09', 
+      title: 'সাইট ও ডোমেইন নাম সেটিংস', 
+      count: null,
+      badge: siteName,
+      badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-300',
+      icon: Globe,
+      desc: 'ওয়েবসাইট ও ডোমেইন নাম সরাসরি কাস্টমাইজেশন'
+    },
+    { 
+      id: 'backup' as const, 
+      serial: '10', 
+      title: 'ডাটা ব্যাকআপ ও ডাউনলোড', 
+      count: null,
+      badge: 'JSON/Excel',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      icon: Database,
+      desc: 'পুরো প্ল্যাটফর্মের ডাটাবেজ ব্যাকআপ ও রিস্টোর'
+    },
+    { 
+      id: 'links' as const, 
+      serial: '11', 
+      title: 'সরাসরি প্ল্যাটফর্ম লিংকসমূহ', 
+      count: '২টি লিংক',
+      badge: 'কপি ও শেয়ার',
+      badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+      icon: LinkIcon,
+      desc: 'কাষ্টমার মার্কেটপ্লেস ও এডমিন প্যানেলের সরাসরি প্রবেশাধিকার লিংক'
+    }
+  ];
+
+  const currentActiveModule = adminNavModules.find(m => m.id === activeTab) || adminNavModules[0];
 
   const filteredAds = ads.filter(ad => {
     const currentValidation = ad.validationStatus || (ad.status === 'active' ? 'Approved' : (ad.status === 'rejected' ? 'Rejected' : 'Received'));
-    const matchesStatus = filterAdStatus === 'all' || 
-                          ad.status === filterAdStatus || 
-                          currentValidation === filterAdStatus;
+    const isPending = ad.status === 'pending' || currentValidation === 'Received' || currentValidation === 'Verified' || currentValidation === 'Processed';
+
+    let matchesStatus = false;
+    if (filterAdStatus === 'all') {
+      matchesStatus = true;
+    } else if (filterAdStatus === 'pending') {
+      matchesStatus = isPending;
+    } else {
+      matchesStatus = ad.status === filterAdStatus || currentValidation === filterAdStatus;
+    }
+
     const matchesSearch = ad.titleBn.toLowerCase().includes(adminSearch.toLowerCase()) ||
                           ad.titleEn.toLowerCase().includes(adminSearch.toLowerCase()) ||
-                          ad.sellerName.toLowerCase().includes(adminSearch.toLowerCase());
+                          ad.sellerName.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                          ad.id.toLowerCase().includes(adminSearch.toLowerCase());
     return matchesStatus && matchesSearch;
   });
+
+  if (!isAdminAuthenticated) {
+    return <AdminAuthGate onBackToCustomer={() => setIsAdminMode(false)} />;
+  }
+
+  // If user clicked "Manage Accounts", render the dedicated Manage Account page (Requirement C)
+  if (isManageAccountOpen) {
+    return <AdminManageAccountView onBackToDashboard={() => setIsManageAccountOpen(false)} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 pb-16">
       
-      {/* Admin Top Navigation Bar */}
-      <div className="bg-[#007460] text-white border-b border-[#005e4e] px-4 sm:px-6 py-4 shadow-md">
-        <div className="max-w-7xl mx-auto flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+      {/* Admin Top Sticky Navigation Bar (স্থির থাকবে) */}
+      <header className="sticky top-0 z-50 bg-[#007460] text-white border-b border-[#005e4e] px-4 sm:px-6 py-2.5 shadow-md">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
           
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
-              <ShieldCheck className="w-6 h-6" />
+          {/* LEFT: Logo & Customer Mode (গ্রাহক মোড) */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
+              <ShieldCheck className="w-5 h-5 text-slate-950" />
             </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-lg sm:text-xl font-bold tracking-tight text-white">
-                  {siteName} {lang === 'bn' ? 'কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল' : 'Central Admin Control Panel'}
-                </h1>
-                <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded uppercase flex items-center gap-1 shadow-xs">
-                  {activeAdmin?.isOwner && <Crown className="w-3 h-3 text-slate-950" />}
-                  <span>{activeAdmin?.role ? activeAdmin.role.toUpperCase() : 'SUPER ADMIN'}</span>
-                </span>
 
-                {activeAdmin && (
-                  <button
-                    onClick={() => setIsOwnerProfileModalOpen(true)}
-                    className="text-[11px] font-semibold bg-black/25 hover:bg-black/40 text-emerald-100 hover:text-white border border-white/20 hover:border-amber-400/80 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                    title="মালিকের নাম, মোবাইল, আইডি ও পাসওয়ার্ড পরিবর্তন করুন"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-pulse"></span>
-                    <span>{activeAdmin.name} ({activeAdmin.id})</span>
-                    <span className="text-[9px] text-amber-300 font-bold bg-amber-400/20 px-1 py-0.2 rounded border border-amber-300/40 flex items-center gap-0.5">
-                      <Edit3 className="w-2.5 h-2.5" />
-                      <span>তথ্য পরিবর্তন</span>
-                    </span>
-                  </button>
-                )}
-
-                <button 
-                  onClick={() => setActiveTab('settings')}
-                  className="text-[11px] font-semibold bg-black/20 hover:bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="ক্লিক করে সাইট ও ডোমেইন নাম পরিবর্তন করুন"
-                >
-                  <Globe className="w-3 h-3 text-emerald-300" />
-                  <span>সাইট: <strong className="text-amber-300">{siteName}</strong></span>
-                  <span className="text-[9px] underline text-emerald-200">পরিবর্তন</span>
-                </button>
-
-                <button 
-                  onClick={() => setActiveTab('backup')}
-                  className="text-[11px] font-semibold bg-black/20 hover:bg-black/30 text-white border border-white/20 px-2.5 py-0.5 rounded flex items-center gap-1.5 transition-colors cursor-pointer"
-                  title="ডাটা ব্যাকআপ ও ডাউনলোড করুন"
-                >
-                  <Database className="w-3 h-3 text-cyan-300" />
-                  <span>💾 ব্যাকআপ: <strong className="text-white">ডাউনলোড</strong></span>
-                </button>
-              </div>
-              <p className="text-xs text-emerald-100 mt-0.5">
-                {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো সিকিউরিটি ব্যবস্থাপনা' : 'Ad Moderation, Escrow Monitoring & Platform Governance'}
-              </p>
-            </div>
+            {/* গ্রাহক মোড বাটন (বাম পাশে) */}
+            <button
+              type="button"
+              onClick={() => setIsAdminMode(false)}
+              className="px-3 py-1.5 bg-black/25 hover:bg-black/35 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer shadow-2xs"
+              title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
+            >
+              <ArrowLeft className="w-3.5 h-3.5 text-amber-300" />
+              <span>গ্রাহক মোড</span>
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 flex-wrap self-start lg:self-center">
-            {/* Manage Accounts Button (Requirement C) */}
+          {/* CENTER: মাঝখানে কেন্দ্রীয় নাম ও সাবটাইটেল (বিক্রয় মেলা কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল) */}
+          <div className="text-center flex-1 px-2">
+            <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-white leading-tight">
+              {siteName} {lang === 'bn' ? 'কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল' : 'Central Admin Control Panel'}
+            </h1>
+            <p className="text-[11px] sm:text-xs text-emerald-100 mt-0.5 leading-tight font-normal hidden sm:block">
+              {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো সিকিউরিটি ব্যবস্থাপনা' : 'Ad Moderation, Escrow Monitoring & Platform Governance'}
+            </p>
+          </div>
+
+          {/* RIGHT: শুধু মাত্র ইউজার আইকন ও V বাটনে ক্লিক করলে ড্রপডাউন মেনু (ছবিটির মতো) */}
+          <div className="relative shrink-0">
             <button
-              onClick={() => setIsManageAccountOpen(true)}
-              className="px-3 py-1.5 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-lg text-xs font-black flex items-center gap-1.5 transition-all shadow-sm cursor-pointer hover:scale-[1.02]"
-              title="Manage Accounts (আইডির সকল তথ্য দেখুন ও পরিবর্তন করুন)"
+              type="button"
+              onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
+              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 text-xs font-semibold text-white bg-black/25 hover:bg-black/35 rounded-full transition-all group cursor-pointer border border-white/20 hover:border-amber-400 shadow-xs"
+              title="ইউজার তথ্য ও অ্যাকাউন্ট মেনু দেখতে ক্লিক করুন"
             >
-              <UserCog className="w-4 h-4 text-slate-950" />
-              <span>Manage Accounts</span>
+              {/* Circular Avatar 'M' or User Initials without Crown (রাজার মতো চিহ্ন থাকবে না) */}
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-md ring-2 ring-emerald-300/80 group-hover:scale-105 transition-transform shrink-0">
+                {activeAdmin.name ? activeAdmin.name.charAt(0) : 'M'}
+              </div>
+
+              {/* V Shape Icon (ChevronDown / ChevronUp) */}
+              <span className="w-5 h-5 flex items-center justify-center text-white group-hover:text-amber-300 transition-colors">
+                {adminDropdownOpen ? (
+                  <ChevronUp className="w-4 h-4 text-amber-300" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </span>
             </button>
 
-            {/* User Profile Badge & Dropdown (Right Corner - Requirement C) */}
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
-                className="flex items-center gap-2 p-1 sm:px-2.5 sm:py-1 text-xs font-semibold text-white bg-black/25 hover:bg-black/35 rounded-full transition-all group cursor-pointer border border-white/20 hover:border-amber-400 shadow-xs"
-                title="লগইনকৃত অ্যাডমিন অ্যাকাউন্ট তথ্য"
-              >
-                {/* Circular Avatar */}
-                <div className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center shadow-md ring-2 ring-emerald-300/80 group-hover:scale-105 transition-transform shrink-0">
-                  {activeAdmin.name ? activeAdmin.name.charAt(0) : 'A'}
-                  {activeAdmin.isOwner && (
-                    <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-amber-500 rounded-full flex items-center justify-center ring-1 ring-white" title="মালিক">
-                      <Crown className="w-2.5 h-2.5 text-slate-950" />
-                    </span>
-                  )}
-                </div>
+            {/* Dropdown Menu (Screenshot Sample Style - In-place dropdown, no page open) */}
+            {adminDropdownOpen && (
+              <>
+                {/* Backdrop to close on outside click */}
+                <div 
+                  className="fixed inset-0 z-40" 
+                  onClick={() => setAdminDropdownOpen(false)}
+                />
 
-                <div className="hidden sm:flex flex-col text-left leading-tight pr-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-mono font-bold text-amber-300">{activeAdmin.id}</span>
-                    <span className="text-[9px] bg-emerald-950/70 text-emerald-200 px-1 py-0.2 rounded font-sans">
-                      {activeAdmin.isOwner ? 'মালিক' : (activeAdmin.role || 'স্টাফ')}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-white font-medium truncate max-w-[120px]">
-                    {activeAdmin.name}
-                  </span>
-                </div>
-
-                <ChevronDown className="w-3.5 h-3.5 opacity-80" />
-              </button>
-
-              {/* Dropdown Menu */}
-              {adminDropdownOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-60 bg-white rounded-xl shadow-xl border border-slate-200 text-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 text-xs">
-                  <div className="px-4 py-2 border-b border-slate-100 bg-slate-50">
-                    <span className="text-[10px] text-slate-400 block font-medium">লগইনকৃত আইডি:</span>
-                    <strong className="text-slate-900 font-mono text-sm block">{activeAdmin.id}</strong>
-                    <span className="text-[11px] text-slate-700 font-bold block truncate mt-0.5">{activeAdmin.name}</span>
-                    <span className="text-[10px] text-emerald-700 font-mono font-bold">ইউনিক: {activeAdmin.username || 'N/A'}</span>
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 text-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 text-xs">
+                  {/* User Identity Info in Dropdown Header: পদবী নির্দিষ্ট কর্মীর পদ উল্লেখ থাকবে */}
+                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/90">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                        {activeAdmin.id}
+                      </span>
+                      <span className="text-[10px] bg-[#007460] text-white font-bold px-2 py-0.5 rounded-full">
+                        {activeAdmin.isOwner 
+                          ? 'মালিক' 
+                          : (activeAdmin.designation || activeAdmin.role || 'কর্মকর্তা')}
+                      </span>
+                    </div>
+                    <strong className="text-slate-900 font-bold text-sm block mt-1.5 truncate">
+                      {activeAdmin.name}
+                    </strong>
+                    {activeAdmin.phone && (
+                      <span className="text-[11px] text-slate-500 block truncate mt-0.5 font-mono">
+                        {activeAdmin.phone}
+                      </span>
+                    )}
+                    {activeAdmin.username && (
+                      <span className="text-[10px] text-emerald-700 block truncate font-mono">
+                        ইউজারনেম: {activeAdmin.username}
+                      </span>
+                    )}
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsManageAccountOpen(true);
-                      setAdminDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-emerald-50 text-slate-900 font-bold flex items-center gap-2 cursor-pointer transition-colors"
-                  >
-                    <UserCog className="w-4 h-4 text-[#007460]" />
-                    <span>Manage Accounts</span>
-                    <span className="ml-auto text-[9px] bg-emerald-100 text-[#007460] px-1.5 py-0.5 rounded font-bold">ওপেন</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStaffToEdit(null);
-                      setIsRecruitModalOpen(true);
-                      setAdminDropdownOpen(false);
-                    }}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-100 font-medium text-slate-800 flex items-center gap-2 cursor-pointer"
-                  >
-                    <UserPlus className="w-4 h-4 text-emerald-600" />
-                    <span>নতুন কর্মী নিয়োগ (+ Recruit)</span>
-                  </button>
+                  {/* Menu Options: তথ্য পরিবর্তন Manage Account এর ভেতরে থাকবে */}
+                  <div className="py-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsManageAccountOpen(true);
+                        setAdminDropdownOpen(false);
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 font-semibold flex items-center gap-2.5 cursor-pointer transition-colors"
+                    >
+                      <UserCog className="w-4 h-4 text-[#007460]" />
+                      <span>Manage Account</span>
+                    </button>
+                  </div>
 
                   <div className="border-t border-slate-100 my-1"></div>
 
+                  {/* লগআউট Dropdown এর মধ্যে */}
                   <button
                     type="button"
                     onClick={() => {
-                      adminLogout();
                       setAdminDropdownOpen(false);
+                      adminLogout();
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-bold flex items-center gap-2 cursor-pointer"
+                    className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-bold flex items-center gap-2.5 cursor-pointer transition-colors"
                   >
                     <LogOut className="w-4 h-4 text-rose-600" />
                     <span>লগআউট (Log Out)</span>
                   </button>
                 </div>
-              )}
-            </div>
-
-            {/* Quick button to jump to (C) Owner Master Control */}
-            <button
-              onClick={() => setActiveTab('owner')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
-                activeTab === 'owner'
-                  ? 'bg-amber-400 text-slate-950 font-black'
-                  : 'bg-black/25 hover:bg-black/35 text-amber-300 border border-amber-300/40'
-              }`}
-              title="মালিকের ৪ ডিজিট পিন দ্বারা বিশেষ নিয়ন্ত্রণ ও লাভ-ক্ষতি প্যানেল"
-            >
-              <Crown className="w-3.5 h-3.5 text-amber-300" />
-              <span>মালিকের নিয়ন্ত্রণ (PIN)</span>
-              {!isOwnerUnlocked && <Lock className="w-3 h-3 text-amber-300" />}
-            </button>
-
-            {/* Switch to public customer view */}
-            <button
-              onClick={() => setIsAdminMode(false)}
-              className="px-3 py-1.5 bg-black/20 hover:bg-black/30 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer"
-              title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>{t.switchToUser}</span>
-            </button>
-
-            {/* Secure Admin Logout Button */}
-            <button
-              onClick={adminLogout}
-              className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-              title="এডমিন সেশন সমাপ্ত করে সম্পূর্ণ লগআউট করুন (পরবর্তীতে প্রবেশ করতে ওটিপি লাগবে)"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>লগআউট</span>
-            </button>
+              </>
+            )}
           </div>
 
         </div>
-      </div>
+      </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         
-        {/* Direct Links Box for Customer & Admin */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-4 sm:p-5">
-          <div className="flex items-center gap-2 mb-3">
-            <LinkIcon className="w-4 h-4 text-[#007460]" />
-            <h2 className="text-sm font-bold text-slate-900">
-              {lang === 'bn' ? 'সরাসরি প্ল্যাটফর্ম লিংকসমূহ (Direct Access Links)' : 'Platform Direct Access Links'}
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Customer Link Card */}
-            <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-lg flex flex-col justify-between space-y-2">
+        {/* Direct Links Box for Customer & Admin with V-shaped Toggle (Show/Hide) */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200">
+          <button
+            type="button"
+            onClick={toggleDirectLinks}
+            className="w-full p-3.5 sm:p-4 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer group"
+            title={isDirectLinksOpen ? "ক্লিক করে লিংক প্যানেল লুকান / হাইড করুন" : "ক্লিক করে লিংক প্যানেল প্রদর্শন / শো করুন"}
+          >
+            <div className="flex items-center gap-2.5">
+              <span className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors shadow-2xs ${
+                isDirectLinksOpen ? 'bg-emerald-100 text-[#007460]' : 'bg-slate-100 text-slate-600'
+              }`}>
+                <LinkIcon className="w-4 h-4" />
+              </span>
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
-                    <span>{lang === 'bn' ? '০১. কাষ্টমার মার্কেটপ্লেস লিংক' : '01. Customer Marketplace Link'}</span>
-                  </span>
-                  <span className="text-[10px] bg-emerald-200 text-emerald-900 font-semibold px-1.5 py-0.5 rounded">
-                    পণ্য কেনাবেচা
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900 group-hover:text-[#007460] transition-colors">
+                    {lang === 'bn' ? 'সরাসরি প্ল্যাটফর্ম লিংকসমূহ (Direct Access Links)' : 'Platform Direct Access Links'}
+                  </h2>
+                  <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                    isDirectLinksOpen 
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200' 
+                      : 'bg-slate-100 text-slate-600 border-slate-200'
+                  }`}>
+                    {isDirectLinksOpen ? 'উন্মুক্ত (Visible)' : 'লুকানো (Hidden)'}
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-800 mt-1">
-                  {lang === 'bn' ? 'এই লিংকটি সাধারণ ক্রেতা ও বিক্রেতাদের সাথে শেয়ার করুন।' : 'Share this public link with general buyers and sellers.'}
+                <p className="text-[11px] text-slate-500 mt-0.5">
+                  {isDirectLinksOpen 
+                    ? 'কাষ্টমার মার্কেটপ্লেস ও এডমিন প্যানেলের সরাসরি প্রবেশাধিকার লিংকসমূহ কপি বা শেয়ার করুন।'
+                    : 'প্যানেলটি বর্তমানে হাইড করা রয়েছে (নিচের লেখা উপরে উঠেছে)। লিংক দেখতে V বাটনে ক্লিক করুন।'}
                 </p>
-                <div className="mt-2 p-2 bg-white rounded border border-emerald-200 font-mono text-xs text-slate-800 break-all select-all">
-                  {customerUrl || '/'}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => copyToClipboard(customerUrl || window.location.origin, 'customer')}
-                  className="flex-1 py-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                >
-                  {copiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedCustomerLink ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'কাষ্টমার লিংক কপি করুন' : 'Copy Customer Link')}</span>
-                </button>
-                <button
-                  onClick={() => setIsAdminMode(false)}
-                  className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-semibold flex items-center gap-1 transition-colors"
-                  title="Open Customer View"
-                >
-                  <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
-                  <span>ভিজিট</span>
-                </button>
               </div>
             </div>
 
-            {/* Admin Direct Link Card */}
-            <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-lg flex flex-col justify-between space-y-2">
-              <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                    <span>{lang === 'bn' ? '০২. এডমিন প্যানেল সরাসরি লিংক' : '02. Admin Panel Direct Link'}</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-200 text-amber-900 font-semibold px-1.5 py-0.5 rounded">
-                    কন্ট্রোল ও এসক্রো
-                  </span>
-                </div>
-                <p className="text-[11px] text-amber-900 mt-1 font-medium">
-                  {lang === 'bn' 
-                    ? '🔒 এই লিংকে প্রবেশ করলে সুরক্ষিত সিকিউরিটি গেট প্রদর্শিত হবে। আইডি, পাসওয়ার্ড ও ওটিপি ভেরিফিকেশন ছাড়া কেউ কোনো তথ্য দেখতে পারবে না।' 
-                    : '🔒 Protected Gateway: Requires Admin ID, Password & OTP verification to view any data.'}
-                </p>
-                <div className="mt-2 p-2 bg-white rounded border border-amber-200 font-mono text-xs text-slate-800 break-all select-all">
-                  {adminUrl || '/?admin=true'}
-                </div>
-              </div>
+            {/* V Shape Toggle Button */}
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors shrink-0 shadow-2xs group-hover:border-slate-300">
+              <span className="hidden sm:inline text-[11px]">
+                {isDirectLinksOpen ? 'হাইড করুন' : 'শো করুন'}
+              </span>
+              <span className="w-5 h-5 rounded-full bg-white flex items-center justify-center shadow-xs">
+                {isDirectLinksOpen ? (
+                  <ChevronUp className="w-3.5 h-3.5 text-slate-800" />
+                ) : (
+                  <ChevronDown className="w-3.5 h-3.5 text-[#007460]" />
+                )}
+              </span>
+            </div>
+          </button>
 
-              <div className="flex items-center gap-2 pt-1">
-                <button
-                  onClick={() => copyToClipboard(adminUrl || `${window.location.origin}/?admin=true`, 'admin')}
-                  className="w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs"
-                >
-                  {copiedAdminLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                  <span>{copiedAdminLink ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'এডমিন লিংক কপি করুন' : 'Copy Admin Link')}</span>
-                </button>
+          {/* Collapsible Content: Only visible when isDirectLinksOpen is true */}
+          {isDirectLinksOpen && (
+            <div className="p-4 sm:p-5 pt-0 border-t border-slate-100 animate-in fade-in duration-150">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+                {/* Customer Link Card */}
+                <div className="p-3.5 bg-emerald-50/70 border border-emerald-200/80 rounded-lg flex flex-col justify-between space-y-2">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-emerald-600"></span>
+                        <span>{lang === 'bn' ? '০১. কাষ্টমার মার্কেটপ্লেস লিংক' : '01. Customer Marketplace Link'}</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-200 text-emerald-900 font-semibold px-1.5 py-0.5 rounded">
+                        পণ্য কেনাবেচা
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-emerald-800 mt-1">
+                      {lang === 'bn' ? 'এই লিংকটি সাধারণ ক্রেতা ও বিক্রেতাদের সাথে শেয়ার করুন।' : 'Share this public link with general buyers and sellers.'}
+                    </p>
+                    <div className="mt-2 p-2 bg-white rounded border border-emerald-200 font-mono text-xs text-slate-800 break-all select-all">
+                      {customerUrl || '/'}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => copyToClipboard(customerUrl || window.location.origin, 'customer')}
+                      className="flex-1 py-1.5 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      {copiedCustomerLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedCustomerLink ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'কাষ্টমার লিংক কপি করুন' : 'Copy Customer Link')}</span>
+                    </button>
+                    <button
+                      onClick={() => setIsAdminMode(false)}
+                      className="py-1.5 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                      title="Open Customer View"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                      <span>ভিজিট</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Admin Direct Link Card */}
+                <div className="p-3.5 bg-amber-50/70 border border-amber-200/80 rounded-lg flex flex-col justify-between space-y-2">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-amber-950 flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                        <span>{lang === 'bn' ? '০২. এডমিন প্যানেল সরাসরি লিংক' : '02. Admin Panel Direct Link'}</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-200 text-amber-900 font-semibold px-1.5 py-0.5 rounded">
+                        কন্ট্রোল ও এসক্রো
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-amber-900 mt-1 font-medium">
+                      {lang === 'bn' 
+                        ? '🔒 এই লিংকে প্রবেশ করলে সুরক্ষিত সিকিউরিটি গেট প্রদর্শিত হবে। আইডি, পাসওয়ার্ড ও ওটিপি ভেরিফিকেশন ছাড়া কেউ কোনো তথ্য দেখতে পারবে না।' 
+                        : '🔒 Protected Gateway: Requires Admin ID, Password & OTP verification to view any data.'}
+                    </p>
+                    <div className="mt-2 p-2 bg-white rounded border border-amber-200 font-mono text-xs text-slate-800 break-all select-all">
+                      {adminUrl || '/?admin=true'}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => copyToClipboard(adminUrl || `${window.location.origin}/?admin=true`, 'admin')}
+                      className="w-full py-1.5 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      {copiedAdminLink ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedAdminLink ? (lang === 'bn' ? 'কপি হয়েছে!' : 'Copied!') : (lang === 'bn' ? 'এডমিন লিংক কপি করুন' : 'Copy Admin Link')}</span>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Metric Cards Grid */}
@@ -760,123 +883,179 @@ export const AdminDashboard: React.FC = () => {
 
         </div>
 
-        {/* Admin Navigation Tabs */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+        {/* Main 2-Column Split: Left Sidebar (Menu with 01, 02, 03... numbers) + Right Details Panel */}
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
           
-          <div className="flex items-center border-b border-slate-200 bg-slate-50 px-4 overflow-x-auto text-xs font-semibold">
-            <button
-              onClick={() => setActiveTab('ads')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'ads' ? 'border-[#007460] text-[#007460]' : 'border-transparent text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Layers className="w-4 h-4" />
-              <span>{t.manageAds} ({ads.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('transactions')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'transactions' ? 'border-[#007460] text-[#007460]' : 'border-transparent text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <CreditCard className="w-4 h-4" />
-              <span>{t.transactions} ({transactions.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('orders')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'orders' ? 'border-[#007460] text-[#007460]' : 'border-transparent text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Truck className="w-4 h-4" />
-              <span>কুরিয়ার ও ডেলিভারি ট্র্যাকিং ({orders.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('users')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'users' ? 'border-[#007460] text-[#007460] font-bold' : 'border-transparent text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>কর্মকর্তা-কর্মী নিয়োগ ও ইউজার ({adminList.length})</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('owner')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'owner' ? 'border-amber-500 text-amber-950 font-black bg-amber-50/90 shadow-2xs' : 'border-transparent text-amber-800 hover:text-amber-950 bg-amber-50/30'
-              }`}
-              title="মালিকের ৪ ডিজিট পিন সুরক্ষা ও অভ্যন্তরীণ আর্থিক লাভ-ক্ষতি প্যানেল"
-            >
-              <Crown className="w-4 h-4 text-amber-600" />
-              <span>👑 (C) মালিকের নিয়ন্ত্রণ প্যানেল</span>
-              {adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length > 0 && (
-                <span className="bg-amber-400 text-slate-950 font-mono font-bold text-[10px] px-1.5 py-0.2 rounded-full animate-pulse">
-                  {adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length} অপেক্ষমাণ
+          {/* LEFT SIDE: Serialized Main Navigation (বাম পাশে সিরিয়াল অনুযায়ী বিষয়সমূহ) */}
+          <aside className="w-full lg:w-80 shrink-0 space-y-4">
+            
+            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-4">
+              <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-3.5 flex items-center justify-between border-b border-slate-700">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                    <ListFilter className="w-4 h-4 text-amber-400" />
+                    <span>এডমিন মূল বিষয়সমূহ</span>
+                  </h3>
+                  <p className="text-[10px] text-slate-300 mt-0.5 font-normal">
+                    সিরিয়াল নির্বাচন করে ডানপাশে বিস্তারিত দেখুন
+                  </p>
+                </div>
+                <span className="text-[10px] font-mono font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-xs">
+                  {adminNavModules.length}টি বিষয়
                 </span>
-              )}
-              {!isOwnerUnlocked && <Lock className="w-3 h-3 text-slate-400" />}
-            </button>
+              </div>
 
-            <button
-              onClick={() => setActiveTab('audit')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'audit' ? 'border-[#007460] text-[#007460] font-bold bg-white shadow-2xs' : 'border-transparent text-slate-600 hover:text-slate-900'
-              }`}
-              title="কর্মকর্তারা কোন বিজ্ঞাপনে কি অনুমোদন দিয়েছেন তার স্থায়ী অডিট রেকর্ড"
-            >
-              <FileCheck className="w-4 h-4 text-emerald-600" />
-              <span>📋 এডমিন অডিট ও অ্যাকশন হিস্ট্রি লগ</span>
-            </button>
+              {/* Navigation items list */}
+              <nav className="p-2 space-y-1.5 max-h-[calc(100vh-180px)] overflow-y-auto">
+                {adminNavModules.map((item) => {
+                  const IconComponent = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        if (window.innerWidth < 1024) {
+                          const detailElem = document.getElementById('admin-detail-panel');
+                          if (detailElem) {
+                            detailElem.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }
+                      }}
+                      className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer group ${
+                        isActive
+                          ? 'bg-emerald-50/90 border-[#007460] text-[#007460] shadow-xs ring-1 ring-[#007460]/20'
+                          : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-700 hover:text-slate-950 hover:border-slate-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        {/* Serial number badge (01, 02, 03...) */}
+                        <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md shrink-0 shadow-2xs transition-colors ${
+                          isActive
+                            ? 'bg-[#007460] text-white'
+                            : 'bg-slate-100 group-hover:bg-slate-200 text-slate-700 font-semibold'
+                        }`}>
+                          {item.serial}
+                        </span>
 
-            <button
-              onClick={() => setActiveTab('revenue')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'revenue' ? 'border-[#007460] text-[#007460] font-bold' : 'border-transparent text-amber-700 hover:text-amber-900'
-              }`}
-            >
-              <CircleDollarSign className="w-4 h-4 text-amber-600" />
-              <span>আয় ও কমিশন ব্যবস্থাপনা (Revenue)</span>
-            </button>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <IconComponent className={`w-3.5 h-3.5 shrink-0 ${
+                              isActive ? 'text-[#007460]' : 'text-slate-500 group-hover:text-slate-700'
+                            }`} />
+                            <span className={`text-xs truncate block ${
+                              isActive ? 'font-bold text-slate-950' : 'font-medium text-slate-800'
+                            }`}>
+                              {item.title}
+                            </span>
+                          </div>
+                          
+                          {/* Count or quick status subtitle */}
+                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] flex-wrap">
+                            {item.count && (
+                              <span className={`font-mono font-semibold ${
+                                isActive ? 'text-[#007460]' : 'text-slate-500'
+                              }`}>
+                                ({item.count})
+                              </span>
+                            )}
+                            {item.badge && (
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] border font-sans ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
 
-            <button
-              onClick={() => setActiveTab('offers')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'offers' ? 'border-[#007460] text-[#007460] font-bold bg-white shadow-2xs' : 'border-transparent text-amber-700 hover:text-amber-900'
-              }`}
-            >
-              <Gift className="w-4 h-4 text-amber-600" />
-              <span>🎁 অফার ও ওয়েলকাম বোনাস (Offers & Bonus)</span>
-              {withdrawalRequests.filter(w => w.status === 'Pending').length > 0 && (
-                <span className="bg-amber-500 text-slate-950 font-mono font-bold text-[10px] px-1.5 py-0.2 rounded-full">
-                  {withdrawalRequests.filter(w => w.status === 'Pending').length}
-                </span>
-              )}
-            </button>
+                      {/* Right Indicator Arrow */}
+                      <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${
+                        isActive
+                          ? 'text-[#007460] translate-x-0.5'
+                          : 'text-slate-300 group-hover:text-slate-500 opacity-60 group-hover:opacity-100'
+                      }`} />
+                    </button>
+                  );
+                })}
+              </nav>
 
-            <button
-              onClick={() => setActiveTab('settings')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'settings' ? 'border-[#007460] text-[#007460] font-bold bg-white' : 'border-transparent text-indigo-700 hover:text-indigo-900'
-              }`}
-            >
-              <Globe className="w-4 h-4 text-indigo-600" />
-              <span>🌐 সাইট ও ডোমেইন নাম সেটিংস (Site Name)</span>
-            </button>
+              {/* Quick Admin Profile Card at bottom of left sidebar */}
+              <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-6 h-6 rounded-full bg-[#007460] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                      {activeAdmin.name ? activeAdmin.name.charAt(0) : 'A'}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-slate-900 text-[11px] block truncate">{activeAdmin.name}</span>
+                      <span className="font-mono text-[10px] text-slate-500 block truncate">{activeAdmin.id}</span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsManageAccountOpen(true)}
+                    className="text-[10px] font-bold text-[#007460] hover:underline cursor-pointer shrink-0 ml-2"
+                  >
+                    ম্যানেজ
+                  </button>
+                </div>
+              </div>
 
-            <button
-              onClick={() => setActiveTab('backup')}
-              className={`py-3.5 px-4 border-b-2 whitespace-nowrap transition-colors flex items-center gap-2 ${
-                activeTab === 'backup' ? 'border-[#007460] text-[#007460] font-bold bg-white shadow-2xs' : 'border-transparent text-emerald-800 hover:text-emerald-950'
-              }`}
-            >
-              <Database className="w-4 h-4 text-emerald-600" />
-              <span>💾 ডাটা ব্যাকআপ ও ডাউনলোড (Backup)</span>
-            </button>
-          </div>
+            </div>
+
+          </aside>
+
+          {/* RIGHT SIDE: Dedicated Details Panel (ডান পাশে নির্বাচিত বিষয়ের বিস্তারিত বিবরণ ও একশনসমূহ) */}
+          <main id="admin-detail-panel" className="flex-1 min-w-0 w-full bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+            
+            {/* Right Panel Breadcrumb & Title Bar */}
+            <div className="bg-linear-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5">
+                  <span className="font-mono text-xs font-bold bg-[#007460] text-white px-2.5 py-1 rounded-md shadow-2xs">
+                    {currentActiveModule.serial}
+                  </span>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                        {currentActiveModule.title}
+                      </h2>
+                      {currentActiveModule.count && (
+                        <span className="font-mono text-xs font-bold bg-emerald-100 text-[#007460] px-2 py-0.5 rounded-full">
+                          মোট: {currentActiveModule.count}
+                        </span>
+                      )}
+                      {currentActiveModule.badge && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-semibold ${currentActiveModule.badgeColor}`}>
+                          {currentActiveModule.badge}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                      <span>ডান পাশের বিস্তারিত প্যানেল: {currentActiveModule.desc}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Switch for mobile screens */}
+              <div className="lg:hidden flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="text-[11px] font-medium text-slate-500">মডিউল পরিবর্তন:</span>
+                <select
+                  value={activeTab}
+                  onChange={(e) => setActiveTab(e.target.value as any)}
+                  className="bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs font-bold text-slate-800"
+                >
+                  {adminNavModules.map(m => (
+                    <option key={m.id} value={m.id}>
+                      {m.serial}. {m.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
           {/* TAB 1: ADS MODERATION */}
           {activeTab === 'ads' && (
@@ -960,6 +1139,42 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               )}
 
+              {/* অপেক্ষামান বিজ্ঞাপন নোটিফিকেশন বার (Seller Pending Ads Alert) */}
+              {pendingAdsCount > 0 && (
+                <div className="p-3.5 bg-gradient-to-r from-amber-50 via-amber-100/60 to-orange-50 border-2 border-amber-300 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs animate-fadeIn">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-xs">
+                      <Clock className="w-5 h-5 animate-spin-slow" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h4 className="font-bold text-amber-950 text-xs sm:text-sm">
+                          ⏳ নতুন বিক্রেতাদের অপেক্ষামান বিজ্ঞাপন: {pendingAdsCount} টি (অনুমোদনের অপেক্ষায়)
+                        </h4>
+                        <span className="text-[10px] font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full uppercase">
+                          অ্যাকশন প্রয়োজন
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-amber-900 mt-0.5">
+                        যেকোনো বিক্রেতা সাইটে নতুন বিজ্ঞাপন পোস্ট করলে তা সরাসরি এখানে অপেক্ষামান তালিকায় জমা হয়। Excel ড্রপডাউন থেকে 'Approved' সিলেক্ট করে বা কুইক 'লাইভ' বাটনে ক্লিক করে এক ক্লিকে অনুমোদন দিন।
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFilterAdStatus('pending')}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-xs shrink-0 cursor-pointer flex items-center gap-1.5 ${
+                      filterAdStatus === 'pending'
+                        ? 'bg-amber-600 text-white ring-2 ring-amber-400 font-black'
+                        : 'bg-amber-500 hover:bg-amber-600 text-slate-950'
+                    }`}
+                  >
+                    <span>👀 অপেক্ষামান বিজ্ঞাপনগুলো দেখুন</span>
+                    <span className="bg-amber-950/20 px-1.5 py-0.5 rounded-md font-mono font-black">({pendingAdsCount})</span>
+                  </button>
+                </div>
+              )}
+
               {/* Filter & Search Bar */}
               <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-2">
                 <div className="relative flex-1 max-w-sm">
@@ -983,13 +1198,29 @@ export const AdminDashboard: React.FC = () => {
                   >
                     সকল ({ads.length})
                   </button>
+
+                  {/* অপেক্ষামান বিজ্ঞাপন ডেডিকেটেড ফিল্টার */}
+                  <button
+                    onClick={() => setFilterAdStatus('pending')}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border shadow-2xs cursor-pointer ${
+                      filterAdStatus === 'pending'
+                        ? 'bg-amber-500 text-slate-950 border-amber-600 ring-2 ring-amber-300 font-black'
+                        : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                    }`}
+                    title="নতুন জমা হওয়া ও রিভিউধীন সকল অপেক্ষামান বিজ্ঞাপন"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                    <span>⏳ অপেক্ষামান বিজ্ঞাপন</span>
+                    <span className="font-mono bg-amber-200/80 text-amber-950 px-1.5 py-0.2 rounded font-bold">({pendingAdsCount})</span>
+                  </button>
+
                   <button
                     onClick={() => setFilterAdStatus('Received')}
                     className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors shrink-0 flex items-center gap-1 ${
                       filterAdStatus === 'Received' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
                     }`}
                   >
-                    <span>📥 Received</span>
+                    <span>📥 নতুন জমা (Received)</span>
                     <span className="font-mono">({receivedAdsCount})</span>
                   </button>
                   <button
@@ -998,7 +1229,7 @@ export const AdminDashboard: React.FC = () => {
                       filterAdStatus === 'Verified' ? 'bg-indigo-600 text-white' : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200'
                     }`}
                   >
-                    <span>🔍 Verified</span>
+                    <span>🔍 যাচাইকৃত (Verified)</span>
                     <span className="font-mono">({verifiedAdsCount})</span>
                   </button>
                   <button
@@ -1007,7 +1238,7 @@ export const AdminDashboard: React.FC = () => {
                       filterAdStatus === 'Processed' ? 'bg-amber-600 text-white' : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
                     }`}
                   >
-                    <span>⚙️ Processed</span>
+                    <span>⚙️ প্রক্রিয়াধীন (Processed)</span>
                     <span className="font-mono">({processedAdsCount})</span>
                   </button>
                   <button
@@ -1016,7 +1247,7 @@ export const AdminDashboard: React.FC = () => {
                       filterAdStatus === 'Approved' ? 'bg-emerald-700 text-white' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
                     }`}
                   >
-                    <span>✅ Approved</span>
+                    <span>✅ অনুমোদিত (Approved)</span>
                     <span className="font-mono">({approvedAdsCount})</span>
                   </button>
                   <button
@@ -1025,7 +1256,7 @@ export const AdminDashboard: React.FC = () => {
                       filterAdStatus === 'Rejected' ? 'bg-rose-600 text-white' : 'bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200'
                     }`}
                   >
-                    <span>❌ Rejected</span>
+                    <span>❌ বাতিল (Rejected)</span>
                     <span className="font-mono">({rejectedAdsCount})</span>
                   </button>
                 </div>
@@ -1073,10 +1304,21 @@ export const AdminDashboard: React.FC = () => {
                                 >
                                   {ad.titleBn}
                                 </span>
-                                <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-2">
+                                <div className="text-[10px] text-slate-500 font-mono mt-0.5 flex items-center gap-1.5 flex-wrap">
                                   <span>আইডি: {ad.id}</span>
                                   <span>•</span>
                                   <span>{ad.createdAt}</span>
+                                  {(ad.status === 'pending' || currentVal === 'Received' || currentVal === 'Verified' || currentVal === 'Processed') && (
+                                    <span className="bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded text-[9px] inline-flex items-center gap-1">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                                      <span>অপেক্ষামান</span>
+                                    </span>
+                                  )}
+                                  {currentVal === 'Approved' && (
+                                    <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-1.5 py-0.2 rounded text-[9px] inline-flex items-center gap-0.5">
+                                      <span>✓ লাইভ</span>
+                                    </span>
+                                  )}
                                   {ad.images.length > 3 && (
                                     <span className="bg-amber-100 text-amber-800 font-semibold px-1 rounded text-[9px]">
                                       {ad.images.length}টি ছবি (পেইড)
@@ -1704,7 +1946,7 @@ export const AdminDashboard: React.FC = () => {
                       <span>কোম্পানির কর্মকর্তা ও কর্মচারী নিয়োগ ব্যবস্থাপনা (Company Staff Recruitment)</span>
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
-                      নিয়োগের সময় সকল তথ্য নির্ধারণ করুন (আইডি সিস্টেম অটো-জেনারেট করবে)। নিয়োগের পর মালিকের কাছে অনুমোদন চেকবক্স যাবে, মালিক অনুমোদন দিলে কর্মী লগইন করতে পারবে।
+                      এডমিন থেকে কর্মী নিয়োগ দিলে তা সরাসরি মালিকের অনুমোদনের জন্য যাবে। মালিক তার নিয়ন্ত্রণ প্যানেলে (মাস্টার PIN) তথ্য দেখে বা এডিট করে অনুমোদন দিলে কর্মীর নিয়োগ কনফার্ম হবে। এছাড়াও মালিক চাইলে নিজের প্যানেল থেকেও সরাসরি নতুন কর্মী নিয়োগ দিতে পারবেন।
                     </p>
                   </div>
 
@@ -1720,6 +1962,28 @@ export const AdminDashboard: React.FC = () => {
                     <span>নতুন কর্মী নিয়োগ (+ Recruit Staff)</span>
                   </button>
                 </div>
+
+                {/* Pending Staff Approval Info Alert */}
+                {unapprovedStaffCount > 0 && (
+                  <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl text-xs text-amber-950 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                      <span className="font-bold">
+                        📢 মালিকের অনুমোদন অপেক্ষমাণ নতুন কর্মী: {unapprovedStaffCount} জন
+                      </span>
+                      <span className="text-amber-800 hidden md:inline">
+                        (মালিক তার মাস্টার PIN দিয়ে '০৫. মালিকের নিয়ন্ত্রণ প্যানেল'-এ প্রবেশ করে তথ্য যাচাই/এডিট ও অনুমোদন করতে পারেন)
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('owner')}
+                      className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold rounded-lg text-[11px] transition-colors cursor-pointer shrink-0"
+                    >
+                      মালিকের প্যানেলে যান
+                    </button>
+                  </div>
+                )}
 
                 {staffToast && (
                   <div className="p-3 bg-emerald-50 border border-emerald-300 text-[#007460] rounded-xl text-xs font-bold flex items-center gap-2">
@@ -3420,6 +3684,118 @@ export const AdminDashboard: React.FC = () => {
           {/* TAB 10: AUDIT & ACTION HISTORY LOGS (এডমিন অ্যাকশন ও অডিট হিস্ট্রি লগ) */}
           {activeTab === 'audit' && <AdminAuditLogsTab />}
 
+          {/* TAB 11: DIRECT ACCESS LINKS (সরাসরি প্ল্যাটফর্ম লিংকসমূহ) */}
+          {activeTab === 'links' && (
+            <div className="p-4 sm:p-6 space-y-6 animate-in fade-in duration-150">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm sm:text-base flex items-center gap-2">
+                    <LinkIcon className="w-5 h-5 text-[#007460]" />
+                    <span>সরাসরি প্ল্যাটফর্ম লিংকসমূহ (Platform Access & Share Links)</span>
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    কাষ্টমার মার্কেটপ্লেস ও এডমিন প্যানেলের সিকিউরড লিংক কপি করে শেয়ার অথবা সরাসরি ভিজিট করুন।
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 px-2.5 py-1 rounded-full">
+                    সরাসরি লাইভ লিংক
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {/* Customer Link Card */}
+                <div className="p-4 sm:p-5 bg-gradient-to-br from-emerald-50/80 to-teal-50/50 border border-emerald-200 rounded-xl flex flex-col justify-between space-y-3 shadow-2xs">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-emerald-950 flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-600 animate-pulse"></span>
+                        <span>০১. কাষ্টমার মার্কেটপ্লেস লিংক</span>
+                      </span>
+                      <span className="text-[10px] bg-emerald-200 text-emerald-900 font-bold px-2 py-0.5 rounded-full">
+                        পাবলিক লিংক
+                      </span>
+                    </div>
+                    <p className="text-xs text-emerald-800 mt-1.5 leading-relaxed">
+                      এই লিংকটি সাধারণ ক্রেতা, বিক্রেতা ও গ্রাহকদের কেনাবেচার জন্য শেয়ার করুন। এতে ক্লিক করলে সরাসরি মূল মার্কেটপ্লেসে নিয়ে যাবে।
+                    </p>
+                    <div className="mt-3 p-2.5 bg-white rounded-lg border border-emerald-200 font-mono text-xs text-slate-800 break-all select-all shadow-inner">
+                      {customerUrl || window.location.origin}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(customerUrl || window.location.origin, 'customer')}
+                      className="flex-1 py-2 px-3 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      {copiedCustomerLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedCustomerLink ? 'কপি হয়েছে!' : 'কাষ্টমার লিংক কপি করুন'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsAdminMode(false)}
+                      className="py-2 px-3 bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                      title="Open Customer View"
+                    >
+                      <ExternalLink className="w-4 h-4 text-slate-600" />
+                      <span>ভিজিট</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Admin Direct Link Card */}
+                <div className="p-4 sm:p-5 bg-gradient-to-br from-amber-50/80 to-yellow-50/50 border border-amber-200 rounded-xl flex flex-col justify-between space-y-3 shadow-2xs">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-amber-950 flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-amber-700" />
+                        <span>০২. এডমিন প্যানেল সরাসরি লিংক</span>
+                      </span>
+                      <span className="text-[10px] bg-amber-200 text-amber-950 font-bold px-2 py-0.5 rounded-full">
+                        সিকিউরড গেটওয়ে
+                      </span>
+                    </div>
+                    <p className="text-xs text-amber-900 mt-1.5 leading-relaxed font-medium">
+                      🔒 এটি এডমিনদের জন্য বিশেষ লিংক। এই লিংকে প্রবেশ করলে সুরক্ষিত সিকিউরিটি গেট প্রদর্শিত হবে এবং ইউনিক নাম/আইডি, মোবাইল, পাসওয়ার্ড ও ওটিপি ভেরিফিকেশন ছাড়া কেউ প্রবেশ করতে পারবে না।
+                    </p>
+                    <div className="mt-3 p-2.5 bg-white rounded-lg border border-amber-200 font-mono text-xs text-slate-800 break-all select-all shadow-inner">
+                      {adminUrl || `${window.location.origin}/?admin=true`}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(adminUrl || `${window.location.origin}/?admin=true`, 'admin')}
+                      className="w-full py-2 px-3 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-bold flex items-center justify-center gap-2 transition-colors shadow-2xs cursor-pointer"
+                    >
+                      {copiedAdminLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                      <span>{copiedAdminLink ? 'কপি হয়েছে!' : 'এডমিন লিংক কপি করুন'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Usage Guidance Note */}
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 space-y-1.5">
+                <span className="font-bold text-slate-900 block flex items-center gap-1.5">
+                  <Sparkles className="w-4 h-4 text-amber-500" />
+                  <span>টিপস: লিংক সহজে ব্যবহারের সুবিধাজনক নিয়ম</span>
+                </span>
+                <p>
+                  ১. ড্যাশবোর্ডের একদম উপরের প্যানেলে থাকা <strong>V</strong> বাটনে ক্লিক করে আপনি যখন খুশি লিংক বক্সটি হাইড/লুকিয়ে রাখতে পারেন, এতে নিচের তালিকা উপরে উঠে আসবে।
+                </p>
+                <p>
+                  ২. উপরের প্যানেল হাইড রাখা থাকলেও আপনি যেকোনো সময় বাম পাশের <strong>১১. সরাসরি প্ল্যাটফর্ম লিংকসমূহ</strong>-এ ক্লিক করে এই বিস্তারিত পেইজটি খুলতে পারবেন।
+                </p>
+              </div>
+            </div>
+          )}
+
+          </main>
         </div>
 
       </div>

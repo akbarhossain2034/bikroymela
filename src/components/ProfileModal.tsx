@@ -37,7 +37,12 @@ import {
   X,
   Mail,
   Calendar,
-  CheckCircle
+  CheckCircle,
+  Layers,
+  PlusCircle,
+  CheckSquare,
+  XCircle,
+  ExternalLink
 } from 'lucide-react';
 
 export const ProfileModal: React.FC = () => {
@@ -57,17 +62,42 @@ export const ProfileModal: React.FC = () => {
     withdrawalRequests,
     requestWithdrawal,
     setChatRecipient,
-    siteName
+    siteName,
+    activeProfileTab,
+    setActiveProfileTab
   } = useApp();
 
   // Active section corresponding to left-side navigation matching કાષ્ટমার আইডি1.png
   const [activeTab, setActiveTab] = useState<
-    'manage_account' | 'orders' | 'wishlist' | 'support' | 'club' | 'point' | 'credit' | 'share_earn' | 'addresses'
+    'manage_account' | 'my_ads' | 'orders' | 'wishlist' | 'support' | 'club' | 'point' | 'credit' | 'share_earn' | 'addresses'
   >('manage_account');
+
+  // Sync activeTab with activeProfileTab from context (e.g. from Header 'মাই বিজ্ঞাপন' button)
+  useEffect(() => {
+    if (activeProfileTab === 'my_ads') {
+      setActiveTab('my_ads');
+    }
+  }, [activeProfileTab]);
+
+  // My Ads Filtering State (চলমান, ওয়েটিং ও ক্যানসেল)
+  const [myAdsFilter, setMyAdsFilter] = useState<'all' | 'active' | 'pending' | 'rejected'>('all');
+
+  // Customer's own Ads (মাই বিজ্ঞাপন)
+  const myAds = ads.filter(a => a.sellerId === currentUser?.id || a.sellerPhone === currentUser?.phone);
+  const activeMyAds = myAds.filter(a => a.status === 'active' || a.validationStatus === 'Approved');
+  const pendingMyAds = myAds.filter(a => (a.status === 'pending' || a.validationStatus === 'Received' || a.validationStatus === 'Verified' || a.validationStatus === 'Processed') && a.status !== 'rejected' && a.validationStatus !== 'Rejected');
+  const rejectedMyAds = myAds.filter(a => a.status === 'rejected' || a.validationStatus === 'Rejected');
+
+  const displayedMyAds = myAds.filter(ad => {
+    if (myAdsFilter === 'active') return ad.status === 'active' || ad.validationStatus === 'Approved';
+    if (myAdsFilter === 'pending') return (ad.status === 'pending' || ad.validationStatus === 'Received' || ad.validationStatus === 'Verified' || ad.validationStatus === 'Processed') && ad.status !== 'rejected' && ad.validationStatus !== 'Rejected';
+    if (myAdsFilter === 'rejected') return ad.status === 'rejected' || ad.validationStatus === 'Rejected';
+    return true;
+  });
 
   // Edit User Information modal/state for mobile & desktop (Requirement B-03)
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
-  const [firstName, setFirstName] = useState(currentUser?.firstName || 'Md.');
+  const [firstName, setFirstName] = useState(currentUser?.firstName || 'Md. Akbar');
   const [lastName, setLastName] = useState(currentUser?.lastName || 'Hossain');
   const [contactNumber, setContactNumber] = useState(currentUser?.phone || '01332520826');
   const [emailAddress, setEmailAddress] = useState(currentUser?.email || 'akbar.office10@gmail.com');
@@ -103,8 +133,11 @@ export const ProfileModal: React.FC = () => {
   // Sync internal fields if currentUser changes
   useEffect(() => {
     if (currentUser) {
-      setFirstName(currentUser.firstName || currentUser.name.split(' ')[0] || 'Md.');
-      setLastName(currentUser.lastName || currentUser.name.split(' ').slice(1).join(' ') || 'Hossain');
+      const isOldTruncated = currentUser.firstName === 'Md.' && currentUser.name?.includes('Akbar');
+      const fName = isOldTruncated ? 'Md. Akbar' : (currentUser.firstName || (currentUser.name ? currentUser.name.split(' ').slice(0, -1).join(' ') : 'Md. Akbar'));
+      const lName = currentUser.lastName || (currentUser.name ? currentUser.name.split(' ').slice(-1).join(' ') : 'Hossain');
+      setFirstName(fName || 'Md. Akbar');
+      setLastName(lName || 'Hossain');
       setContactNumber(currentUser.phone);
       setEmailAddress(currentUser.email || 'akbar.office10@gmail.com');
       setDob(currentUser.dob || '1995-05-12');
@@ -333,7 +366,33 @@ export const ProfileModal: React.FC = () => {
                 <ChevronRight className="w-4 h-4 text-slate-400" />
               </button>
 
-              {/* 2. My orders */}
+              {/* 2. My Ads (মাই বিজ্ঞাপন) */}
+              <button
+                onClick={() => setActiveTab('my_ads')}
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                  activeTab === 'my_ads'
+                    ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Layers className="w-4 h-4 text-amber-600" />
+                  <div>
+                    <span className="block font-bold">মাই বিজ্ঞাপন (My Ads)</span>
+                    <span className="text-[10px] text-slate-400 font-normal">চলমান, ওয়েটিং ও ক্যানসেল বিজ্ঞাপন</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {myAds.length > 0 && (
+                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded-full font-mono">
+                      {myAds.length}
+                    </span>
+                  )}
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              </button>
+
+              {/* 3. My orders */}
               <button
                 onClick={() => setActiveTab('orders')}
                 className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
@@ -538,32 +597,37 @@ export const ProfileModal: React.FC = () => {
                   {/* 2-Column Responsive Information Grid matching કાષ્ટমার আইডি1.png */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-xs">
                     <div>
-                      <span className="text-slate-400 font-medium block">First Name</span>
+                      <span className="text-slate-400 font-medium block">Full Name (সম্পূর্ণ নাম)</span>
+                      <span className="font-bold text-slate-900 text-sm mt-0.5 block">{currentUser.name}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-slate-400 font-medium block">First Name (প্রদত্ত নাম)</span>
                       <span className="font-bold text-slate-800 text-sm mt-0.5 block">{firstName}</span>
                     </div>
 
                     <div>
-                      <span className="text-slate-400 font-medium block">Last Name</span>
+                      <span className="text-slate-400 font-medium block">Last Name (বংশ পদবী)</span>
                       <span className="font-bold text-slate-800 text-sm mt-0.5 block">{lastName}</span>
                     </div>
 
                     <div>
-                      <span className="text-slate-400 font-medium block">Contact Number</span>
+                      <span className="text-slate-400 font-medium block">Contact Number (মোবাইল)</span>
                       <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{contactNumber}</span>
                     </div>
 
                     <div>
-                      <span className="text-slate-400 font-medium block">Date of Birth</span>
+                      <span className="text-slate-400 font-medium block">Date of Birth (জন্ম তারিখ)</span>
                       <span className="font-bold text-slate-800 font-mono text-sm mt-0.5 block">{dob}</span>
                     </div>
 
                     <div>
-                      <span className="text-slate-400 font-medium block">Gender</span>
+                      <span className="text-slate-400 font-medium block">Gender (লিঙ্গ)</span>
                       <span className="font-bold text-slate-800 text-sm mt-0.5 block">{gender}</span>
                     </div>
 
-                    <div>
-                      <span className="text-slate-400 font-medium block">Delivery Address</span>
+                    <div className="sm:col-span-2">
+                      <span className="text-slate-400 font-medium block">Delivery Address (ডেলিভারি ঠিকানা)</span>
                       <span className="font-bold text-slate-800 text-sm mt-0.5 block">{deliveryAddress}</span>
                     </div>
                   </div>

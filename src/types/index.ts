@@ -92,6 +92,7 @@ export interface AdminUser {
   name: string;
   username?: string; // Unique Name e.g. Arifhossain388@
   role: 'Super Admin' | 'Moderator' | 'Quality Officer' | 'Account Manager' | 'Support Executive' | string;
+  designation?: string;
   phone: string;
   email: string;
   department?: string;
