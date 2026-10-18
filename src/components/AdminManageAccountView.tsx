@@ -1202,28 +1202,28 @@ export const AdminManageAccountView: React.FC<AdminManageAccountViewProps> = ({ 
                       {activeAdmin?.nid && (
                         <div>
                           <span className="text-slate-400 block text-xs font-normal">এনআইডি নম্বর (NID)</span>
-                          <strong className="text-slate-900 block font-mono font-medium mt-0.5">{activeAdmin.nid}</strong>
+                          <strong className="text-slate-900 block font-mono font-medium mt-0.5">{activeAdmin?.nid}</strong>
                         </div>
                       )}
 
                       {activeAdmin?.salary && (
                         <div>
                           <span className="text-slate-400 block text-xs font-normal">নির্ধারিত বেতন (Salary)</span>
-                          <strong className="text-slate-900 block font-medium mt-0.5">৳ {activeAdmin.salary}</strong>
+                          <strong className="text-slate-900 block font-medium mt-0.5">৳ {activeAdmin?.salary}</strong>
                         </div>
                       )}
 
                       {activeAdmin?.presentAddress && (
                         <div className="sm:col-span-2">
                           <span className="text-slate-400 block text-xs font-normal">বর্তমান ঠিকানা</span>
-                          <span className="text-slate-800 block mt-0.5">{activeAdmin.presentAddress}</span>
+                          <span className="text-slate-800 block mt-0.5">{activeAdmin?.presentAddress}</span>
                         </div>
                       )}
 
                       {activeAdmin?.permanentAddress && (
                         <div className="sm:col-span-2">
                           <span className="text-slate-400 block text-xs font-normal">স্থায়ী ঠিকানা</span>
-                          <span className="text-slate-800 block mt-0.5">{activeAdmin.permanentAddress}</span>
+                          <span className="text-slate-800 block mt-0.5">{activeAdmin?.permanentAddress}</span>
                         </div>
                       )}
 
@@ -1231,7 +1231,7 @@ export const AdminManageAccountView: React.FC<AdminManageAccountViewProps> = ({ 
                         <div className="sm:col-span-2 p-2.5 bg-slate-50 rounded-lg border border-slate-200">
                           <span className="text-xs font-bold text-slate-700 block mb-1">জরুরী যোগাযোগ:</span>
                           <span className="text-slate-800 text-xs">
-                            <strong>{activeAdmin.emergencyContact.name}</strong> ({activeAdmin.emergencyContact.relation}) — <span className="font-mono">{activeAdmin.emergencyContact.phone}</span>
+                            <strong>{activeAdmin?.emergencyContact?.name}</strong> ({activeAdmin?.emergencyContact?.relation || ''}) — <span className="font-mono">{activeAdmin?.emergencyContact?.phone || ''}</span>
                           </span>
                         </div>
                       )}

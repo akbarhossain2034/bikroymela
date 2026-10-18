@@ -18,7 +18,8 @@ import {
   Coins,
   CreditCard,
   LogOut,
-  Sparkles
+  Sparkles,
+  Layers
 } from 'lucide-react';
 
 export const Header: React.FC = () => {
@@ -40,7 +41,8 @@ export const Header: React.FC = () => {
     resetFilters,
     siteName,
     offerSettings,
-    setIsOffersModalOpen
+    setIsOffersModalOpen,
+    ads
   } = useApp();
 
   const [showNotifications, setShowNotifications] = useState(false);
@@ -48,6 +50,7 @@ export const Header: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const myAdsCount = currentUser ? ads.filter(a => a.sellerId === currentUser.id || a.sellerPhone === currentUser.phone).length : 0;
 
   return (
     <header className="sticky top-0 z-40 shadow-md">
@@ -125,6 +128,26 @@ export const Header: React.FC = () => {
               <Gift className="w-3.5 h-3.5 text-amber-300" />
               <span>{lang === 'bn' ? 'পয়েন্ট ও অফার' : 'Points & Rewards'}</span>
             </button>
+
+            {/* মাই বিজ্ঞাপন (চলমান, ওয়েটিং ও ক্যানসেল) */}
+            {currentUser && !isAdminMode && (
+              <button
+                onClick={() => {
+                  setActiveProfileTab('my_ads');
+                  setActiveModal('profile');
+                }}
+                className="hover:text-amber-200 transition-colors cursor-pointer flex items-center gap-1.5 font-bold text-amber-300 bg-emerald-900/80 hover:bg-emerald-900 px-2.5 py-1 rounded-md border border-amber-400/40 shadow-2xs"
+                title="আপনার পোস্টকৃত চলমান, ওয়েটিং ও ক্যানসেল বিজ্ঞাপন দেখুন"
+              >
+                <Layers className="w-3.5 h-3.5 text-amber-300" />
+                <span>মাই বিজ্ঞাপন</span>
+                {myAdsCount > 0 && (
+                  <span className="text-[10px] bg-amber-400 text-slate-950 px-1.5 py-0.2 rounded-full font-mono font-extrabold">
+                    {myAdsCount}
+                  </span>
+                )}
+              </button>
+            )}
 
             {/* Admin Switcher - only when already in Admin Mode */}
             {isAdminMode && (
@@ -285,6 +308,24 @@ export const Header: React.FC = () => {
               <span>{t.chatSupport}</span>
               <MessageSquare className="w-4 h-4" />
             </button>
+            {currentUser && (
+              <button
+                onClick={() => {
+                  setActiveProfileTab('my_ads');
+                  setActiveModal('profile');
+                  setMobileMenuOpen(false);
+                }}
+                className="text-left py-2 px-2 text-sm text-amber-300 font-bold hover:bg-emerald-800/50 rounded flex items-center justify-between"
+              >
+                <span className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-amber-300" />
+                  <span>মাই বিজ্ঞাপন (চলমান, ওয়েটিং, ক্যানসেল)</span>
+                </span>
+                <span className="text-xs bg-amber-400 text-slate-950 font-mono font-bold px-1.5 py-0.2 rounded-full">
+                  {myAdsCount}
+                </span>
+              </button>
+            )}
             {currentUser && (
               <button
                 onClick={() => {

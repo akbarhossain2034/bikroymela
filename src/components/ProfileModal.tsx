@@ -42,7 +42,11 @@ import {
   PlusCircle,
   CheckSquare,
   XCircle,
-  ExternalLink
+  ExternalLink,
+  RefreshCw,
+  AlertTriangle,
+  Tag,
+  Filter
 } from 'lucide-react';
 
 export const ProfileModal: React.FC = () => {
@@ -64,7 +68,10 @@ export const ProfileModal: React.FC = () => {
     setChatRecipient,
     siteName,
     activeProfileTab,
-    setActiveProfileTab
+    setActiveProfileTab,
+    setSelectedAd,
+    updateAdValidationStatus,
+    updateAdStatus
   } = useApp();
 
   // Active section corresponding to left-side navigation matching કાષ્ટমার আইডি1.png
@@ -129,6 +136,7 @@ export const ProfileModal: React.FC = () => {
 
   const [copiedReferral, setCopiedReferral] = useState(false);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [resubmitSuccessMsg, setResubmitSuccessMsg] = useState<string | null>(null);
 
   // Sync internal fields if currentUser changes
   useEffect(() => {
@@ -215,6 +223,26 @@ export const ProfileModal: React.FC = () => {
     setActiveModal(null);
   };
 
+  const handleResubmitRejectedAd = (adId: string) => {
+    updateAdValidationStatus(adId, 'Received');
+    updateAdStatus(adId, 'pending');
+    setResubmitSuccessMsg('বিজ্ঞাপনটি পুনরায় যাচাই ও অনুমোদনের জন্য অপেক্ষামান (ওয়েটিং) তালিকায় পাঠানো হয়েছে!');
+    setTimeout(() => setResubmitSuccessMsg(null), 4000);
+  };
+
+  const handleViewAd = (ad: typeof ads[0]) => {
+    setSelectedAd(ad);
+    setActiveModal('adDetail');
+  };
+
+  const handleDeleteAd = (ad: typeof ads[0]) => {
+    setAdToDelete(ad);
+  };
+
+  const handlePostNewAd = () => {
+    setActiveModal('postAd');
+  };
+
   if (!currentUser) {
     return (
       <div className="min-h-screen bg-[#f4f6f8] flex items-center justify-center p-4">
@@ -258,9 +286,11 @@ export const ProfileModal: React.FC = () => {
               <span>হোম</span>
             </button>
             <span>/</span>
-            <span className="text-slate-600 font-medium hidden sm:inline">মাই একাউন্ট (My Account)</span>
-            <span className="hidden sm:inline">/</span>
-            <span className="text-emerald-700 font-bold truncate">Account</span>
+            <span className="text-slate-600 font-medium hidden sm:inline">কাষ্টমার আইডি ({currentUser.phone})</span>
+            <span>/</span>
+            <span className="text-emerald-700 font-bold truncate">
+              {activeTab === 'my_ads' ? 'মাই বিজ্ঞাপন (My Ads)' : activeTab === 'manage_account' ? 'Manage Account' : 'Account'}
+            </span>
           </div>
 
           {/* Action Button: Return to Shopping */}
@@ -272,6 +302,89 @@ export const ProfileModal: React.FC = () => {
             <span>— শপিংয়ে ফিরুন</span>
           </button>
 
+        </div>
+      </div>
+
+      {/* Customer ID Top Header Navigation Tabs: মাই বিজ্ঞাপন ও অন্যান্য */}
+      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 shadow-xs">
+        <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-2 text-xs font-semibold">
+          {/* হেডার: মাই বিজ্ঞাপন */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('my_ads')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'my_ads'
+                ? 'bg-amber-500 text-slate-950 font-extrabold shadow-xs ring-2 ring-amber-400/50'
+                : 'text-slate-700 hover:bg-amber-50/70 hover:text-amber-900 border border-slate-200'
+            }`}
+          >
+            <Layers className="w-4 h-4 text-slate-950" />
+            <span className="text-sm">মাই বিজ্ঞাপন (My Ads)</span>
+            <span className={`text-[11px] px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 ${
+              activeTab === 'my_ads' ? 'bg-slate-950 text-amber-300' : 'bg-amber-100 text-amber-900'
+            }`}>
+              <span>{myAds.length}</span>
+              {(pendingMyAds.length > 0 || rejectedMyAds.length > 0) && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+              )}
+            </span>
+          </button>
+
+          {/* হেডার: Manage Account */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('manage_account')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'manage_account'
+                ? 'bg-sky-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <User className="w-3.5 h-3.5" />
+            <span>Manage Account (ব্যক্তিগত তথ্য)</span>
+          </button>
+
+          {/* হেডার: My orders */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('orders')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'orders'
+                ? 'bg-emerald-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <Package className="w-3.5 h-3.5" />
+            <span>My orders ({orders.length})</span>
+          </button>
+
+          {/* হেডার: ক্রেডিট ও ক্যাশ উত্তোলন */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('credit')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'credit'
+                ? 'bg-teal-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <CreditCard className="w-3.5 h-3.5" />
+            <span>ক্রেডিট ও উত্তোলন</span>
+          </button>
+
+          {/* হেডার: সাপোর্ট */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('support')}
+            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'support'
+                ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
+            }`}
+          >
+            <Headphones className="w-3.5 h-3.5" />
+            <span>কাস্টমার সাপোর্ট</span>
+          </button>
         </div>
       </div>
 
@@ -379,15 +492,15 @@ export const ProfileModal: React.FC = () => {
                   <Layers className="w-4 h-4 text-amber-600" />
                   <div>
                     <span className="block font-bold">মাই বিজ্ঞাপন (My Ads)</span>
-                    <span className="text-[10px] text-slate-400 font-normal">চলমান, ওয়েটিং ও ক্যানসেল বিজ্ঞাপন</span>
+                    <span className="text-[10px] text-slate-500 font-normal">
+                      চলমান: {activeMyAds.length} • ওয়েটিং: {pendingMyAds.length} • বাতিল: {rejectedMyAds.length}
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  {myAds.length > 0 && (
-                    <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded-full font-mono">
-                      {myAds.length}
-                    </span>
-                  )}
+                  <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded-full font-mono">
+                    {myAds.length}
+                  </span>
                   <ChevronRight className="w-4 h-4 text-slate-400" />
                 </div>
               </button>
@@ -670,6 +783,369 @@ export const ProfileModal: React.FC = () => {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* ========================================================= */}
+            {/* TAB: MY ADS (মাই বিজ্ঞাপন - চলমান, ওয়েটিং ও ক্যানসেল)    */}
+            {/* ========================================================= */}
+            {activeTab === 'my_ads' && (
+              <div className="space-y-5 animate-in fade-in">
+                {/* Resubmit Success Toast */}
+                {resubmitSuccessMsg && (
+                  <div className="p-3.5 bg-emerald-50 border border-emerald-300 text-emerald-900 rounded-xl text-xs sm:text-sm font-bold flex items-center justify-between shadow-2xs">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
+                      <span>{resubmitSuccessMsg}</span>
+                    </div>
+                    <button onClick={() => setResubmitSuccessMsg(null)} className="text-emerald-700 hover:text-emerald-900">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+
+                {/* 1. Header Card: মাই বিজ্ঞাপন */}
+                <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 sm:p-6 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center font-bold shadow-xs shrink-0">
+                        <Layers className="w-5 h-5 text-slate-950" />
+                      </div>
+                      <div>
+                        <h2 className="text-base sm:text-lg font-bold text-slate-900 flex items-center gap-2">
+                          <span>মাই বিজ্ঞাপন (My Advertisements)</span>
+                          <span className="text-xs bg-amber-100 text-amber-900 font-mono font-bold px-2 py-0.5 rounded-full border border-amber-300">
+                            মোট: {myAds.length}টি
+                          </span>
+                        </h2>
+                        <p className="text-xs text-slate-500 mt-0.5">
+                          আপনার পোস্টকৃত সকল বিজ্ঞাপনের লাইভ স্থিতি, ডাটা ভেলিডেশন ও অনুমোদন ট্র্যাকিং
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* CTA: Post Ad Button */}
+                    <button
+                      type="button"
+                      onClick={handlePostNewAd}
+                      className="px-4 py-2 bg-[#007460] hover:bg-[#005e4e] text-white rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer shadow-xs self-start sm:self-auto shrink-0"
+                    >
+                      <PlusCircle className="w-4 h-4 text-amber-300" />
+                      <span>+ নতুন বিজ্ঞাপন দিন</span>
+                    </button>
+                  </div>
+
+                  {/* 2. Three Metric Status Cards: চলমান, ওয়েটিং, ক্যানসেল */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    {/* Card 1: চলমান (Active / Live) */}
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('active')}
+                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                        myAdsFilter === 'active'
+                          ? 'bg-emerald-50 border-emerald-500 ring-2 ring-emerald-400/50 shadow-xs'
+                          : 'bg-slate-50/80 border-slate-200 hover:bg-emerald-50/40 hover:border-emerald-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-emerald-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                          <span>চলমান বিজ্ঞাপন</span>
+                        </span>
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                      </div>
+                      <div className="text-2xl font-extrabold text-emerald-900 font-mono">
+                        {activeMyAds.length}
+                      </div>
+                      <p className="text-[10px] text-emerald-700 mt-1">অনুমোদিত ও ক্রেতাদের জন্য লাইভ</p>
+                    </button>
+
+                    {/* Card 2: ওয়েটিং / অপেক্ষামান (Waiting / Pending) */}
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('pending')}
+                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                        myAdsFilter === 'pending'
+                          ? 'bg-amber-50 border-amber-500 ring-2 ring-amber-400/50 shadow-xs'
+                          : 'bg-slate-50/80 border-slate-200 hover:bg-amber-50/40 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                          <span>ওয়েটিং বিজ্ঞাপন</span>
+                        </span>
+                        <Clock className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <div className="text-2xl font-extrabold text-amber-900 font-mono">
+                        {pendingMyAds.length}
+                      </div>
+                      <p className="text-[10px] text-amber-700 mt-1">এডমিন ভেলিডেশন ও পর্যালোচনায় অপেক্ষামান</p>
+                    </button>
+
+                    {/* Card 3: ক্যানসেল / বাতিল (Cancelled / Rejected) */}
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('rejected')}
+                      className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+                        myAdsFilter === 'rejected'
+                          ? 'bg-rose-50 border-rose-500 ring-2 ring-rose-400/50 shadow-xs'
+                          : 'bg-slate-50/80 border-slate-200 hover:bg-rose-50/40 hover:border-rose-300'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[11px] font-bold text-rose-800 flex items-center gap-1.5">
+                          <span className="w-2 h-2 rounded-full bg-rose-500"></span>
+                          <span>ক্যানসেল বিজ্ঞাপন</span>
+                        </span>
+                        <XCircle className="w-4 h-4 text-rose-600" />
+                      </div>
+                      <div className="text-2xl font-extrabold text-rose-900 font-mono">
+                        {rejectedMyAds.length}
+                      </div>
+                      <p className="text-[10px] text-rose-700 mt-1">সংশোধন ও পুনরায় আবেদনযোগ্য</p>
+                    </button>
+                  </div>
+
+                  {/* 3. Sub-Tab Switcher Filter Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pt-2 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('all')}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                        myAdsFilter === 'all'
+                          ? 'bg-slate-900 text-white shadow-2xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      সকল বিজ্ঞাপন ({myAds.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('active')}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                        myAdsFilter === 'active'
+                          ? 'bg-emerald-700 text-white shadow-2xs'
+                          : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                      <span>চলমান ({activeMyAds.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('pending')}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                        myAdsFilter === 'pending'
+                          ? 'bg-amber-600 text-white shadow-2xs'
+                          : 'bg-amber-50 text-amber-900 hover:bg-amber-100'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                      <span>ওয়েটিং / অপেক্ষামান ({pendingMyAds.length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setMyAdsFilter('rejected')}
+                      className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                        myAdsFilter === 'rejected'
+                          ? 'bg-rose-700 text-white shadow-2xs'
+                          : 'bg-rose-50 text-rose-800 hover:bg-rose-100'
+                      }`}
+                    >
+                      <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                      <span>ক্যানসেল / বাতিল ({rejectedMyAds.length})</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Advertisements List matching filter */}
+                {displayedMyAds.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-8 text-center space-y-3">
+                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                      <Layers className="w-6 h-6" />
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-sm">
+                      {myAdsFilter === 'active' && 'আপনার কোনো চলমান বিজ্ঞাপন নেই'}
+                      {myAdsFilter === 'pending' && 'আপনার কোনো অপেক্ষামান / ওয়েটিং বিজ্ঞাপন নেই'}
+                      {myAdsFilter === 'rejected' && 'আপনার কোনো ক্যানসেল বিজ্ঞাপন নেই'}
+                      {myAdsFilter === 'all' && 'আপনি এখনও কোনো বিজ্ঞাপন পোস্ট করেননি'}
+                    </h4>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      পণ্য বিক্রয় করতে খুব সহজেই নতুন বিজ্ঞাপন পোস্ট করুন। এডমিন যাচাই করে দ্রুত লাইভ করে দেবে।
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handlePostNewAd}
+                      className="px-4 py-2 bg-[#007460] hover:bg-[#005e4e] text-white rounded-lg text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <PlusCircle className="w-4 h-4 text-amber-300" />
+                      <span>নতুন বিজ্ঞাপন পোস্ট করুন</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-3.5">
+                    {displayedMyAds.map((ad) => {
+                      const isAdActive = ad.status === 'active' || ad.validationStatus === 'Approved';
+                      const isAdPending = (ad.status === 'pending' || ad.validationStatus === 'Received' || ad.validationStatus === 'Verified' || ad.validationStatus === 'Processed') && ad.status !== 'rejected' && ad.validationStatus !== 'Rejected';
+                      const isAdRejected = ad.status === 'rejected' || ad.validationStatus === 'Rejected';
+
+                      return (
+                        <div
+                          key={ad.id}
+                          className={`bg-white rounded-2xl border transition-all p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${
+                            isAdRejected
+                              ? 'border-rose-300 bg-rose-50/20'
+                              : isAdPending
+                              ? 'border-amber-300 bg-amber-50/20'
+                              : 'border-slate-200/90 hover:border-emerald-300'
+                          }`}
+                        >
+                          {/* Left: Thumbnail & Info */}
+                          <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                            {/* Thumbnail Image */}
+                            <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                              {ad.images && ad.images.length > 0 ? (
+                                <img
+                                  src={ad.images[0]}
+                                  alt={ad.titleBn}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                                  <ShoppingBag className="w-6 h-6" />
+                                </div>
+                              )}
+
+                              {/* Status Overlay Corner Badge */}
+                              <span
+                                className={`absolute top-1 left-1 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider ${
+                                  isAdActive
+                                    ? 'bg-emerald-700 text-white'
+                                    : isAdPending
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-rose-700 text-white'
+                                }`}
+                              >
+                                {isAdActive ? 'চলমান' : isAdPending ? 'ওয়েটিং' : 'ক্যানসেল'}
+                              </span>
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1 space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-[10px] font-mono font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded border border-slate-200">
+                                  ID: {ad.id}
+                                </span>
+                                <span className="text-[10px] text-slate-500 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                  {ad.category}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  • {ad.createdAt}
+                                </span>
+                              </div>
+
+                              <h3
+                                className="font-bold text-slate-900 text-sm leading-snug line-clamp-1 hover:text-emerald-700 cursor-pointer"
+                                onClick={() => handleViewAd(ad)}
+                              >
+                                {ad.titleBn || ad.titleEn}
+                              </h3>
+
+                              <div className="flex items-center gap-2 font-mono">
+                                <span className="text-base font-extrabold text-emerald-700">
+                                  ৳{ad.price.toLocaleString()}
+                                </span>
+                                {ad.isNegotiable && (
+                                  <span className="text-[10px] text-slate-500 font-sans">(আলোচনা সাপেক্ষ)</span>
+                                )}
+                                <span className="text-[10px] text-slate-400 font-sans ml-auto sm:ml-2">
+                                  👁️ {ad.views || 0} বার দেখা হয়েছে
+                                </span>
+                              </div>
+
+                              {/* Status Specific Description & Notes */}
+                              {isAdActive && (
+                                <div className="pt-1 flex items-center gap-2 text-xs text-emerald-800">
+                                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                  <span>বিজ্ঞাপনটি সক্রিয় আছে এবং ক্রেতারা সাইটে দেখতে পাচ্ছেন।</span>
+                                </div>
+                              )}
+
+                              {isAdPending && (
+                                <div className="pt-1 space-y-1">
+                                  <div className="flex items-center gap-1.5 text-xs text-amber-800 font-medium">
+                                    <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-spin" />
+                                    <span>এডমিন ডাটা ভেলিডেশন ও পর্যালোচনায় অপেক্ষামান ({ad.validationStatus || 'Received'})</span>
+                                  </div>
+                                  <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
+                                    <span>অগ্রগতি:</span>
+                                    <span className="bg-emerald-100 text-emerald-800 px-1 rounded">১. সাবমিট হয়েছে</span>
+                                    <span>➔</span>
+                                    <span className="bg-amber-100 text-amber-900 font-bold px-1 rounded">২. ভেলিডেশন যাচাই</span>
+                                    <span>➔</span>
+                                    <span className="text-slate-400">৩. সাইটে লাইভ অনুমোদন</span>
+                                  </div>
+                                </div>
+                              )}
+
+                              {isAdRejected && (
+                                <div className="pt-1 space-y-1.5">
+                                  <div className="p-2.5 bg-rose-100/80 border border-rose-300 rounded-lg text-xs text-rose-900">
+                                    <div className="flex items-center gap-1.5 font-bold mb-0.5">
+                                      <XCircle className="w-3.5 h-3.5 text-rose-700 shrink-0" />
+                                      <span>বিজ্ঞাপনটি বাতিল করার কারণ:</span>
+                                    </div>
+                                    <p className="text-slate-800 leading-relaxed font-sans text-[11px]">
+                                      {ad.rejectionReason || 'বিজ্ঞাপনের ছবি বা বিবরণ অসম্পূর্ণ থাকায় সাময়িক বাতিল করা হয়েছে।'}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Right: Action Buttons */}
+                          <div className="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleViewAd(ad)}
+                              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-slate-600" />
+                              <span>বিজ্ঞাপন দেখুন</span>
+                            </button>
+
+                            {isAdRejected && (
+                              <button
+                                type="button"
+                                onClick={() => handleResubmitRejectedAd(ad.id)}
+                                className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold rounded-lg text-xs transition-colors cursor-pointer flex items-center gap-1 shadow-2xs"
+                                title="সংশোধন নিশ্চিত করে এডমিনের কাছে পুনরায় অনুমোদনের আবেদন করুন"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>পুনরায় আবেদন করুন</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteAd(ad)}
+                              className="px-3 py-1.5 text-rose-600 hover:bg-rose-50 rounded-lg text-xs font-semibold transition-colors cursor-pointer flex items-center gap-1"
+                              title="বিজ্ঞাপনটি মুছে ফেলুন"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>মুছে ফেলুন</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
