@@ -676,14 +676,25 @@ export const AdminAuthGate: React.FC<AdminAuthGateProps> = ({ onBackToCustomer }
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     নতুন পাসওয়ার্ড
                   </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="নতুন পাসওয়ার্ড দিন"
+                      className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                      title={showPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button

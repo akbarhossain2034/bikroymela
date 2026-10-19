@@ -57,7 +57,7 @@ export const Header: React.FC = () => {
       {/* Top Welcome Bonus Promotional Banner */}
       {offerSettings?.isBannerActive && offerSettings?.isBonusEnabled && !isAdminMode && (
         <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-yellow-400 text-slate-950 py-1 px-4 text-xs font-semibold shadow-inner">
-          <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 truncate">
               <span className="w-4 h-4 rounded-full bg-slate-950 text-amber-300 flex items-center justify-center font-black text-[10px] shrink-0">
                 ৳
@@ -86,7 +86,7 @@ export const Header: React.FC = () => {
       )}
 
       <div className="bg-[#007460] text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center justify-between h-16">
           
           {/* Zone 1: Single text element wordmark */}

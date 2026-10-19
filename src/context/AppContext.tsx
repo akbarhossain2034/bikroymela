@@ -1125,11 +1125,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       extraPhotoFeePaid: adData.extraPhotoFeePaid || false,
       featured: finalFeatured,
       urgent: adData.urgent || false,
+      isPaidAd: adData.isPaidAd || false,
+      paymentStatus: adData.paymentStatus || 'free',
+      paidAmount: adData.paidAmount || 0,
+      paymentGateway: adData.paymentGateway,
+      paymentTrxId: adData.paymentTrxId,
+      paidAt: adData.paidAt,
+      paymentBreakdown: adData.paymentBreakdown,
       views: 1,
       specs: adData.specs || {}
     };
 
     setAds(prev => [newAd, ...prev]);
+
+    // If ad is paid, log as a Company Revenue transaction for Admin Transaction Monitor
+    if (newAd.isPaidAd && (newAd.paidAmount || 0) > 0 && newAd.paymentStatus === 'paid') {
+      const nowStr = new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const promoTxn: Transaction = {
+        id: `txn-promo-${Date.now()}`,
+        orderId: `AD-PROMO-${newAd.id}`,
+        adTitle: `[বিজ্ঞাপন ফি ও প্রমোশন] ${newAd.titleBn} (${newAd.paymentBreakdown?.packageName || 'পেইড ফিচার'})`,
+        sender: `${newAd.sellerName} (${newAd.sellerPhone})`,
+        receiver: 'বিক্রয় মেলা অ্যাডমিন ভল্ট (Company Vault)',
+        amount: newAd.paidAmount || 0,
+        gateway: (newAd.paymentGateway as any) || 'bKash',
+        trxId: newAd.paymentTrxId || `TRX-AD${Math.floor(100000 + Math.random() * 900000)}`,
+        status: 'Company Revenue',
+        date: nowStr,
+        type: 'ad_promotion'
+      };
+      setTransactions(prev => [promoTxn, ...prev]);
+
+      // If paid via Wallet balance, deduct from user wallet
+      if (newAd.paymentGateway === 'Wallet' && currentUser) {
+        setCurrentUser(prev => prev ? {
+          ...prev,
+          walletBalance: Math.max(0, (prev.walletBalance || 0) - (newAd.paidAmount || 0))
+        } : null);
+      }
+    }
 
     // Update user free ad count & award strategy loyalty points (+15)
     if (currentUser) {

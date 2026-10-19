@@ -22,6 +22,8 @@ import {
   CreditCard, 
   Users, 
   CheckCircle, 
+  CheckCircle2,
+  AlertCircle,
   XCircle, 
   Trash2, 
   Star, 
@@ -415,6 +417,11 @@ export const AdminDashboard: React.FC = () => {
   const processedAdsCount = ads.filter(a => a.validationStatus === 'Processed').length;
   const approvedAdsCount = ads.filter(a => a.validationStatus === 'Approved' || a.status === 'active').length;
   const rejectedAdsCount = ads.filter(a => a.validationStatus === 'Rejected' || a.status === 'rejected').length;
+  const paidAdsCount = ads.filter(a => a.isPaidAd || (a.paidAmount && a.paidAmount > 0)).length;
+  const urgentAdsCount = ads.filter(a => a.urgent).length;
+  const featuredAdsCount = ads.filter(a => a.featured).length;
+  const freeAdsCount = ads.filter(a => !a.isPaidAd && (!a.paidAmount || a.paidAmount === 0)).length;
+  const totalAdPromotionRevenue = transactions.filter(t => t.type === 'ad_promotion' || t.status === 'Company Revenue').reduce((acc, t) => acc + t.amount, 0);
   const unapprovedStaffCount = adminList.filter(s => !s.isApprovedByOwner && !s.isOwner).length;
   const pendingWithdrawalsCount = withdrawalRequests.filter(w => w.status === 'Pending').length;
 
@@ -542,6 +549,14 @@ export const AdminDashboard: React.FC = () => {
       matchesStatus = true;
     } else if (filterAdStatus === 'pending') {
       matchesStatus = isPending;
+    } else if (filterAdStatus === 'paid') {
+      matchesStatus = Boolean(ad.isPaidAd || (ad.paidAmount && ad.paidAmount > 0));
+    } else if (filterAdStatus === 'urgent') {
+      matchesStatus = Boolean(ad.urgent);
+    } else if (filterAdStatus === 'featured') {
+      matchesStatus = Boolean(ad.featured);
+    } else if (filterAdStatus === 'free') {
+      matchesStatus = Boolean(!ad.isPaidAd && (!ad.paidAmount || ad.paidAmount === 0));
     } else {
       matchesStatus = ad.status === filterAdStatus || currentValidation === filterAdStatus;
     }
@@ -549,6 +564,7 @@ export const AdminDashboard: React.FC = () => {
     const matchesSearch = ad.titleBn.toLowerCase().includes(adminSearch.toLowerCase()) ||
                           ad.titleEn.toLowerCase().includes(adminSearch.toLowerCase()) ||
                           ad.sellerName.toLowerCase().includes(adminSearch.toLowerCase()) ||
+                          (ad.paymentTrxId && ad.paymentTrxId.toLowerCase().includes(adminSearch.toLowerCase())) ||
                           ad.id.toLowerCase().includes(adminSearch.toLowerCase());
     return matchesStatus && matchesSearch;
   });
@@ -563,141 +579,345 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 pb-16">
+    <div className="h-screen bg-slate-100 text-slate-800 flex flex-col overflow-hidden">
       
-      {/* Admin Top Sticky Navigation Bar (স্থির থাকবে) */}
-      <header className="sticky top-0 z-50 bg-[#007460] text-white border-b border-[#005e4e] px-4 sm:px-6 py-2.5 shadow-md">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
-          
-          {/* LEFT: Logo & Customer Mode (গ্রাহক মোড) */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <div className="w-9 h-9 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
-              <ShieldCheck className="w-5 h-5 text-slate-950" />
-            </div>
-
-            {/* গ্রাহক মোড বাটন (বাম পাশে) */}
-            <button
-              type="button"
-              onClick={() => setIsAdminMode(false)}
-              className="px-3 py-1.5 bg-black/25 hover:bg-black/35 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer shadow-2xs"
-              title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
-            >
-              <ArrowLeft className="w-3.5 h-3.5 text-amber-300" />
-              <span>গ্রাহক মোড</span>
-            </button>
-          </div>
-
-          {/* CENTER: মাঝখানে কেন্দ্রীয় নাম ও সাবটাইটেল (বিক্রয় মেলা কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল) */}
-          <div className="text-center flex-1 px-2">
-            <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-white leading-tight">
-              {siteName} {lang === 'bn' ? 'কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল' : 'Central Admin Control Panel'}
-            </h1>
-            <p className="text-[11px] sm:text-xs text-emerald-100 mt-0.5 leading-tight font-normal hidden sm:block">
-              {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো সিকিউরিটি ব্যবস্থাপনা' : 'Ad Moderation, Escrow Monitoring & Platform Governance'}
-            </p>
-          </div>
-
-          {/* RIGHT: শুধু মাত্র ইউজার আইকন ও V বাটনে ক্লিক করলে ড্রপডাউন মেনু (ছবিটির মতো) */}
-          <div className="relative shrink-0">
-            <button
-              type="button"
-              onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
-              className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 text-xs font-semibold text-white bg-black/25 hover:bg-black/35 rounded-full transition-all group cursor-pointer border border-white/20 hover:border-amber-400 shadow-xs"
-              title="ইউজার তথ্য ও অ্যাকাউন্ট মেনু দেখতে ক্লিক করুন"
-            >
-              {/* Circular Avatar 'M' or User Initials without Crown (রাজার মতো চিহ্ন থাকবে না) */}
-              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-md ring-2 ring-emerald-300/80 group-hover:scale-105 transition-transform shrink-0">
-                {activeAdmin.name ? activeAdmin.name.charAt(0) : 'M'}
+      {/* Admin Top Fixed Navigation Bar */}
+      <header className="shrink-0 z-50 bg-[#007460] text-white border-b border-[#005e4e] shadow-md">
+        {/* Row 1: Logo & গ্রাহক মোড (Left), কেন্দ্রীয় টাইটেল ও সাবটাইটেল (Center), ইউজার ড্রপডাউন (Right) */}
+        <div className="px-4 sm:px-6 lg:px-8 xl:px-10 py-2.5 border-b border-emerald-800/60">
+          <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto flex items-center justify-between gap-3">
+            
+            {/* LEFT: Logo & Customer Mode (গ্রাহক মোড) */}
+            <div className="flex items-center gap-2.5 shrink-0">
+              <div className="w-9 h-9 rounded-lg bg-amber-400 text-slate-950 flex items-center justify-center font-bold shrink-0 shadow-sm">
+                <ShieldCheck className="w-5 h-5 text-slate-950" />
               </div>
 
-              {/* V Shape Icon (ChevronDown / ChevronUp) */}
-              <span className="w-5 h-5 flex items-center justify-center text-white group-hover:text-amber-300 transition-colors">
-                {adminDropdownOpen ? (
-                  <ChevronUp className="w-4 h-4 text-amber-300" />
-                ) : (
-                  <ChevronDown className="w-4 h-4" />
-                )}
-              </span>
-            </button>
+              {/* গ্রাহক মোড বাটন (বাম পাশে) */}
+              <button
+                type="button"
+                onClick={() => setIsAdminMode(false)}
+                className="px-3 py-1.5 bg-black/25 hover:bg-black/35 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors border border-white/20 cursor-pointer shadow-2xs"
+                title="কাষ্টমার মার্কেটপ্লেসে ফিরে যান"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-amber-300" />
+                <span>গ্রাহক মোড</span>
+              </button>
+            </div>
 
-            {/* Dropdown Menu (Screenshot Sample Style - In-place dropdown, no page open) */}
-            {adminDropdownOpen && (
-              <>
-                {/* Backdrop to close on outside click */}
-                <div 
-                  className="fixed inset-0 z-40" 
-                  onClick={() => setAdminDropdownOpen(false)}
-                />
+            {/* CENTER: মাঝখানে কেন্দ্রীয় নাম ও সাবটাইটেল (বিক্রয় মেলা কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল) */}
+            <div className="text-center flex-1 px-2">
+              <h1 className="text-sm sm:text-base md:text-lg font-bold tracking-tight text-white leading-tight">
+                {siteName} {lang === 'bn' ? 'কেন্দ্রীয় এডমিন কন্ট্রোল প্যানেল' : 'Central Admin Control Panel'}
+              </h1>
+              <p className="text-[11px] sm:text-xs text-emerald-100 mt-0.5 leading-tight font-normal hidden sm:block">
+                {lang === 'bn' ? 'বিজ্ঞাপন অনুমোদন, লেনদেন মনিটরিং ও এসক্রো সিকিউরিটি ব্যবস্থাপনা' : 'Ad Moderation, Escrow Monitoring & Platform Governance'}
+              </p>
+            </div>
 
-                <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 text-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 text-xs">
-                  {/* User Identity Info in Dropdown Header: পদবী নির্দিষ্ট কর্মীর পদ উল্লেখ থাকবে */}
-                  <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/90">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
-                        {activeAdmin.id}
-                      </span>
-                      <span className="text-[10px] bg-[#007460] text-white font-bold px-2 py-0.5 rounded-full">
-                        {activeAdmin.isOwner 
-                          ? 'মালিক' 
-                          : (activeAdmin.designation || activeAdmin.role || 'কর্মকর্তা')}
-                      </span>
+            {/* RIGHT: শুধু মাত্র ইউজার আইকন ও V বাটনে ক্লিক করলে ড্রপডাউন মেনু (ছবিটির মতো) */}
+            <div className="relative shrink-0">
+              <button
+                type="button"
+                onClick={() => setAdminDropdownOpen(!adminDropdownOpen)}
+                className="flex items-center gap-1.5 p-1 sm:px-2 sm:py-1 text-xs font-semibold text-white bg-black/25 hover:bg-black/35 rounded-full transition-all group cursor-pointer border border-white/20 hover:border-amber-400 shadow-xs"
+                title="ইউজার তথ্য ও অ্যাকাউন্ট মেনু দেখতে ক্লিক করুন"
+              >
+                {/* Circular Avatar 'M' or User Initials without Crown (রাজার মতো চিহ্ন থাকবে না) */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-black text-sm flex items-center justify-center shadow-md ring-2 ring-emerald-300/80 group-hover:scale-105 transition-transform shrink-0">
+                  {activeAdmin.name ? activeAdmin.name.charAt(0) : 'M'}
+                </div>
+
+                {/* V Shape Icon (ChevronDown / ChevronUp) */}
+                <span className="w-5 h-5 flex items-center justify-center text-white group-hover:text-amber-300 transition-colors">
+                  {adminDropdownOpen ? (
+                    <ChevronUp className="w-4 h-4 text-amber-300" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4" />
+                  )}
+                </span>
+              </button>
+
+              {/* Dropdown Menu (Screenshot Sample Style - In-place dropdown, no page open) */}
+              {adminDropdownOpen && (
+                <>
+                  {/* Backdrop to close on outside click */}
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setAdminDropdownOpen(false)}
+                  />
+
+                  <div className="absolute right-0 top-full mt-2 w-64 bg-white rounded-xl shadow-2xl border border-slate-200 text-slate-700 py-2 z-50 animate-in fade-in zoom-in-95 text-xs">
+                    {/* User Identity Info in Dropdown Header: পদবী নির্দিষ্ট কর্মীর পদ উল্লেখ থাকবে */}
+                    <div className="px-4 py-3 border-b border-slate-100 bg-slate-50/90">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-mono font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded">
+                          {activeAdmin.id}
+                        </span>
+                        <span className="text-[10px] bg-[#007460] text-white font-bold px-2 py-0.5 rounded-full">
+                          {activeAdmin.isOwner 
+                            ? 'মালিক' 
+                            : (activeAdmin.designation || activeAdmin.role || 'কর্মকর্তা')}
+                        </span>
+                      </div>
+                      <strong className="text-slate-900 font-bold text-sm block mt-1.5 truncate">
+                        {activeAdmin.name}
+                      </strong>
+                      {activeAdmin.phone && (
+                        <span className="text-[11px] text-slate-500 block truncate mt-0.5 font-mono">
+                          {activeAdmin.phone}
+                        </span>
+                      )}
+                      {activeAdmin.username && (
+                        <span className="text-[10px] text-emerald-700 block truncate font-mono">
+                          ইউজারনেম: {activeAdmin.username}
+                        </span>
+                      )}
                     </div>
-                    <strong className="text-slate-900 font-bold text-sm block mt-1.5 truncate">
-                      {activeAdmin.name}
-                    </strong>
-                    {activeAdmin.phone && (
-                      <span className="text-[11px] text-slate-500 block truncate mt-0.5 font-mono">
-                        {activeAdmin.phone}
-                      </span>
-                    )}
-                    {activeAdmin.username && (
-                      <span className="text-[10px] text-emerald-700 block truncate font-mono">
-                        ইউজারনেম: {activeAdmin.username}
-                      </span>
-                    )}
-                  </div>
 
-                  {/* Menu Options: তথ্য পরিবর্তন Manage Account এর ভেতরে থাকবে */}
-                  <div className="py-1">
+                    {/* Menu Options: তথ্য পরিবর্তন Manage Account এর ভেতরে থাকবে */}
+                    <div className="py-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsManageAccountOpen(true);
+                          setAdminDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 font-semibold flex items-center gap-2.5 cursor-pointer transition-colors"
+                      >
+                        <UserCog className="w-4 h-4 text-[#007460]" />
+                        <span>Manage Account</span>
+                      </button>
+                    </div>
+
+                    <div className="border-t border-slate-100 my-1"></div>
+
+                    {/* লগআউট Dropdown এর মধ্যে */}
                     <button
                       type="button"
                       onClick={() => {
-                        setIsManageAccountOpen(true);
                         setAdminDropdownOpen(false);
+                        adminLogout();
                       }}
-                      className="w-full text-left px-4 py-2 hover:bg-slate-100 text-slate-800 font-semibold flex items-center gap-2.5 cursor-pointer transition-colors"
+                      className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-bold flex items-center gap-2.5 cursor-pointer transition-colors"
                     >
-                      <UserCog className="w-4 h-4 text-[#007460]" />
-                      <span>Manage Account</span>
+                      <LogOut className="w-4 h-4 text-rose-600" />
+                      <span>লগআউট (Log Out)</span>
                     </button>
                   </div>
+                </>
+              )}
+            </div>
 
-                  <div className="border-t border-slate-100 my-1"></div>
+          </div>
+        </div>
 
-                  {/* লগআউট Dropdown এর মধ্যে */}
+        {/* Row 2: ভাসমান এডমিন মূল বিষয়সমূহ নেভিগেশন বার (Floating 11 Admin Key Modules Bar) */}
+        <div className="bg-[#005646]/95 backdrop-blur-md px-3 sm:px-6 py-1.5 border-t border-emerald-800/40">
+          <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+            
+            {/* Tag / Label */}
+            <div className="flex items-center gap-1.5 shrink-0 pr-2 border-r border-emerald-700/80 text-[11px] font-bold text-amber-300">
+              <ListFilter className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline whitespace-nowrap">মূল বিষয়সমূহ:</span>
+            </div>
+
+            {/* 11 Modules Horizontal Floating Tabs */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {adminNavModules.map((item) => {
+                const IconComponent = item.icon;
+                const isActive = activeTab === item.id;
+                return (
                   <button
+                    key={item.id}
                     type="button"
                     onClick={() => {
-                      setAdminDropdownOpen(false);
-                      adminLogout();
+                      setActiveTab(item.id);
+                      if (window.innerWidth < 1024) {
+                        const detailElem = document.getElementById('admin-detail-panel');
+                        if (detailElem) {
+                          detailElem.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-rose-50 text-rose-600 font-bold flex items-center gap-2.5 cursor-pointer transition-colors"
+                    className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 text-xs font-bold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                      isActive
+                        ? 'bg-amber-400 text-slate-950 shadow-sm ring-2 ring-amber-300'
+                        : 'bg-black/20 hover:bg-black/35 text-white/95 hover:text-white border border-white/10 hover:border-white/30'
+                    }`}
+                    title={`${item.serial}. ${item.title}`}
                   >
-                    <LogOut className="w-4 h-4 text-rose-600" />
-                    <span>লগআউট (Log Out)</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
+                    {/* Serial badge */}
+                    <span className={`font-mono text-[10px] font-bold px-1.5 py-0.2 rounded shadow-2xs ${
+                      isActive ? 'bg-slate-950 text-amber-300' : 'bg-white/20 text-white'
+                    }`}>
+                      {item.serial}
+                    </span>
 
+                    <IconComponent className={`w-3.5 h-3.5 shrink-0 ${isActive ? 'text-slate-950' : 'text-amber-300'}`} />
+
+                    <span className="text-[11px] sm:text-xs">{item.title}</span>
+
+                    {/* Count / Total Amount Badge */}
+                    {item.count && (
+                      <span className={`font-mono text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                        isActive ? 'bg-slate-950/20 text-slate-950' : 'bg-emerald-900/80 text-emerald-100 border border-emerald-700/50'
+                      }`}>
+                        {item.id === 'ads' 
+                          ? `মোট: ${item.count}` 
+                          : (item.id === 'orders' 
+                            ? `মোট: ${item.count}` 
+                            : (item.id === 'transactions' 
+                              ? `মোট: ${item.count}` 
+                              : item.count))}
+                      </span>
+                    )}
+
+                    {/* Badge if no count or special tag */}
+                    {item.badge && (!item.count || item.id === 'transactions') && (
+                      <span className={`text-[9px] px-1.5 py-0.2 rounded font-sans ${
+                        isActive ? 'bg-slate-900 text-amber-300' : 'bg-amber-400/20 text-amber-200'
+                      }`}>
+                        {item.badge}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+          </div>
         </div>
       </header>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
+      {/* Admin Dashboard: 2-Column Responsive Layout - Left Sidebar is 100% Fixed, Right Side scrolls */}
+      <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col lg:flex-row gap-5 overflow-hidden">
         
-        {/* Direct Links Box for Customer & Admin with V-shaped Toggle (Show/Hide) */}
-        <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200">
+        {/* LEFT SIDE: Serialized Main Navigation (বাম পাশে সিরিয়াল অনুযায়ী বিষয়সমূহ - স্ক্রল করলে স্থির থাকবে) */}
+        <aside className="w-full lg:w-80 shrink-0 h-auto lg:h-full max-h-[35vh] lg:max-h-full overflow-y-auto custom-scrollbar space-y-4 pr-1">
+          
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-3 flex items-center justify-between border-b border-slate-700 shrink-0">
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                  <ListFilter className="w-4 h-4 text-amber-400" />
+                  <span>এডমিন মূল বিষয়সমূহ</span>
+                </h3>
+                <p className="text-[10px] text-slate-300 mt-0.5 font-normal">
+                  সিরিয়াল নির্বাচন করে ডানপাশে বিস্তারিত দেখুন
+                </p>
+              </div>
+              <span className="text-[10px] font-mono font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-xs">
+                {adminNavModules.length}টি বিষয়
+              </span>
+            </div>
+
+            {/* Navigation items list - Compact with visible draggable custom-scrollbar */}
+            <nav className="p-1.5 sm:p-2 space-y-1 overflow-y-auto custom-scrollbar">
+              {adminNavModules.map((item) => {
+                const IconComponent = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setActiveTab(item.id);
+                      if (window.innerWidth < 1024) {
+                        const detailElem = document.getElementById('admin-detail-panel');
+                        if (detailElem) {
+                          detailElem.scrollIntoView({ behavior: 'smooth' });
+                        }
+                      }
+                    }}
+                    className={`w-full text-left p-2 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer group ${
+                      isActive
+                        ? 'bg-emerald-50/90 border-[#007460] text-[#007460] shadow-xs ring-1 ring-[#007460]/20 font-bold'
+                        : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-700 hover:text-slate-950 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Serial number badge (01, 02, 03...) */}
+                      <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md shrink-0 shadow-2xs transition-colors ${
+                        isActive
+                          ? 'bg-[#007460] text-white'
+                          : 'bg-slate-100 group-hover:bg-slate-200 text-slate-700 font-semibold'
+                      }`}>
+                        {item.serial}
+                      </span>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <IconComponent className={`w-3.5 h-3.5 shrink-0 ${
+                            isActive ? 'text-[#007460]' : 'text-slate-500 group-hover:text-slate-700'
+                          }`} />
+                          <span className={`text-xs truncate block ${
+                            isActive ? 'font-bold text-slate-950' : 'font-medium text-slate-800'
+                          }`}>
+                            {item.title}
+                          </span>
+                        </div>
+                        
+                        {/* Count or quick status subtitle */}
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] flex-wrap">
+                          {item.count && (
+                            <span className={`font-mono font-semibold ${
+                              isActive ? 'text-[#007460]' : 'text-slate-500'
+                            }`}>
+                              ({item.count})
+                            </span>
+                          )}
+                          {item.badge && (
+                            <span className={`px-1.5 py-0.2 rounded text-[9px] border font-sans ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                              {item.badge}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Indicator Arrow */}
+                    <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${
+                      isActive
+                        ? 'text-[#007460] translate-x-0.5'
+                        : 'text-slate-300 group-hover:text-slate-500 opacity-60 group-hover:opacity-100'
+                    }`} />
+                  </button>
+                );
+              })}
+            </nav>
+
+            {/* Quick Admin Profile Card at bottom of left sidebar */}
+            <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-6 h-6 rounded-full bg-[#007460] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
+                    {activeAdmin.name ? activeAdmin.name.charAt(0) : 'A'}
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-slate-900 text-[11px] block truncate">{activeAdmin.name}</span>
+                    <span className="font-mono text-[10px] text-slate-500 block truncate">{activeAdmin.id}</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsManageAccountOpen(true)}
+                  className="text-[10px] font-bold text-[#007460] hover:underline cursor-pointer shrink-0 ml-2"
+                >
+                  ম্যানেজ
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </aside>
+
+        {/* RIGHT SIDE: Dedicated Scrollable Content Area (Direct links, Metrics & Active Tab Detail Panel) */}
+        <div id="admin-detail-panel" className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar pr-1 space-y-5 pb-16">
+          
+          {/* Direct Links Box for Customer & Admin with V-shaped Toggle (Show/Hide) */}
+          <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden transition-all duration-200">
           <button
             type="button"
             onClick={toggleDirectLinks}
@@ -883,134 +1103,11 @@ export const AdminDashboard: React.FC = () => {
 
         </div>
 
-        {/* Main 2-Column Split: Left Sidebar (Menu with 01, 02, 03... numbers) + Right Details Panel */}
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          
-          {/* LEFT SIDE: Serialized Main Navigation (বাম পাশে সিরিয়াল অনুযায়ী বিষয়সমূহ) */}
-          <aside className="w-full lg:w-80 shrink-0 space-y-4">
-            
-            <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden sticky top-4">
-              <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white px-4 py-3.5 flex items-center justify-between border-b border-slate-700">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                    <ListFilter className="w-4 h-4 text-amber-400" />
-                    <span>এডমিন মূল বিষয়সমূহ</span>
-                  </h3>
-                  <p className="text-[10px] text-slate-300 mt-0.5 font-normal">
-                    সিরিয়াল নির্বাচন করে ডানপাশে বিস্তারিত দেখুন
-                  </p>
-                </div>
-                <span className="text-[10px] font-mono font-bold bg-amber-400 text-slate-950 px-2 py-0.5 rounded-full shadow-xs">
-                  {adminNavModules.length}টি বিষয়
-                </span>
-              </div>
-
-              {/* Navigation items list */}
-              <nav className="p-2 space-y-1.5 max-h-[calc(100vh-180px)] overflow-y-auto">
-                {adminNavModules.map((item) => {
-                  const IconComponent = item.icon;
-                  const isActive = activeTab === item.id;
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => {
-                        setActiveTab(item.id);
-                        if (window.innerWidth < 1024) {
-                          const detailElem = document.getElementById('admin-detail-panel');
-                          if (detailElem) {
-                            detailElem.scrollIntoView({ behavior: 'smooth' });
-                          }
-                        }
-                      }}
-                      className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between gap-2 cursor-pointer group ${
-                        isActive
-                          ? 'bg-emerald-50/90 border-[#007460] text-[#007460] shadow-xs ring-1 ring-[#007460]/20'
-                          : 'bg-white hover:bg-slate-50 border-slate-200/90 text-slate-700 hover:text-slate-950 hover:border-slate-300'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {/* Serial number badge (01, 02, 03...) */}
-                        <span className={`font-mono text-xs font-bold px-2 py-0.5 rounded-md shrink-0 shadow-2xs transition-colors ${
-                          isActive
-                            ? 'bg-[#007460] text-white'
-                            : 'bg-slate-100 group-hover:bg-slate-200 text-slate-700 font-semibold'
-                        }`}>
-                          {item.serial}
-                        </span>
-
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <IconComponent className={`w-3.5 h-3.5 shrink-0 ${
-                              isActive ? 'text-[#007460]' : 'text-slate-500 group-hover:text-slate-700'
-                            }`} />
-                            <span className={`text-xs truncate block ${
-                              isActive ? 'font-bold text-slate-950' : 'font-medium text-slate-800'
-                            }`}>
-                              {item.title}
-                            </span>
-                          </div>
-                          
-                          {/* Count or quick status subtitle */}
-                          <div className="flex items-center gap-1.5 mt-0.5 text-[10px] flex-wrap">
-                            {item.count && (
-                              <span className={`font-mono font-semibold ${
-                                isActive ? 'text-[#007460]' : 'text-slate-500'
-                              }`}>
-                                ({item.count})
-                              </span>
-                            )}
-                            {item.badge && (
-                              <span className={`px-1.5 py-0.2 rounded text-[9px] border font-sans ${item.badgeColor || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                                {item.badge}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Right Indicator Arrow */}
-                      <ChevronRight className={`w-4 h-4 shrink-0 transition-transform ${
-                        isActive
-                          ? 'text-[#007460] translate-x-0.5'
-                          : 'text-slate-300 group-hover:text-slate-500 opacity-60 group-hover:opacity-100'
-                      }`} />
-                    </button>
-                  );
-                })}
-              </nav>
-
-              {/* Quick Admin Profile Card at bottom of left sidebar */}
-              <div className="p-3 bg-slate-50 border-t border-slate-200 text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-6 h-6 rounded-full bg-[#007460] text-white font-bold flex items-center justify-center text-[11px] shrink-0">
-                      {activeAdmin.name ? activeAdmin.name.charAt(0) : 'A'}
-                    </div>
-                    <div className="min-w-0">
-                      <span className="font-bold text-slate-900 text-[11px] block truncate">{activeAdmin.name}</span>
-                      <span className="font-mono text-[10px] text-slate-500 block truncate">{activeAdmin.id}</span>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setIsManageAccountOpen(true)}
-                    className="text-[10px] font-bold text-[#007460] hover:underline cursor-pointer shrink-0 ml-2"
-                  >
-                    ম্যানেজ
-                  </button>
-                </div>
-              </div>
-
-            </div>
-
-          </aside>
-
-          {/* RIGHT SIDE: Dedicated Details Panel (ডান পাশে নির্বাচিত বিষয়ের বিস্তারিত বিবরণ ও একশনসমূহ) */}
-          <main id="admin-detail-panel" className="flex-1 min-w-0 w-full bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+          {/* Active Module Details Card */}
+          <main className="w-full bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden flex flex-col justify-between">
             
             {/* Right Panel Breadcrumb & Title Bar */}
-            <div className="bg-linear-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3">
+            <div className="bg-linear-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200 px-4 sm:px-6 py-3.5 flex flex-wrap items-center justify-between gap-3 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2.5">
                   <span className="font-mono text-xs font-bold bg-[#007460] text-white px-2.5 py-1 rounded-md shadow-2xs">
@@ -1259,6 +1356,49 @@ export const AdminDashboard: React.FC = () => {
                     <span>❌ বাতিল (Rejected)</span>
                     <span className="font-mono">({rejectedAdsCount})</span>
                   </button>
+
+                  {/* Dedicated Paid Ads Filter Pills */}
+                  <span className="text-slate-300">|</span>
+
+                  <button
+                    onClick={() => setFilterAdStatus('paid')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                      filterAdStatus === 'paid' ? 'bg-emerald-700 text-white ring-2 ring-emerald-400' : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-300'
+                    }`}
+                    title="বিকাশ/নগদ দিয়ে ফি পরিশোধিত সকল বিজ্ঞাপন"
+                  >
+                    <span>💎 পেইড বিজ্ঞাপন</span>
+                    <span className="font-mono bg-emerald-200/90 text-emerald-950 px-1.5 py-0.2 rounded text-[10px]">({paidAdsCount})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFilterAdStatus('urgent')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                      filterAdStatus === 'urgent' ? 'bg-rose-600 text-white ring-2 ring-rose-400' : 'bg-rose-50 text-rose-800 hover:bg-rose-100 border border-rose-300'
+                    }`}
+                  >
+                    <span>🔥 জরুরি (Urgent)</span>
+                    <span className="font-mono text-[10px]">({urgentAdsCount})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFilterAdStatus('featured')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                      filterAdStatus === 'featured' ? 'bg-amber-600 text-slate-950 ring-2 ring-amber-400' : 'bg-amber-50 text-amber-900 hover:bg-amber-100 border border-amber-300'
+                    }`}
+                  >
+                    <span>⭐ ফিচার্ড (Top)</span>
+                    <span className="font-mono text-[10px]">({featuredAdsCount})</span>
+                  </button>
+
+                  <button
+                    onClick={() => setFilterAdStatus('free')}
+                    className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-colors shrink-0 ${
+                      filterAdStatus === 'free' ? 'bg-slate-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <span>ফ্রি ({freeAdsCount})</span>
+                  </button>
                 </div>
               </div>
 
@@ -1270,6 +1410,7 @@ export const AdminDashboard: React.FC = () => {
                       <th className="p-3">পণ্য / প্রোপার্টি বিবরণ</th>
                       <th className="p-3">ক্যাটাগরি ও এরিয়া</th>
                       <th className="p-3">মূল্য (টাকা)</th>
+                      <th className="p-3 min-w-[190px]">প্যাকেজ ও পেমেন্ট বিবরণ</th>
                       <th className="p-3">সেলার ও মোবাইল</th>
                       <th className="p-3 min-w-[210px]">
                         <div className="flex items-center gap-1.5 text-slate-800">
@@ -1343,6 +1484,38 @@ export const AdminDashboard: React.FC = () => {
 
                           <td className="p-3 font-mono font-bold text-slate-900 tabular-nums">
                             ৳ {ad.price.toLocaleString()}
+                          </td>
+
+                          {/* Package & Payment Proof Cell */}
+                          <td className="p-3">
+                            {ad.isPaidAd && (ad.paidAmount || 0) > 0 ? (
+                              <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2 max-w-[200px] shadow-2xs space-y-1">
+                                <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
+                                  <span className="flex items-center gap-1">
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                    <span>পেইড: ৳ {ad.paidAmount}</span>
+                                  </span>
+                                  <span className="font-mono text-[9px] bg-emerald-200 text-emerald-950 px-1.5 py-0.2 rounded font-bold uppercase">
+                                    {ad.paymentGateway || 'bKash'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-emerald-800 font-mono font-semibold truncate" title={ad.paymentTrxId}>
+                                  TrxID: {ad.paymentTrxId || 'TRX-VERIFIED'}
+                                </div>
+                                <div className="text-[9px] text-emerald-700 font-medium truncate" title={ad.paymentBreakdown?.packageName}>
+                                  {ad.paymentBreakdown?.packageName || (ad.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}
+                                </div>
+                              </div>
+                            ) : ad.paymentStatus === 'unpaid' ? (
+                              <span className="bg-rose-50 text-rose-800 border border-rose-300 px-2 py-1 rounded-md text-[10px] font-bold inline-flex items-center gap-1">
+                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                <span>বকেয়া ফি (আটকে আছে)</span>
+                              </span>
+                            ) : (
+                              <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md text-[10px] font-medium inline-flex items-center gap-1">
+                                <span>ফ্রি বিজ্ঞাপন (৳ ০)</span>
+                              </span>
+                            )}
                           </td>
 
                           <td className="p-3">
@@ -1802,83 +1975,141 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
+              {/* Transactions Summary Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-sky-800">মোট ট্রানজেকশন ভলিউম</div>
+                  <div className="text-lg font-bold font-mono text-sky-950 mt-0.5">৳ {totalVolume.toLocaleString()}</div>
+                  <div className="text-[10px] text-sky-700 mt-1">সব ডিজিটাল ট্রানজেকশন সংরক্ষিত</div>
+                </div>
+
+                <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-300 rounded-xl p-3 shadow-2xs">
+                  <div className="text-[11px] font-bold text-emerald-900 flex items-center justify-between">
+                    <span>বিজ্ঞাপন প্রমোশন ও বুস্টিং ফি</span>
+                    <span className="text-[9px] bg-emerald-200 text-emerald-950 font-bold px-1.5 py-0.2 rounded font-mono">কোম্পানি রাজস্ব</span>
+                  </div>
+                  <div className="text-lg font-bold font-mono text-emerald-950 mt-0.5">৳ {totalAdPromotionRevenue.toLocaleString()}</div>
+                  <div className="text-[10px] text-emerald-700 mt-1">জরুরি বিক্রি, ফিচার্ড ও ফটো ফি থেকে আয়</div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-amber-800">এসক্রো ভল্টে রক্ষিত</div>
+                  <div className="text-lg font-bold font-mono text-amber-950 mt-0.5">
+                    ৳ {transactions.filter(t => t.status === 'Escrow Held').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-1">ডেলিভারি সফল হলে রিলিজ হবে</div>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-emerald-800">সেলারকে রিলিজড</div>
+                  <div className="text-lg font-bold font-mono text-emerald-950 mt-0.5">
+                    ৳ {transactions.filter(t => t.status === 'Released').reduce((acc, t) => acc + t.amount, 0).toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-emerald-700 mt-1">সফল লেনদেন সম্পন্ন</div>
+                </div>
+              </div>
+
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider font-semibold border-b border-slate-200">
                     <tr>
                       <th className="p-3">ট্রানজেকশন আইডি</th>
                       <th className="p-3">পণ্য / অর্ডার</th>
-                      <th className="p-3">প্রেরক (ক্রেতা)</th>
+                      <th className="p-3">প্রেরক (ক্রেতা / সেলার)</th>
                       <th className="p-3">গেটওয়ে</th>
                       <th className="p-3">পরিমাণ (৳)</th>
-                      <th className="p-3">এসক্রো স্ট্যাটাস</th>
+                      <th className="p-3">লেনদেন স্ট্যাটাস</th>
                       <th className="p-3 text-right">অ্যাকশন</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {transactions.map((txn) => (
-                      <tr key={txn.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="p-3 font-mono font-bold text-slate-900">
-                          {txn.trxId}
-                          <div className="text-[10px] text-slate-400 font-normal">{txn.date}</div>
-                        </td>
+                    {transactions.map((txn) => {
+                      const isAdPromo = txn.type === 'ad_promotion' || txn.status === 'Company Revenue';
 
-                        <td className="p-3">
-                          <span className="font-semibold text-slate-800 line-clamp-1">{txn.adTitle}</span>
-                          <span className="text-[10px] text-slate-500 font-mono">অর্ডার: {txn.orderId}</span>
-                        </td>
+                      return (
+                        <tr key={txn.id} className={`hover:bg-slate-50 transition-colors ${isAdPromo ? 'bg-emerald-50/30' : ''}`}>
+                          <td className="p-3 font-mono font-bold text-slate-900">
+                            {txn.trxId}
+                            <div className="text-[10px] text-slate-400 font-normal">{txn.date}</div>
+                          </td>
 
-                        <td className="p-3 text-slate-700">
-                          {txn.sender}
-                        </td>
+                          <td className="p-3">
+                            <span className="font-semibold text-slate-800 line-clamp-1">{txn.adTitle}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              {isAdPromo ? (
+                                <span className="text-[9px] bg-emerald-100 text-emerald-900 font-bold px-1.5 py-0.2 rounded border border-emerald-300">
+                                  💎 বিজ্ঞাপন প্রমোশন ফি
+                                </span>
+                              ) : (
+                                <span className="text-[10px] text-slate-500 font-mono">অর্ডার: {txn.orderId}</span>
+                              )}
+                            </div>
+                          </td>
 
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                            txn.gateway === 'bKash' ? 'bg-pink-100 text-[#e2136e]' :
-                            txn.gateway === 'Nagad' ? 'bg-orange-100 text-orange-700' :
-                            txn.gateway === 'Rocket' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'
-                          }`}>
-                            {txn.gateway}
-                          </span>
-                        </td>
+                          <td className="p-3 text-slate-700">
+                            {txn.sender}
+                          </td>
 
-                        <td className="p-3 font-mono font-bold text-slate-900 tabular-nums">
-                          ৳ {txn.amount.toLocaleString()}
-                        </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
+                              txn.gateway === 'bKash' ? 'bg-pink-100 text-[#e2136e]' :
+                              txn.gateway === 'Nagad' ? 'bg-orange-100 text-orange-700' :
+                              txn.gateway === 'Rocket' ? 'bg-purple-100 text-purple-700' :
+                              txn.gateway === 'Wallet' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {txn.gateway}
+                            </span>
+                          </td>
 
-                        <td className="p-3">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
-                            txn.status === 'Escrow Held' ? 'bg-amber-100 text-amber-800' :
-                            txn.status === 'Released' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                          }`}>
-                            {txn.status === 'Escrow Held' && 'এসক্রো ফান্ডে রক্ষিত'}
-                            {txn.status === 'Released' && 'সেলারকে রিলিজ করা হয়েছে'}
-                            {txn.status === 'Refunded' && 'ক্রেতাকে রিফান্ড করা হয়েছে'}
-                          </span>
-                        </td>
+                          <td className="p-3 font-mono font-bold text-slate-900 tabular-nums">
+                            ৳ {txn.amount.toLocaleString()}
+                          </td>
 
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            {txn.status === 'Escrow Held' && (
-                              <>
-                                <button
-                                  onClick={() => updateTransactionStatus(txn.id, 'Released')}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold"
-                                >
-                                  রিলিজ করুন
-                                </button>
-                                <button
-                                  onClick={() => updateTransactionStatus(txn.id, 'Refunded')}
-                                  className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-semibold"
-                                >
-                                  রিফান্ড দিন
-                                </button>
-                              </>
+                          <td className="p-3">
+                            {isAdPromo ? (
+                              <span className="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-900 border border-emerald-300 inline-flex items-center gap-1">
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                                <span>কোম্পানি রাজস্ব (পরিশোধিত)</span>
+                              </span>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${
+                                txn.status === 'Escrow Held' ? 'bg-amber-100 text-amber-800' :
+                                txn.status === 'Released' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {txn.status === 'Escrow Held' && 'এসক্রো ফান্ডে রক্ষিত'}
+                                {txn.status === 'Released' && 'সেলারকে রিলিজ করা হয়েছে'}
+                                {txn.status === 'Refunded' && 'ক্রেতাকে রিফান্ড করা হয়েছে'}
+                              </span>
                             )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+
+                          <td className="p-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              {isAdPromo ? (
+                                <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-1 rounded font-bold border border-emerald-200">
+                                  ✓ ভেরিফাইড আয়
+                                </span>
+                              ) : txn.status === 'Escrow Held' ? (
+                                <>
+                                  <button
+                                    onClick={() => updateTransactionStatus(txn.id, 'Released')}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[10px] font-semibold"
+                                  >
+                                    রিলিজ করুন
+                                  </button>
+                                  <button
+                                    onClick={() => updateTransactionStatus(txn.id, 'Refunded')}
+                                    className="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-[10px] font-semibold"
+                                  >
+                                    রিফান্ড দিন
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -1896,6 +2127,31 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-xs text-slate-500">
                     Steadfast, Pathao & Paperfly কুরিয়ার পার্সেল স্ট্যাটাস
                   </p>
+                </div>
+              </div>
+
+              {/* Orders Logistics Overview Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-emerald-800">মোট কুরিয়ার পার্সেল</div>
+                  <div className="text-lg font-bold font-mono text-emerald-950 mt-0.5">{orders.length}টি পার্সেল</div>
+                  <div className="text-[10px] text-emerald-700 mt-1">রিয়েল-টাইম কুরিয়ার সংযুক্ত</div>
+                </div>
+                <div className="bg-sky-50 border border-sky-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-sky-800">Steadfast কুরিয়ার API</div>
+                  <div className="text-sm font-bold text-sky-950 mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>সক্রিয় (Active API)</span>
+                  </div>
+                  <div className="text-[10px] text-sky-700 mt-1">সারাদেশে ক্যাশ-অন-ডেলিভারি</div>
+                </div>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                  <div className="text-[11px] font-semibold text-amber-800">পাঠাও পার্সেল ট্র্যাকিং</div>
+                  <div className="text-sm font-bold text-amber-950 mt-1 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span>সক্রিয় (Connected)</span>
+                  </div>
+                  <div className="text-[10px] text-amber-700 mt-1">ইনস্ট্যান্ট সিটি ডেলিভারি</div>
                 </div>
               </div>
 

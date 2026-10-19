@@ -195,6 +195,30 @@ export const AdDetailModal: React.FC = () => {
                   </div>
                 </div>
 
+                {/* Paid Promotion & Verified Voucher */}
+                {selectedAd.isPaidAd && (selectedAd.paidAmount || 0) > 0 && (
+                  <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 rounded-lg text-xs space-y-1.5 shadow-2xs">
+                    <div className="flex items-center justify-between font-bold text-emerald-950">
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>অনুমোদিত প্রিমিয়াম বিজ্ঞাপন (Paid & Verified)</span>
+                      </span>
+                      <span className="font-mono bg-emerald-200/90 text-emerald-950 px-2 py-0.5 rounded text-[11px] font-extrabold uppercase">
+                        ৳ {selectedAd.paidAmount} ({selectedAd.paymentGateway || 'bKash'})
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-emerald-800 flex items-center justify-between font-medium">
+                      <span>প্যাকেজ: {selectedAd.paymentBreakdown?.packageName || (selectedAd.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}</span>
+                      <span className="font-mono text-[10px] text-emerald-900 font-bold">TrxID: {selectedAd.paymentTrxId}</span>
+                    </div>
+                    {selectedAd.paidAt && (
+                      <div className="text-[10px] text-emerald-600 border-t border-emerald-200/70 pt-1">
+                        পরিশোধের সময়: {selectedAd.paidAt}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Escrow Guarantee Box */}
                 <div className="mt-4 p-3 bg-amber-50/80 border border-amber-200 rounded-lg text-xs space-y-1.5">
                   <div className="flex items-center gap-1.5 font-bold text-amber-900">

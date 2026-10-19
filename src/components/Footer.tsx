@@ -34,7 +34,7 @@ export const Footer: React.FC = () => {
     <footer className="bg-slate-900 text-slate-300 pt-12 pb-20 lg:pb-12 border-t border-slate-800 text-xs">
       
       {/* 4 Trust Pillars */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-10 border-b border-slate-800">
+      <div className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pb-10 border-b border-slate-800">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           
           <div className="flex items-start gap-3">
@@ -97,7 +97,7 @@ export const Footer: React.FC = () => {
       </div>
 
       {/* Links & Information */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
+      <div className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-8 grid grid-cols-2 sm:grid-cols-4 gap-6">
         <div>
           <h5 className="font-bold text-white text-xs uppercase tracking-wider mb-3">
             {lang === 'bn' ? 'সকল বিভাগ' : 'All Divisions'}
@@ -211,7 +211,7 @@ export const Footer: React.FC = () => {
       {/* Copyright */}
       <div 
         onClick={handleSecretAdminClick}
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 border-t border-slate-800 text-center text-slate-500 text-[11px] cursor-default select-none"
+        className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pt-6 border-t border-slate-800 text-center text-slate-500 text-[11px] cursor-default select-none"
         title=""
       >
         © 2026 {siteName}. সর্বস্বত্ব সংরক্ষিত। বাংলাদেশের অগ্রণী অনলাইন ক্লাসিফাইডস ও ইকমার্স প্ল্যাটফর্ম।

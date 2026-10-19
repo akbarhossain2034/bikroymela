@@ -22,15 +22,25 @@ import {
   Gift,
   Check,
   AlertCircle,
-  Briefcase
+  Briefcase,
+  CreditCard,
+  Lock,
+  Smartphone,
+  ShieldCheck,
+  ArrowRight,
+  ArrowLeft,
+  Receipt
 } from 'lucide-react';
 
 export const PostAdModal: React.FC = () => {
-  const { lang, t, currentUser, ads, setActiveModal, postNewAd, setIsPolicyModalOpen, offerSettings } = useApp();
+  const { lang, t, currentUser, ads, setActiveModal, postNewAd, setIsPolicyModalOpen, offerSettings, setIsAdminMode } = useApp();
 
   const userAdsCount = currentUser?.freeAdsCount ?? ads.filter(a => a.sellerId === currentUser?.id).length;
   const isFreeAdQuotaEligible = userAdsCount < 5;
   const freeAdsRemaining = Math.max(0, 5 - userAdsCount);
+
+  // Modal Step: 'form' | 'payment' | 'success'
+  const [modalStep, setModalStep] = useState<'form' | 'payment' | 'success'>('form');
 
   const [policyAgreed, setPolicyAgreed] = useState<boolean>(true);
   const [category, setCategory] = useState('mobiles');
@@ -53,76 +63,75 @@ export const PostAdModal: React.FC = () => {
   const [roadWidth, setRoadWidth] = useState('২৫ ফিট পাকা রাস্তা');
 
   // Multiple Photo Management (Max 7 photos, 3 Free, 4-7 Paid)
-  const samplePresets = [
-    { label: 'স্মার্টফোন', url: '/src/assets/images/classifieds_smartphone_1791109437128.jpg', cat: 'mobiles' },
-    { label: 'মোটরবাইক', url: '/src/assets/images/classifieds_motorcycle_1791109454846.jpg', cat: 'vehicles' },
-    { label: 'ল্যাপটপ', url: '/src/assets/images/classifieds_laptop_1791109467340.jpg', cat: 'electronics' },
-    { label: 'রেডি ফ্ল্যাট', url: '/src/assets/images/classifieds_apartment_1791109480005.jpg', cat: 'property' },
-    { label: 'জমি / প্লট', url: '/src/assets/images/real_estate_land_1791471593930.jpg', cat: 'property' },
-    { label: 'বাণিজ্যিক দোকান', url: '/src/assets/images/real_estate_shop_1791471612360.jpg', cat: 'property' },
-  ];
+  const [photosList, setPhotosList] = useState<string[]>([]);
 
-  const [photosList, setPhotosList] = useState<string[]>([
-    samplePresets[0].url
-  ]);
-  const [photoFeeMethod, setPhotoFeeMethod] = useState<'wallet' | 'bkash'>('wallet');
+  // Payment Gateway States for Paid Ads (Urgent, Featured, Extra photos)
+  const [selectedGateway, setSelectedGateway] = useState<'bKash' | 'Nagad' | 'Rocket' | 'Wallet'>('bKash');
+  const [paymentMode, setPaymentMode] = useState<'instant' | 'manual'>('instant');
+  const [gatewayPhoneInput, setGatewayPhoneInput] = useState(currentUser?.phone || phone || '01711223344');
+  const [gatewayOtpInput, setGatewayOtpInput] = useState('5928');
+  const [gatewayPinInput, setGatewayPinInput] = useState('••••');
+  const [manualTrxIdInput, setManualTrxIdInput] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [completedPaymentReceipt, setCompletedPaymentReceipt] = useState<{
+    trxId: string;
+    amount: number;
+    gateway: string;
+    date: string;
+    packageName: string;
+    adTitle: string;
+  } | null>(null);
 
   const photosCount = photosList.length;
   const isExtraPhotosSelected = photosCount > 3;
   const extraPhotosCount = Math.max(0, photosCount - 3);
   const extraPhotoFee = isExtraPhotosSelected ? 30 : 0; // ৳ 30 fee for 4 to 7 photos
+  const promotionFee = promotionPackage === 'urgent' ? 199 : (promotionPackage === 'featured' ? 499 : 0);
+  const totalAdFee = extraPhotoFee + promotionFee;
+  const isPaidAd = totalAdFee > 0;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (photosList.length >= 7) {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const remainingSlots = 7 - photosList.length;
+      if (remainingSlots <= 0) {
         alert(lang === 'bn' ? 'সর্বোচ্চ ৭টি ছবি যোগ করা যাবে।' : 'Maximum 7 photos allowed.');
         return;
       }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotosList(prev => [...prev, reader.result as string]);
-      };
-      reader.readAsDataURL(file);
+      const filesToProcess = Array.from(files).slice(0, remainingSlots);
+      filesToProcess.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          if (reader.result) {
+            setPhotosList(prev => {
+              if (prev.length >= 7) return prev;
+              return [...prev, reader.result as string];
+            });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
-  };
-
-  const handleAddPresetPhoto = (url: string) => {
-    if (photosList.includes(url)) return;
-    if (photosList.length >= 7) {
-      alert(lang === 'bn' ? 'সর্বোচ্চ ৭টি ছবি যোগ করা যাবে।' : 'Maximum 7 photos allowed.');
-      return;
-    }
-    setPhotosList(prev => [...prev, url]);
+    e.target.value = '';
   };
 
   const handleRemovePhoto = (index: number) => {
-    if (photosList.length <= 1) {
-      alert(lang === 'bn' ? 'অন্তত একটি ছবি থাকতে হবে।' : 'At least one photo is required.');
-      return;
-    }
     setPhotosList(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !price) {
-      alert(lang === 'bn' ? 'বিজ্ঞাপনের শিরোনাম এবং মূল্য লিখুন' : 'Please provide title and price');
-      return;
-    }
-
-    if (!policyAgreed) {
-      alert(lang === 'bn' 
-        ? 'বিজ্ঞাপন প্রকাশ করতে হলে বিজনেস পলিসিতে সম্মতি থাকা আবশ্যক (অবৈধ পণ্য ক্রয়-বিক্রয় নিষিদ্ধ)।' 
-        : 'You must agree to the platform business policy before posting.');
-      return;
-    }
-
-    if (category === 'jobs') {
-      alert(lang === 'bn' ? 'চাকরি পোর্টাল শীঘ্রই উন্মোচিত হবে! বর্তমানে অন্যান্য ক্যাটাগরিতে পোস্ট করুন।' : 'Jobs portal coming soon!');
-      return;
-    }
-
+  const executePostAd = (paymentData: {
+    isPaidAd: boolean;
+    paymentStatus: 'paid' | 'free' | 'unpaid';
+    paidAmount: number;
+    paymentGateway?: 'bKash' | 'Nagad' | 'Rocket' | 'Wallet';
+    paymentTrxId?: string;
+    paidAt?: string;
+    paymentBreakdown?: {
+      extraPhotosFee: number;
+      promotionFee: number;
+      packageName: string;
+    };
+  }) => {
     const numericPrice = parseFloat(price.replace(/,/g, '')) || 0;
 
     const propertySpecs: Record<string, string> = category === 'property' ? {
@@ -165,14 +174,128 @@ export const PostAdModal: React.FC = () => {
       } : undefined,
       extraPhotosCount,
       extraPhotoFeePaid: isExtraPhotosSelected,
-      validationStatus: 'Received', // Initial validation status per requirement 03/04
-      status: 'pending', // Starts in Received stage
+      validationStatus: 'Received',
+      status: 'pending',
       urgent: promotionPackage === 'urgent',
       featured: promotionPackage === 'featured',
+      isPaidAd: paymentData.isPaidAd,
+      paymentStatus: paymentData.paymentStatus,
+      paidAmount: paymentData.paidAmount,
+      paymentGateway: paymentData.paymentGateway,
+      paymentTrxId: paymentData.paymentTrxId,
+      paidAt: paymentData.paidAt,
+      paymentBreakdown: paymentData.paymentBreakdown,
       specs: category === 'property' ? propertySpecs : undefined
+    });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim() || !price) {
+      alert(lang === 'bn' ? 'বিজ্ঞাপনের শিরোনাম এবং মূল্য লিখুন' : 'Please provide title and price');
+      return;
+    }
+
+    if (photosList.length === 0) {
+      alert(lang === 'bn' ? 'অনুগ্রহ করে পণ্যের অন্তত একটি ছবি যোগ বা আপলোড করুন।' : 'Please upload at least one photo of your item.');
+      return;
+    }
+
+    if (!policyAgreed) {
+      alert(lang === 'bn' 
+        ? 'বিজ্ঞাপন প্রকাশ করতে হলে বিজনেস পলিসিতে সম্মতি থাকা আবশ্যক (অবৈধ পণ্য ক্রয়-বিক্রয় নিষিদ্ধ)।' 
+        : 'You must agree to the platform business policy before posting.');
+      return;
+    }
+
+    if (category === 'jobs') {
+      alert(lang === 'bn' ? 'চাকরি পোর্টাল শীঘ্রই উন্মোচিত হবে! বর্তমানে অন্যান্য ক্যাটাগরিতে পোস্ট করুন।' : 'Jobs portal coming soon!');
+      return;
+    }
+
+    // CRITICAL: If any Paid option chosen (Urgent, Featured, or Extra photos > 3)
+    // The user MUST proceed through the payment gateway! Unpaid ads cannot be posted!
+    if (isPaidAd) {
+      setModalStep('payment');
+      return;
+    }
+
+    // Free ad submission (within quota, <= 3 photos, free promo)
+    executePostAd({
+      isPaidAd: false,
+      paymentStatus: 'free',
+      paidAmount: 0
     });
 
     setActiveModal(null);
+  };
+
+  const handleConfirmPaymentAndPost = () => {
+    if (selectedGateway === 'Wallet') {
+      const userBal = currentUser?.walletBalance || 0;
+      if (userBal < totalAdFee) {
+        alert(lang === 'bn' ? `আপনার ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই (বর্তমান: ৳${userBal})। অনুগ্রহ করে বিকাশ বা নগদ নির্বাচন করুন।` : 'Insufficient wallet balance. Please choose bKash or Nagad.');
+        return;
+      }
+    }
+
+    if (paymentMode === 'manual' && !manualTrxIdInput.trim()) {
+      alert(lang === 'bn' ? 'অনুগ্রহ করে প্রাপ্ত ট্রানজেকশন আইডি (TrxID) লিখুন।' : 'Please enter the Transaction ID.');
+      return;
+    }
+
+    setIsProcessingPayment(true);
+
+    setTimeout(() => {
+      let finalTrxId = '';
+      if (paymentMode === 'manual' && manualTrxIdInput.trim()) {
+        finalTrxId = manualTrxIdInput.trim().toUpperCase();
+      } else {
+        const prefix = selectedGateway === 'bKash' ? 'BK' : selectedGateway === 'Nagad' ? 'NG' : selectedGateway === 'Rocket' ? 'RK' : 'WAL';
+        finalTrxId = `TRX-${prefix}${Math.floor(100000 + Math.random() * 900000)}`;
+      }
+
+      const nowTime = new Date().toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      
+      const packageName = promotionPackage === 'urgent' && isExtraPhotosSelected 
+        ? 'জরুরি দ্রুত বিক্রি + অতিরিক্ত ফটো প্যাক'
+        : promotionPackage === 'featured' && isExtraPhotosSelected
+        ? 'ফিচার্ড টপ পিন + অতিরিক্ত ফটো প্যাক'
+        : promotionPackage === 'urgent'
+        ? 'জরুরি বিক্রি প্যাকেজ (Urgent Hot)'
+        : promotionPackage === 'featured'
+        ? 'ফিচার্ড বিজ্ঞাপন প্যাকেজ (Featured Top Pin)'
+        : 'অতিরিক্ত ফটো প্যাক (৪-৭টি ছবি)';
+
+      const receipt = {
+        trxId: finalTrxId,
+        amount: totalAdFee,
+        gateway: selectedGateway,
+        date: nowTime,
+        packageName,
+        adTitle: title
+      };
+
+      setCompletedPaymentReceipt(receipt);
+
+      // Execute actual ad creation with payment proof
+      executePostAd({
+        isPaidAd: true,
+        paymentStatus: 'paid',
+        paidAmount: totalAdFee,
+        paymentGateway: selectedGateway,
+        paymentTrxId: finalTrxId,
+        paidAt: nowTime,
+        paymentBreakdown: {
+          extraPhotosFee: extraPhotoFee,
+          promotionFee,
+          packageName
+        }
+      });
+
+      setIsProcessingPayment(false);
+      setModalStep('success');
+    }, 1200);
   };
 
   const currentAreas = LOCATIONS.find(l => l.division === division)?.areas || ['Mirpur', 'Uttara', 'Dhanmondi'];
@@ -223,8 +346,10 @@ export const PostAdModal: React.FC = () => {
           </span>
         </div>
 
-        {/* Content Form */}
-        <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+        {/* Form or Payment Steps */}
+        {modalStep === 'form' ? (
+          /* Content Form */
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
           
           {/* Category & Condition */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -234,15 +359,7 @@ export const PostAdModal: React.FC = () => {
               </label>
               <select
                 value={category}
-                onChange={(e) => {
-                  setCategory(e.target.value);
-                  if (e.target.value === 'property') {
-                    // auto preset property photo if only 1 default photo
-                    if (photosList.length === 1 && photosList[0] === samplePresets[0].url) {
-                      setPhotosList(['/src/assets/images/classifieds_apartment_1791109480005.jpg']);
-                    }
-                  }
-                }}
+                onChange={(e) => setCategory(e.target.value)}
                 className="w-full px-3 py-2 border border-slate-300 rounded-md bg-white focus:ring-2 focus:ring-emerald-500 focus:outline-none text-slate-900 font-medium"
               >
                 {CATEGORIES.map(cat => (
@@ -318,13 +435,10 @@ export const PostAdModal: React.FC = () => {
                       const val = e.target.value as PropertyType;
                       setPropertyType(val);
                       if (val === 'land') {
-                        setPhotosList(['/src/assets/images/real_estate_land_1791471593930.jpg']);
                         setPropertySize('৫ কাঠা');
                       } else if (val === 'shop') {
-                        setPhotosList(['/src/assets/images/real_estate_shop_1791471612360.jpg']);
                         setPropertySize('২০০ স্কয়ার ফিট');
                       } else {
-                        setPhotosList(['/src/assets/images/classifieds_apartment_1791109480005.jpg']);
                         setPropertySize('১২৫০ স্কয়ার ফিট');
                       }
                     }}
@@ -554,129 +668,83 @@ export const PostAdModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Currently Selected Photos Strip */}
-            <div className="flex items-center gap-2 overflow-x-auto py-1">
-              {photosList.map((photo, idx) => (
-                <div key={idx} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 border-emerald-600 shrink-0 shadow-xs group">
-                  <img src={photo} alt="" className="w-full h-full object-cover" />
-                  <div className="absolute top-0 left-0 bg-black/60 text-white text-[9px] px-1 font-mono font-bold rounded-br">
-                    #{idx + 1}
-                  </div>
-                  {idx >= 3 && (
-                    <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[8px] font-black px-1 rounded-bl">
-                      PRO
+            {/* Upload Area & Selected Photos Strip */}
+            {photosList.length === 0 ? (
+              <label className="w-full py-6 sm:py-8 border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/40 rounded-xl flex flex-col items-center justify-center cursor-pointer text-slate-600 hover:text-emerald-700 transition-all group">
+                <div className="w-12 h-12 rounded-full bg-emerald-100 text-[#007460] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform shadow-xs">
+                  <Camera className="w-6 h-6 text-[#007460]" />
+                </div>
+                <span className="text-xs sm:text-sm font-bold text-slate-800 group-hover:text-emerald-800">
+                  পণ্যের আসল ছবি আপলোড করুন (ছবি যোগ করুন)
+                </span>
+                <span className="text-[11px] text-slate-500 mt-1 flex items-center gap-1.5">
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>মোবাইল গ্যালারি বা ক্যামেরা থেকে ১-৭টি ছবি নির্বাচন করুন</span>
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+            ) : (
+              <div className="flex items-center gap-2 overflow-x-auto py-1">
+                {photosList.map((photo, idx) => (
+                  <div key={idx} className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-lg overflow-hidden border-2 border-emerald-600 shrink-0 shadow-xs group">
+                    <img src={photo} alt="" className="w-full h-full object-cover" />
+                    <div className="absolute top-0 left-0 bg-black/60 text-white text-[9px] px-1 font-mono font-bold rounded-br">
+                      #{idx + 1}
                     </div>
-                  )}
-                  {photosList.length > 1 && (
+                    {idx >= 3 && (
+                      <div className="absolute top-0 right-0 bg-amber-500 text-slate-950 text-[8px] font-black px-1 rounded-bl">
+                        PRO
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleRemovePhoto(idx)}
-                      className="absolute bottom-1 right-1 bg-rose-600 text-white rounded-full p-0.5 shadow-md hover:bg-rose-700"
-                      title="Remove Photo"
+                      className="absolute bottom-1 right-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full p-0.5 shadow-md cursor-pointer transition-transform hover:scale-110"
+                      title="ছবি মুছুন"
                     >
                       <X className="w-3 h-3" />
                     </button>
-                  )}
-                </div>
-              ))}
+                  </div>
+                ))}
 
-              {/* Add More Photo Button */}
-              {photosList.length < 7 && (
-                <label className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/50 flex flex-col items-center justify-center cursor-pointer text-slate-500 hover:text-emerald-700 transition-colors shrink-0">
-                  <Upload className="w-5 h-5 mb-0.5" />
-                  <span className="text-[9px] font-semibold text-center leading-tight">ছবি যোগ<br/>করুন</span>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
-
-            {/* Presets Quick-Add Options */}
-            <div>
-              <div className="text-[11px] font-semibold text-slate-600 mb-1.5">
-                নমুনা ছবি থেকে দ্রুত যোগ করতে ক্লিক করুন (অথবা নিজের ছবি আপলোড করুন):
+                {/* Add More Photo Button */}
+                {photosList.length < 7 && (
+                  <label className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg border-2 border-dashed border-slate-300 hover:border-emerald-500 bg-white hover:bg-emerald-50/50 flex flex-col items-center justify-center cursor-pointer text-slate-500 hover:text-emerald-700 transition-colors shrink-0">
+                    <Upload className="w-5 h-5 mb-0.5" />
+                    <span className="text-[9px] font-semibold text-center leading-tight">আরও ছবি<br/>যোগ করুন</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                )}
               </div>
-              <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
-                {samplePresets.map((p, idx) => {
-                  const isAdded = photosList.includes(p.url);
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => isAdded ? null : handleAddPresetPhoto(p.url)}
-                      disabled={isAdded || photosList.length >= 7}
-                      className={`relative aspect-4/3 rounded border overflow-hidden transition-all text-left ${
-                        isAdded ? 'border-emerald-600 ring-2 ring-emerald-500/30 opacity-70 cursor-default' : 'border-slate-300 hover:border-emerald-500 opacity-90 hover:opacity-100 cursor-pointer'
-                      }`}
-                    >
-                      <img src={p.url} alt="" className="w-full h-full object-cover" />
-                      <span className="absolute bottom-0 inset-x-0 bg-black/70 text-white text-[9px] text-center truncate px-0.5">
-                        {p.label}
-                      </span>
-                      {isAdded && (
-                        <div className="absolute top-0.5 right-0.5 bg-emerald-600 text-white rounded-full p-0.5">
-                          <Check className="w-2.5 h-2.5" />
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            )}
 
-            {/* Extra Photo Fee Payment Option if 4 to 7 photos selected */}
+            {/* Extra Photo Notice if 4 to 7 photos selected */}
             {isExtraPhotosSelected && (
-              <div className="p-3 bg-amber-100/70 border border-amber-300 rounded-lg text-xs space-y-2 mt-2">
+              <div className="p-3 bg-amber-100/80 border border-amber-300 rounded-lg text-xs space-y-1.5 mt-2">
                 <div className="flex items-center justify-between">
                   <div className="font-bold text-amber-950 flex items-center gap-1.5">
-                    <AlertCircle className="w-4 h-4 text-amber-700" />
-                    <span>অতিরিক্ত {extraPhotosCount}টি ছবি যোগের জন্য ফি ৳ ৩০</span>
+                    <Sparkles className="w-4 h-4 text-amber-700" />
+                    <span>অতিরিক্ত {extraPhotosCount}টি ছবির প্রিমিয়াম প্যাক (মোট {photosCount}টি ছবি)</span>
                   </div>
-                  <span className="font-mono font-bold text-amber-900 bg-amber-200/90 px-2 py-0.5 rounded">
-                    মোট ফি: ৳ ৩০
+                  <span className="font-mono font-bold text-amber-900 bg-amber-200/90 px-2 py-0.5 rounded text-[11px]">
+                    ফি: ৳ ৩০
                   </span>
                 </div>
                 <p className="text-[11px] text-amber-900">
-                  ৩টির বেশি ৫ বা ৭টি পর্যন্ত ছবি থাকলে ক্রেতারা পণ্যটি সবদিক থেকে ভালোভাবে দেখতে পায় এবং ৩ গুণ দ্রুত বিক্রি হয়!
+                  ৩টির বেশি ৪ থেকে ৭টি ছবি থাকলে ক্রেতারা পণ্যটি সবদিক থেকে যাচাই করতে পারেন এবং দ্রুত বিশ্বাস অর্জন করা যায়। এই ফি পরবর্তী ধাপে বিকাশ/নগদ বা ওয়ালেট দিয়ে পরিশোধ করতে হবে।
                 </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  <label className={`p-2 rounded border cursor-pointer flex items-center gap-2 ${
-                    photoFeeMethod === 'wallet' ? 'bg-white border-emerald-600 ring-1 ring-emerald-600' : 'bg-amber-50/50 border-amber-200'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="photoFee"
-                      checked={photoFeeMethod === 'wallet'}
-                      onChange={() => setPhotoFeeMethod('wallet')}
-                      className="sr-only"
-                    />
-                    <div className="text-[11px]">
-                      <span className="font-bold text-slate-900 block">🎁 ওয়ালেট বোনাস থেকে পরিশোধ</span>
-                      <span className="text-[10px] text-emerald-700 font-medium">বর্তমান বোনাস ব্যালেন্স: ৳{currentUser?.walletBalance || 50}</span>
-                    </div>
-                  </label>
-
-                  <label className={`p-2 rounded border cursor-pointer flex items-center gap-2 ${
-                    photoFeeMethod === 'bkash' ? 'bg-white border-[#e2136e] ring-1 ring-[#e2136e]' : 'bg-amber-50/50 border-amber-200'
-                  }`}>
-                    <input
-                      type="radio"
-                      name="photoFee"
-                      checked={photoFeeMethod === 'bkash'}
-                      onChange={() => setPhotoFeeMethod('bkash')}
-                      className="sr-only"
-                    />
-                    <div className="text-[11px]">
-                      <span className="font-bold text-[#e2136e] block">বিকাশ / নগদ দিয়ে পরিশোধ</span>
-                      <span className="text-[10px] text-slate-500">তাৎক্ষণিক অটো-ভেরিফাই ও রিসিট</span>
-                    </div>
-                  </label>
-                </div>
               </div>
             )}
           </div>
@@ -753,7 +821,7 @@ export const PostAdModal: React.FC = () => {
                   <span>জরুরি বিক্রি (Urgent)</span>
                   <span className="text-[9px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-bold">HOT</span>
                 </div>
-                <div className="text-[11px] font-mono text-rose-700 font-bold mt-0.5">৳ ১৯৯ (bKash)</div>
+                <div className="text-[11px] font-mono text-rose-700 font-bold mt-0.5">৳ ১৯৯ (bKash/Nagad)</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">লাল ব্যাজ সহ টপে থাকবে</div>
               </label>
 
@@ -771,13 +839,75 @@ export const PostAdModal: React.FC = () => {
                   <span>ফিচার্ড বিজ্ঞাপন</span>
                   <span className="text-[9px] bg-amber-500 text-slate-950 px-1.5 py-0.2 rounded font-bold">TOP</span>
                 </div>
-                <div className="text-[11px] font-mono text-amber-800 font-bold mt-0.5">৳ ৪৯৯ (bKash)</div>
+                <div className="text-[11px] font-mono text-amber-800 font-bold mt-0.5">৳ ৪৯৯ (bKash/Nagad)</div>
                 <div className="text-[10px] text-slate-500 mt-0.5">৭ দিন সবার উপরে পিন থাকবে</div>
               </label>
             </div>
           </div>
 
-          {/* Requirement 03: Prohibited Products & Business Policy Disclaimer */}
+          {/* Dynamic Billing Summary Box */}
+          {isPaidAd ? (
+            <div className="p-3.5 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-xl space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-bold text-amber-950 flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-amber-700" />
+                  <span>পেইড বিজ্ঞাপন বিলিং সারাংশ (পেমেন্ট আবশ্যক)</span>
+                </span>
+                <span className="text-[10px] font-bold bg-amber-200 text-amber-900 px-2 py-0.5 rounded flex items-center gap-1">
+                  <Lock className="w-3 h-3 text-amber-800" />
+                  <span>পেমেন্ট ছাড়া পোস্ট হবে না</span>
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-xs text-slate-700 bg-white/90 p-2.5 rounded-lg border border-amber-200">
+                {isExtraPhotosSelected && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-600">📸 অতিরিক্ত {extraPhotosCount}টি ছবি ফি ({photosCount}টি ছবি):</span>
+                    <span className="font-mono font-bold text-slate-900">৳ {extraPhotoFee}</span>
+                  </div>
+                )}
+                {promotionPackage === 'urgent' && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="flex items-center gap-1.5 text-rose-900 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-rose-600"></span>
+                      <span>জরুরি দ্রুত বিক্রি প্যাকেজ (Urgent Hot Badge):</span>
+                    </span>
+                    <span className="font-mono font-bold text-rose-700">৳ ১৯৯</span>
+                  </div>
+                )}
+                {promotionPackage === 'featured' && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="flex items-center gap-1.5 text-amber-900 font-medium">
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      <span>ফিচার্ড সবার উপরে পিন প্যাকেজ (৭ দিন):</span>
+                    </span>
+                    <span className="font-mono font-bold text-amber-800">৳ ৪৯৯</span>
+                  </div>
+                )}
+                <div className="border-t border-slate-200 pt-1.5 flex justify-between items-center font-bold text-slate-950 text-xs">
+                  <span>সর্বমোট প্রদেয় ফি:</span>
+                  <span className="font-mono text-emerald-800 text-sm font-extrabold">৳ {totalAdFee}</span>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-amber-900 font-medium flex items-start gap-1.5">
+                <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                <span>পরবর্তী ধাপে বিকাশ, নগদ, রকেট বা ওয়ালেট দিয়ে ৳{totalAdFee} পরিশোধ নিশ্চিত করে বিজ্ঞাপন প্রকাশ করতে হবে। পেমেন্ট সম্পন্ন না করা পর্যন্ত বিজ্ঞাপনটি অপেক্ষামান থাকবে।</span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-xs">
+              <div className="flex items-center gap-2 text-emerald-900 font-medium">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>১-৩টি ছবি ও সাধারণ বিজ্ঞাপনে কোনো ফি নেই</span>
+              </div>
+              <span className="font-mono font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[11px]">
+                ৳ ০ (সম্পূর্ণ ফ্রি)
+              </span>
+            </div>
+          )}
+
+          {/* Prohibited Products & Business Policy Disclaimer */}
           <div className="p-3.5 bg-rose-50/90 border border-rose-300 rounded-xl space-y-2">
             <div className="flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
@@ -815,27 +945,356 @@ export const PostAdModal: React.FC = () => {
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* Submit Action Button */}
           <div className="pt-2">
-            <button
-              type="submit"
-              disabled={!policyAgreed}
-              className={`w-full py-3 text-slate-950 font-bold text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 ${
-                policyAgreed 
-                  ? 'bg-[#ffc800] hover:bg-[#e6b400] cursor-pointer active:scale-[0.99]' 
-                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-              }`}
-            >
-              <PlusCircle className="w-4 h-4 text-slate-950" />
-              <span>
-                {isExtraPhotosSelected 
-                  ? `বিজ্ঞাপন জমা দিন (ফটো ফি ৳${extraPhotoFee} সহ)` 
-                  : (isFreeAdQuotaEligible ? 'সম্পূর্ণ বিনামূল্যে বিজ্ঞাপন প্রকাশ করুন (৳০)' : 'বিজ্ঞাপন জমা দিন')}
-              </span>
-            </button>
+            {isPaidAd ? (
+              <button
+                type="submit"
+                disabled={!policyAgreed}
+                className={`w-full py-3 text-slate-950 font-bold text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 ${
+                  policyAgreed 
+                    ? 'bg-[#ffc800] hover:bg-[#e6b400] cursor-pointer active:scale-[0.99]' 
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <CreditCard className="w-4 h-4 text-slate-950" />
+                <span>পেমেন্ট করুন ও বিজ্ঞাপন পোস্ট করুন (মোট ৳{totalAdFee})</span>
+                <ArrowRight className="w-4 h-4 text-slate-950" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={!policyAgreed}
+                className={`w-full py-3 text-slate-950 font-bold text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 ${
+                  policyAgreed 
+                    ? 'bg-[#ffc800] hover:bg-[#e6b400] cursor-pointer active:scale-[0.99]' 
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <PlusCircle className="w-4 h-4 text-slate-950" />
+                <span>সম্পূর্ণ বিনামূল্যে বিজ্ঞাপন প্রকাশ করুন (৳০)</span>
+              </button>
+            )}
           </div>
 
         </form>
+        ) : modalStep === 'payment' ? (
+          /* STEP 2: Realistic Payment Gateway Screen */
+          <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
+            
+            {/* Payment Step Top Alert */}
+            <div className="p-3 bg-amber-50 border border-amber-300 rounded-xl flex items-start gap-2.5">
+              <Lock className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-bold text-amber-950 text-xs">বিজ্ঞাপন ফি পরিশোধ গেটওয়ে (Ad Promotion Payment)</h4>
+                <p className="text-[11px] text-amber-900 mt-0.5">
+                  আপনি অতিরিক্ত ছবি বা জরুরি/ফিচার্ড প্রমোশন প্যাকেজ নির্বাচন করেছেন। পেমেন্ট সম্পন্ন না করা পর্যন্ত বিজ্ঞাপনটি লাইভ হবে না।
+                </p>
+              </div>
+            </div>
+
+            {/* Bill Summary Invoice */}
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-2">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
+                  <Receipt className="w-4 h-4 text-[#007460]" />
+                  <span>বিলিং ইনভয়েস বিবরণ</span>
+                </span>
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                  অর্ডার টাইপ: বিজ্ঞাপন প্রমোশন
+                </span>
+              </div>
+
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-600">বিজ্ঞাপনের শিরোনাম:</span>
+                  <span className="font-bold text-slate-900 max-w-[240px] truncate">{title}</span>
+                </div>
+                {isExtraPhotosSelected && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-600">অতিরিক্ত {extraPhotosCount}টি ছবি ফি ({photosCount}টি ছবি):</span>
+                    <span className="font-mono font-bold text-slate-900">৳ {extraPhotoFee}</span>
+                  </div>
+                )}
+                {promotionPackage === 'urgent' && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-rose-900 font-medium">🔥 জরুরি বিক্রি প্যাকেজ (Urgent Hot):</span>
+                    <span className="font-mono font-bold text-rose-700">৳ ১৯৯</span>
+                  </div>
+                )}
+                {promotionPackage === 'featured' && (
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-amber-900 font-medium">⭐ ফিচার্ড বিজ্ঞাপন প্যাকেজ (Top Pin ৭ দিন):</span>
+                    <span className="font-mono font-bold text-amber-800">৳ ৪৯৯</span>
+                  </div>
+                )}
+                <div className="border-t border-slate-200 pt-2 flex justify-between items-center font-bold text-slate-950 text-sm">
+                  <span>সর্বমোট প্রদেয় ফি:</span>
+                  <span className="font-mono text-emerald-800 text-base font-black">৳ {totalAdFee}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Choose Payment Method */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-800">
+                পেমেন্ট মাধ্যম নির্বাচন করুন *
+              </label>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {/* bKash */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGateway('bKash')}
+                  className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    selectedGateway === 'bKash' 
+                      ? 'border-[#e2136e] bg-pink-50 ring-2 ring-[#e2136e]/30' 
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-bold text-[#e2136e] text-xs">bKash</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">বিকাশ ওয়ালেট</div>
+                </button>
+
+                {/* Nagad */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGateway('Nagad')}
+                  className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    selectedGateway === 'Nagad' 
+                      ? 'border-[#f7941d] bg-orange-50 ring-2 ring-[#f7941d]/30' 
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-bold text-[#f7941d] text-xs">Nagad</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">নগদ ওয়ালেট</div>
+                </button>
+
+                {/* Rocket */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGateway('Rocket')}
+                  className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    selectedGateway === 'Rocket' 
+                      ? 'border-[#8c3494] bg-purple-50 ring-2 ring-[#8c3494]/30' 
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-bold text-[#8c3494] text-xs">Rocket</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">রকেট ওয়ালেট</div>
+                </button>
+
+                {/* Wallet Balance */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGateway('Wallet')}
+                  className={`p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    selectedGateway === 'Wallet' 
+                      ? 'border-[#007460] bg-emerald-50 ring-2 ring-[#007460]/30' 
+                      : 'border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  <div className="font-bold text-[#007460] text-xs">ওয়ালেট ব্যালেন্স</div>
+                  <div className="text-[10px] text-slate-500 mt-0.5 font-mono">৳ {currentUser?.walletBalance || 50}</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Gateway Modes: Instant Gateway Simulation vs Manual TrxID Entry */}
+            {selectedGateway !== 'Wallet' ? (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5 space-y-3">
+                <div className="flex items-center gap-2 border-b border-slate-200 pb-2">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('instant')}
+                    className={`px-3 py-1 rounded text-xs font-bold transition-colors cursor-pointer ${
+                      paymentMode === 'instant' ? 'bg-[#007460] text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    ⚡ অটো গেটওয়ে (OTP & PIN)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMode('manual')}
+                    className={`px-3 py-1 rounded text-xs font-bold transition-colors cursor-pointer ${
+                      paymentMode === 'manual' ? 'bg-[#007460] text-white' : 'bg-slate-200 text-slate-700'
+                    }`}
+                  >
+                    📝 সরাসরি TrxID এন্ট্রি
+                  </button>
+                </div>
+
+                {paymentMode === 'instant' ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          আপনার {selectedGateway} নম্বর
+                        </label>
+                        <input
+                          type="tel"
+                          value={gatewayPhoneInput}
+                          onChange={(e) => setGatewayPhoneInput(e.target.value)}
+                          placeholder="01XXXXXXXXX"
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded font-mono text-xs bg-white text-slate-900 font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                          ৪ ডিজিট OTP কোড (সিমুলেটেড)
+                        </label>
+                        <input
+                          type="text"
+                          value={gatewayOtpInput}
+                          onChange={(e) => setGatewayOtpInput(e.target.value)}
+                          className="w-full px-2.5 py-1.5 border border-slate-300 rounded font-mono text-xs bg-white text-slate-900 font-bold tracking-widest text-center"
+                        />
+                      </div>
+                    </div>
+                    <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                      <span>{selectedGateway} সিকিউর গেটওয়ে সার্ভার থেকে তাৎক্ষণিক ওটিপি ভেরিফিকেশন ও ট্রানজেকশন প্রসেসিং।</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="p-2.5 bg-blue-50 border border-blue-200 rounded text-[11px] text-blue-900 space-y-1">
+                      <p><strong>ধাপ ১:</strong> আপনার {selectedGateway} অ্যাপ থেকে আমাদের মার্চেন্ট অ্যাকাউন্টে <strong>৳ {totalAdFee}</strong> পাঠান।</p>
+                      <p><strong>মার্চেন্ট নম্বর:</strong> <span className="font-mono font-bold text-blue-950">01700-112233</span> (বিক্রয়মেলা সার্ভিস)</p>
+                      <p><strong>রেফারেন্স:</strong> <span className="font-mono font-bold text-blue-950">AD-PROMO</span></p>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
+                        প্রাপ্ত ট্রানজেকশন আইডি (TrxID) লিখুন *
+                      </label>
+                      <input
+                        type="text"
+                        value={manualTrxIdInput}
+                        onChange={(e) => setManualTrxIdInput(e.target.value)}
+                        placeholder="যেমন: BK92841X বা NG77182"
+                        className="w-full px-3 py-2 border border-slate-300 rounded font-mono text-xs uppercase font-bold text-slate-900 bg-white"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="p-3.5 bg-emerald-50 border border-emerald-300 rounded-xl space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-emerald-950">🎁 ওয়ালেট বোনাস থেকে পেমেন্ট</span>
+                  <span className="font-mono font-bold text-emerald-800">ব্যালেন্স: ৳{currentUser?.walletBalance || 50}</span>
+                </div>
+                <p className="text-[11px] text-emerald-900">
+                  {(currentUser?.walletBalance || 50) >= totalAdFee 
+                    ? `আপনার ওয়ালেটে পর্যাপ্ত ব্যালেন্স আছে। নিশ্চিত করলে স্বয়ংক্রিয়ভাবে ওয়ালেট থেকে ৳${totalAdFee} কেটে নেওয়া হবে।` 
+                    : `আপনার ওয়ালেট ব্যালেন্স (৳${currentUser?.walletBalance || 50}) প্রদেয় ফি (৳${totalAdFee}) থেকে কম। অনুগ্রহ করে বিকাশ বা নগদ গেটওয়ে নির্বাচন করুন।`}
+                </p>
+              </div>
+            )}
+
+            {/* Bottom Actions */}
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setModalStep('form')}
+                className="px-4 py-2.5 border border-slate-300 hover:bg-slate-100 rounded-lg text-xs font-semibold text-slate-700 flex items-center gap-1.5 cursor-pointer"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>ফিরে যান ও তথ্য পরিবর্তন করুন</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmPaymentAndPost}
+                disabled={isProcessingPayment}
+                className="flex-1 py-3 bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-xs sm:text-sm rounded-lg shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isProcessingPayment ? (
+                  <>
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                    <span>পেমেন্ট ও ভেরিফিকেশন চলছে...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4 text-emerald-200" />
+                    <span>পেমেন্ট নিশ্চিত করুন ও পোস্ট করুন (৳{totalAdFee})</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+          </div>
+        ) : (
+          /* STEP 3: Payment Success Voucher Screen */
+          <div className="p-6 text-center space-y-4 my-auto">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-sm animate-in zoom-in-75">
+              <CheckCircle2 className="w-10 h-10" />
+            </div>
+
+            <div className="space-y-1">
+              <h3 className="text-lg font-bold text-slate-900">🎉 পেমেন্ট সফল হয়েছে ও বিজ্ঞাপন প্রকাশিত হয়েছে!</h3>
+              <p className="text-xs text-slate-600 max-w-md mx-auto">
+                আপনার বিজ্ঞাপন ফি সফলভাবে পরিশোধ হয়েছে। বিজ্ঞাপনটি সিস্টেমে ভেরিফাইড হিসেবে অন্তর্ভুক্ত হয়েছে।
+              </p>
+            </div>
+
+            {/* Official Payment Voucher Card */}
+            {completedPaymentReceipt && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 max-w-md mx-auto text-left text-xs space-y-2 font-sans shadow-xs">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-800">ডিজিটাল পেমেন্ট রিসিট ভাউচার</span>
+                  <span className="font-mono text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded">
+                    PAID & VERIFIED
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-[11px] pt-1">
+                  <div>
+                    <span className="text-slate-500 block">ট্রানজেকশন আইডি (TrxID):</span>
+                    <span className="font-mono font-bold text-slate-900">{completedPaymentReceipt.trxId}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">পরিশোধিত ফি:</span>
+                    <span className="font-mono font-bold text-emerald-700 text-sm">৳ {completedPaymentReceipt.amount}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">পেমেন্ট মেথড:</span>
+                    <span className="font-semibold text-slate-800">{completedPaymentReceipt.gateway}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">প্যাকেজ:</span>
+                    <span className="font-semibold text-slate-800 truncate block">{completedPaymentReceipt.packageName}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-slate-500 block">বিজ্ঞাপনের শিরোনাম:</span>
+                    <span className="font-bold text-slate-900">{completedPaymentReceipt.adTitle}</span>
+                  </div>
+                  <div className="col-span-2 text-[10px] text-slate-400">
+                    তারিখ ও সময়: {completedPaymentReceipt.date}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-left text-xs text-blue-900 max-w-md mx-auto flex items-start gap-2">
+              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <span>
+                <strong>এডমিন নোটিশ:</strong> এই ট্রানজেকশনটি অ্যাডমিন প্যানেলের <strong>"০২. সব লেনদেন মনিটর"</strong> এবং <strong>"০১. বিজ্ঞাপন অনুমোদন ও নিয়ন্ত্রণ"</strong> টেবিলে সম্পূর্ণ ফি বিবরণ সহ যুক্ত হয়েছে।
+              </span>
+            </div>
+
+            <div className="flex items-center justify-center gap-3 pt-2 max-w-md mx-auto">
+              <button
+                type="button"
+                onClick={() => setActiveModal(null)}
+                className="w-full py-2.5 bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-xs rounded-lg shadow-md transition-colors cursor-pointer"
+              >
+                বিজ্ঞাপন তালিকা ও মার্কেটপ্লেসে ফিরে যান
+              </button>
+            </div>
+
+          </div>
+        )}
 
       </div>
     </div>

@@ -56,6 +56,17 @@ export interface Ad {
   youtubeUrl?: string;
   featured?: boolean;
   urgent?: boolean;
+  isPaidAd?: boolean;
+  paymentStatus?: 'paid' | 'unpaid' | 'free';
+  paidAmount?: number;
+  paymentGateway?: 'bKash' | 'Nagad' | 'Rocket' | 'Wallet';
+  paymentTrxId?: string;
+  paidAt?: string;
+  paymentBreakdown?: {
+    extraPhotosFee: number;
+    promotionFee: number;
+    packageName: string;
+  };
   views: number;
   specs?: Record<string, string>;
   createdTimestamp?: number;
@@ -202,10 +213,11 @@ export interface Transaction {
   sender: string;
   receiver: string;
   amount: number;
-  gateway: 'bKash' | 'Nagad' | 'Rocket' | 'Visa/Mastercard' | 'COD';
+  gateway: 'bKash' | 'Nagad' | 'Rocket' | 'Visa/Mastercard' | 'COD' | 'Wallet';
   trxId: string;
-  status: 'Escrow Held' | 'Released' | 'Refunded' | 'Pending';
+  status: 'Escrow Held' | 'Released' | 'Refunded' | 'Pending' | 'Company Revenue';
   date: string;
+  type?: 'escrow_order' | 'ad_promotion' | 'extra_photos' | 'wallet_topup';
 }
 
 export interface ChatMessage {

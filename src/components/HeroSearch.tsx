@@ -63,7 +63,7 @@ export const HeroSearch: React.FC = () => {
       </div>
 
       {/* Main Search & Location Box */}
-      <div ref={searchContainerRef} className="max-w-4xl mx-auto bg-white rounded-xl shadow-xl p-2 sm:p-2.5 flex flex-col md:flex-row gap-2 relative z-30">
+      <div ref={searchContainerRef} className="max-w-5xl 2xl:max-w-6xl mx-auto bg-white rounded-xl shadow-xl p-2 sm:p-2.5 flex flex-col md:flex-row gap-2 relative z-30">
         
         {/* Location Picker Button */}
         <button

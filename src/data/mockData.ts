@@ -179,6 +179,17 @@ export const INITIAL_ADS: Ad[] = [
     validationStatus: 'Approved',
     featured: true,
     urgent: true,
+    isPaidAd: true,
+    paymentStatus: 'paid',
+    paidAmount: 698,
+    paymentGateway: 'bKash',
+    paymentTrxId: 'TRX-BK89421',
+    paidAt: 'আজ দুপুর ১২:৩০',
+    paymentBreakdown: {
+      extraPhotosFee: 0,
+      promotionFee: 698,
+      packageName: 'ফিচার্ড + জরুরি বুস্ট (bKash Verified)'
+    },
     views: 428,
     specs: {
       'Storage': '256 GB',
@@ -247,6 +258,17 @@ export const INITIAL_ADS: Ad[] = [
     status: 'active',
     featured: false,
     urgent: true,
+    isPaidAd: true,
+    paymentStatus: 'paid',
+    paidAmount: 199,
+    paymentGateway: 'Nagad',
+    paymentTrxId: 'TRX-NG48219',
+    paidAt: 'আজ সকাল ১০:১৫',
+    paymentBreakdown: {
+      extraPhotosFee: 0,
+      promotionFee: 199,
+      packageName: 'জরুরি বিক্রি প্যাকেজ (Nagad Verified)'
+    },
     views: 312,
     specs: {
       'Processor': 'Apple M2 Pro (10-Core)',
@@ -609,6 +631,32 @@ export const INITIAL_ORDERS: Order[] = [
 ];
 
 export const INITIAL_TRANSACTIONS: Transaction[] = [
+  {
+    id: 'TXN-AD-101',
+    orderId: 'AD-PROMO-ad-101',
+    adTitle: '[বিজ্ঞাপন ফি ও প্রমোশন] iPhone 14 Pro Max 256GB (ফিচার্ড + জরুরি বুস্ট)',
+    sender: 'Md. Akbar Hossain (01332520826)',
+    receiver: 'বিক্রয় মেলা অ্যাডমিন ভল্ট (Company Vault)',
+    amount: 698,
+    gateway: 'bKash',
+    trxId: 'TRX-BK89421',
+    status: 'Company Revenue',
+    date: '2026-10-04 12:30',
+    type: 'ad_promotion'
+  },
+  {
+    id: 'TXN-AD-103',
+    orderId: 'AD-PROMO-ad-103',
+    adTitle: '[বিজ্ঞাপন ফি ও প্রমোশন] Apple MacBook Pro M2 Pro (জরুরি বিক্রি)',
+    sender: 'আরিফুল ইসলাম (01911-223344)',
+    receiver: 'বিক্রয় মেলা অ্যাডমিন ভল্ট (Company Vault)',
+    amount: 199,
+    gateway: 'Nagad',
+    trxId: 'TRX-NG48219',
+    status: 'Company Revenue',
+    date: '2026-10-04 10:15',
+    type: 'ad_promotion'
+  },
   {
     id: 'TXN-77401',
     orderId: 'ORD-8924',

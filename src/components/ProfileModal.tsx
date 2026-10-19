@@ -46,7 +46,8 @@ import {
   RefreshCw,
   AlertTriangle,
   Tag,
-  Filter
+  Filter,
+  EyeOff
 } from 'lucide-react';
 
 export const ProfileModal: React.FC = () => {
@@ -120,6 +121,9 @@ export const ProfileModal: React.FC = () => {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   // Address edit state
@@ -269,128 +273,165 @@ export const ProfileModal: React.FC = () => {
   const referralLink = `${typeof window !== 'undefined' ? window.location.origin : ''}/?ref=${referralCode}`;
 
   return (
-    <div className="min-h-screen bg-[#f4f6f8] text-slate-800 flex flex-col w-full overflow-x-hidden pb-16">
+    <div className="h-screen bg-[#f4f6f8] text-slate-800 flex flex-col w-full overflow-hidden">
       
-      {/* Top Breadcrumb & Return to Shopping Bar matching કાષ્ટমার আইডি1.png */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-3 sticky top-0 z-30 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
-          
-          {/* Breadcrumb Navigation */}
-          <div className="flex items-center gap-2 text-xs text-slate-500 truncate">
+      {/* FIXED TOP HEADER CONTAINER: Never moves when scrolling */}
+      <header className="shrink-0 z-40 bg-white/98 backdrop-blur-md border-b border-slate-200 shadow-sm">
+        {/* Row 1: Back/Arrow Icon, Home, Customer ID, Number & Accounts, Return to Shopping */}
+        <div className="border-b border-slate-100 px-3 sm:px-6 lg:px-8 xl:px-10 py-2.5">
+          <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto flex items-center justify-between gap-3 flex-wrap">
+            
+            {/* Left: Back Arrow Icon + Home + Customer ID + Number + Accounts */}
+            <div className="flex items-center flex-wrap gap-2 text-xs text-slate-600">
+              <button
+                type="button"
+                onClick={handleBackToShopping}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-800 font-bold transition-colors cursor-pointer border border-slate-200"
+                title="হোমে ফিরুন"
+              >
+                <ArrowLeft className="w-3.5 h-3.5 text-emerald-700" />
+                <span>হোম</span>
+              </button>
+
+              <span className="text-slate-300">/</span>
+
+              {/* Customer ID */}
+              <div className="flex items-center gap-1 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md">
+                <span className="text-slate-500 font-medium text-[11px]">কাষ্টমার আইডি:</span>
+                <span className="font-mono font-bold text-slate-900 text-xs">{currentUser.id || 'CUST-01'}</span>
+              </div>
+
+              {/* Number */}
+              <div className="flex items-center gap-1 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">
+                <span className="text-emerald-800 font-medium text-[11px]">নম্বর:</span>
+                <span className="font-mono font-bold text-emerald-800 text-xs">{currentUser.phone}</span>
+              </div>
+
+              {/* Accounts */}
+              <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                <span className="text-amber-900 font-medium text-[11px]">একাউন্টস:</span>
+                <span className="font-bold text-amber-900 text-[11px]">
+                  {currentUser.role === 'seller' ? 'বিক্রেতা একাউন্ট' : 'ক্রেতা একাউন্ট'}
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Return to Shopping button */}
             <button
+              type="button"
               onClick={handleBackToShopping}
-              className="text-slate-600 hover:text-emerald-700 font-medium flex items-center gap-1 cursor-pointer transition-colors"
-              title="হোমে ফিরুন"
+              className="px-3.5 py-1.5 bg-[#007460] hover:bg-[#005e4e] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs whitespace-nowrap shrink-0"
+              title="শপিংয়ে ফিরুন"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              <span>হোম</span>
+              <span>— শপিংয়ে ফিরুন</span>
             </button>
-            <span>/</span>
-            <span className="text-slate-600 font-medium hidden sm:inline">কাষ্টমার আইডি ({currentUser.phone})</span>
-            <span>/</span>
-            <span className="text-emerald-700 font-bold truncate">
-              {activeTab === 'my_ads' ? 'মাই বিজ্ঞাপন (My Ads)' : activeTab === 'manage_account' ? 'Manage Account' : 'Account'}
-            </span>
+
           </div>
-
-          {/* Action Button: Return to Shopping */}
-          <button
-            onClick={handleBackToShopping}
-            className="px-3.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-slate-300 shadow-2xs whitespace-nowrap shrink-0"
-          >
-            <ArrowLeft className="w-3.5 h-3.5 text-slate-600" />
-            <span>— শপিংয়ে ফিরুন</span>
-          </button>
-
         </div>
-      </div>
 
-      {/* Customer ID Top Header Navigation Tabs: মাই বিজ্ঞাপন ও অন্যান্য */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 shadow-xs">
-        <div className="max-w-7xl mx-auto flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-2 text-xs font-semibold">
-          {/* হেডার: মাই বিজ্ঞাপন */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('my_ads')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'my_ads'
-                ? 'bg-amber-500 text-slate-950 font-extrabold shadow-xs ring-2 ring-amber-400/50'
-                : 'text-slate-700 hover:bg-amber-50/70 hover:text-amber-900 border border-slate-200'
-            }`}
-          >
-            <Layers className="w-4 h-4 text-slate-950" />
-            <span className="text-sm">মাই বিজ্ঞাপন (My Ads)</span>
-            <span className={`text-[11px] px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 ${
-              activeTab === 'my_ads' ? 'bg-slate-950 text-amber-300' : 'bg-amber-100 text-amber-900'
-            }`}>
-              <span>{myAds.length}</span>
-              {(pendingMyAds.length > 0 || rejectedMyAds.length > 0) && (
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-              )}
-            </span>
-          </button>
+        {/* Row 2: Customer Navigation Header Items (স্থির থাকে, ক্লিক করলে কোনো নড়াচড়া বা লাফালাফি করবে না) */}
+        <div className="px-3 sm:px-6 lg:px-8 xl:px-10 py-2 bg-slate-50/90 border-t border-slate-100">
+          <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto flex items-center gap-2 sm:gap-3 overflow-x-auto custom-scrollbar text-xs">
+            {/* হেডার: মাই বিজ্ঞাপন (My Ads) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('my_ads');
+              }}
+              className={`h-9 px-3.5 rounded-xl flex items-center gap-2 border text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shrink-0 ${
+                activeTab === 'my_ads'
+                  ? 'bg-amber-500 border-amber-500 text-slate-950 shadow-xs ring-1 ring-amber-400'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-slate-950" />
+              <span>মাই বিজ্ঞাপন (My Ads)</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-mono font-bold flex items-center gap-1 ${
+                activeTab === 'my_ads' ? 'bg-slate-950 text-amber-300' : 'bg-amber-100 text-amber-900'
+              }`}>
+                <span>{myAds.length}</span>
+                {(pendingMyAds.length > 0 || rejectedMyAds.length > 0) && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                )}
+              </span>
+            </button>
 
-          {/* হেডার: Manage Account */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('manage_account')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'manage_account'
-                ? 'bg-sky-600 text-white font-bold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <User className="w-3.5 h-3.5" />
-            <span>Manage Account (ব্যক্তিগত তথ্য)</span>
-          </button>
+            {/* হেডার: Manage Account (ব্যক্তিগত তথ্য) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('manage_account');
+              }}
+              className={`h-9 px-3.5 rounded-xl flex items-center gap-1.5 border text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shrink-0 ${
+                activeTab === 'manage_account'
+                  ? 'bg-sky-600 border-sky-600 text-white shadow-xs ring-1 ring-sky-500'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Manage Account (ব্যক্তিগত তথ্য)</span>
+            </button>
 
-          {/* হেডার: My orders */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('orders')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'orders'
-                ? 'bg-emerald-600 text-white font-bold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Package className="w-3.5 h-3.5" />
-            <span>My orders ({orders.length})</span>
-          </button>
+            {/* হেডার: My orders */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('orders');
+              }}
+              className={`h-9 px-3.5 rounded-xl flex items-center gap-1.5 border text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shrink-0 ${
+                activeTab === 'orders'
+                  ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs ring-1 ring-emerald-500'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span>My orders ({orders.length})</span>
+            </button>
 
-          {/* হেডার: ক্রেডিট ও ক্যাশ উত্তোলন */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('credit')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'credit'
-                ? 'bg-teal-600 text-white font-bold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <CreditCard className="w-3.5 h-3.5" />
-            <span>ক্রেডিট ও উত্তোলন</span>
-          </button>
+            {/* হেডার: ক্রেডিট ও ক্যাশ উত্তোলন */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('credit');
+              }}
+              className={`h-9 px-3.5 rounded-xl flex items-center gap-1.5 border text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shrink-0 ${
+                activeTab === 'credit'
+                  ? 'bg-teal-600 border-teal-600 text-white shadow-xs ring-1 ring-teal-500'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <CreditCard className="w-3.5 h-3.5" />
+              <span>ক্রেডিট ও উত্তোলন</span>
+            </button>
 
-          {/* হেডার: সাপোর্ট */}
-          <button
-            type="button"
-            onClick={() => setActiveTab('support')}
-            className={`px-3.5 py-2 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'support'
-                ? 'bg-indigo-600 text-white font-bold shadow-xs'
-                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Headphones className="w-3.5 h-3.5" />
-            <span>কাস্টমার সাপোর্ট</span>
-          </button>
+            {/* হেডার: সাপোর্ট */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                setActiveTab('support');
+              }}
+              className={`h-9 px-3.5 rounded-xl flex items-center gap-1.5 border text-xs font-bold whitespace-nowrap cursor-pointer transition-colors shrink-0 ${
+                activeTab === 'support'
+                  ? 'bg-indigo-600 border-indigo-600 text-white shadow-xs ring-1 ring-indigo-500'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+              }`}
+            >
+              <Headphones className="w-3.5 h-3.5" />
+              <span>কাস্টমার সাপোর্ট</span>
+            </button>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Success banner if information saved */}
       {saveSuccessMsg && (
-        <div className="max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 mt-3">
+        <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-10 mt-2 shrink-0">
           <div className="p-3 bg-emerald-100 border border-emerald-300 text-emerald-900 rounded-xl text-xs flex items-center justify-between shadow-2xs animate-in fade-in">
             <div className="flex items-center gap-2 font-medium">
               <CheckCircle className="w-4 h-4 text-emerald-700 shrink-0" />
@@ -403,12 +444,11 @@ export const ProfileModal: React.FC = () => {
         </div>
       )}
 
-      {/* Main Dashboard Layout: Left Sidebar Card + Right Content Card matching કાષ્ટমার আইডি1.png */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full flex-1">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          
-          {/* LEFT COLUMN: User Card & Menu Sidebar (4 cols on desktop) matching કાષ્ટমার আইডি1.png & કાષ્ટমার আইডি 2.png */}
-          <div className="lg:col-span-4 space-y-4">
+      {/* Main Dashboard Layout: Left Sidebar Card (Fixed, internally scrollable) + Right Content Card (Independent Scroll) */}
+      <div className="flex-1 min-h-0 w-full max-w-[1780px] 2xl:max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 py-3 sm:py-4 flex flex-col lg:flex-row gap-5 overflow-hidden">
+        
+        {/* LEFT COLUMN: User Card & Menu Sidebar - Fixed in place, scrollable within boundary with visible draggable scrollbar */}
+        <aside className="w-full lg:w-80 xl:w-88 shrink-0 h-auto lg:h-full max-h-[35vh] lg:max-h-full overflow-y-auto custom-scrollbar space-y-4 pr-1.5 pb-4">
             
             {/* User Profile Card */}
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
@@ -439,7 +479,7 @@ export const ProfileModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Summary Balance & Points Boxes matching કાષ્ટমার আইডি1.png */}
+              {/* Summary Balance & Points Boxes */}
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
                   <span className="text-[11px] text-slate-500 font-medium block">ক্রেডিট ব্যালেন্স</span>
@@ -457,122 +497,153 @@ export const ProfileModal: React.FC = () => {
 
             </div>
 
-            {/* Navigation Menu List matching કાષ્ટমার আইডি1.png & કાષ્ટমার আইডি 2.png */}
+            {/* Navigation Menu List */}
             <div className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden divide-y divide-slate-100 text-xs">
               
-              {/* 1. Manage Account */}
+              {/* 1. My Accounts: User Information (ব্যক্তিগত তথ্য) */}
               <button
+                type="button"
                 onClick={() => setActiveTab('manage_account')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'manage_account'
                     ? 'bg-sky-50 text-sky-800 font-bold border-l-4 border-sky-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <User className="w-4 h-4 text-sky-600" />
+                  <User className="w-4 h-4 text-sky-600 shrink-0" />
                   <div>
-                    <span className="block font-bold">Manage Account</span>
-                    <span className="text-[10px] text-slate-400 font-normal">একাউন্ট তথ্য ও পরিবর্তন</span>
+                    <span className="block font-bold">User Information (ব্যক্তিগত তথ্য)</span>
+                    <span className="text-[10px] text-slate-500 font-normal">My Accounts • একাউন্ট তথ্য ও পরিবর্তন</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 2. My Ads (মাই বিজ্ঞাপন) */}
+              {/* 2. My Ads: মাই বিজ্ঞাপন (My Advertisements) */}
               <button
+                type="button"
                 onClick={() => setActiveTab('my_ads')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'my_ads'
-                    ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-600'
+                    ? 'bg-amber-50 text-amber-950 font-bold border-l-4 border-amber-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Layers className="w-4 h-4 text-amber-600" />
+                  <Layers className="w-4 h-4 text-amber-600 shrink-0" />
                   <div>
-                    <span className="block font-bold">মাই বিজ্ঞাপন (My Ads)</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="block font-bold">মাই বিজ্ঞাপন (My Advertisements)</span>
+                      <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded-full font-mono">
+                        {myAds.length}
+                      </span>
+                    </div>
                     <span className="text-[10px] text-slate-500 font-normal">
-                      চলমান: {activeMyAds.length} • ওয়েটিং: {pendingMyAds.length} • বাতিল: {rejectedMyAds.length}
+                      My Ads • চলমান: {activeMyAds.length} • ওয়েটিং: {pendingMyAds.length} • বাতিল: {rejectedMyAds.length}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] bg-amber-100 text-amber-900 border border-amber-300 font-bold px-1.5 py-0.2 rounded-full font-mono">
-                    {myAds.length}
-                  </span>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
-                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 3. My orders */}
+              {/* 3. My Order: অর্ডার ও ট্র্যাকিং হিস্ট্রি */}
               <button
+                type="button"
                 onClick={() => setActiveTab('orders')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'orders'
                     ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Package className="w-4 h-4 text-emerald-600" />
+                  <Package className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div>
-                    <span className="block font-bold">My orders</span>
-                    <span className="text-[10px] text-slate-400 font-normal">অর্ডারের হিস্ট্রি ও ট্র্যাকিং</span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="block font-bold">অর্ডার ও ট্র্যাকিং হিস্ট্রি</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold px-1.5 py-0.2 rounded-full font-mono">
+                        {orders.length}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 font-normal">My Order • অর্ডার ট্র্যাকিং ও হিস্ট্রি ({orders.length})</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 3. My wishlist */}
+              {/* 4. Manage Address: সংরক্ষিত ডেলিভারি ঠিকানা (Manage Addresses) */}
               <button
+                type="button"
+                onClick={() => setActiveTab('addresses')}
+                className={`w-full px-4 py-3.5 text-left flex items-center justify-between transition-colors cursor-pointer ${
+                  activeTab === 'addresses'
+                    ? 'bg-sky-50 text-sky-800 font-bold border-l-4 border-sky-600'
+                    : 'text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-4 h-4 text-sky-600 shrink-0" />
+                  <div>
+                    <span className="block font-bold">সংরক্ষিত ডেলিভারি ঠিকানা (Manage Addresses)</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Manage Address • ঠিকানা পরিবর্তন ও যোগ</span>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
+              </button>
+
+              {/* 5. My wishlist */}
+              <button
+                type="button"
                 onClick={() => setActiveTab('wishlist')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'wishlist'
                     ? 'bg-rose-50 text-rose-800 font-bold border-l-4 border-rose-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Heart className="w-4 h-4 text-rose-600" />
+                  <Heart className="w-4 h-4 text-rose-600 shrink-0" />
                   <div>
                     <span className="block font-bold">My wishlist</span>
                     <span className="text-[10px] text-slate-400 font-normal">পছন্দের পণ্যের তালিকা</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 4. Support tickets */}
+              {/* 6. Support tickets */}
               <button
+                type="button"
                 onClick={() => setActiveTab('support')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'support'
                     ? 'bg-indigo-50 text-indigo-800 font-bold border-l-4 border-indigo-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Headphones className="w-4 h-4 text-indigo-600" />
+                  <Headphones className="w-4 h-4 text-indigo-600 shrink-0" />
                   <div>
                     <span className="block font-bold">Support tickets</span>
                     <span className="text-[10px] text-slate-400 font-normal">অভিযোগ ও লাইভ সমাধান</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 5. BikroyMela Club */}
+              {/* 7. BikroyMela Club */}
               <button
+                type="button"
                 onClick={() => setActiveTab('club')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'club'
                     ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Crown className="w-4 h-4 text-amber-500" />
+                  <Crown className="w-4 h-4 text-amber-500 shrink-0" />
                   <div>
                     <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} ক্লাব</span>
                     <span className="text-[10px] text-slate-400 font-normal">ভিআইপি মেম্বারশিপ অফার</span>
@@ -581,17 +652,18 @@ export const ProfileModal: React.FC = () => {
                 <span className="text-[10px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded">VIP</span>
               </button>
 
-              {/* 6. BikroyMela Point */}
+              {/* 8. BikroyMela Point */}
               <button
+                type="button"
                 onClick={() => setActiveTab('point')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'point'
                     ? 'bg-amber-50 text-amber-900 font-bold border-l-4 border-amber-500'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Coins className="w-4 h-4 text-amber-600" />
+                  <Coins className="w-4 h-4 text-amber-600 shrink-0" />
                   <div>
                     <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} পয়েন্ট</span>
                     <span className="text-[10px] text-slate-400 font-normal">পয়েন্ট ব্যালেন্স ও ক্যাশব্যাক</span>
@@ -602,17 +674,18 @@ export const ProfileModal: React.FC = () => {
                 </span>
               </button>
 
-              {/* 7. BikroyMela Credit */}
+              {/* 9. BikroyMela Credit */}
               <button
+                type="button"
                 onClick={() => setActiveTab('credit')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'credit'
                     ? 'bg-emerald-50 text-emerald-800 font-bold border-l-4 border-emerald-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  <CreditCard className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div>
                     <span className="block font-bold">{siteName || 'বিক্রয় মেলা'} ক্রেডিট</span>
                     <span className="text-[10px] text-slate-400 font-normal">শপিং ক্রেডিট ও লিমিট</span>
@@ -623,46 +696,29 @@ export const ProfileModal: React.FC = () => {
                 </span>
               </button>
 
-              {/* 8. Share & Earn */}
+              {/* 10. Share & Earn */}
               <button
+                type="button"
                 onClick={() => setActiveTab('share_earn')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
+                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors cursor-pointer ${
                   activeTab === 'share_earn'
                     ? 'bg-teal-50 text-teal-800 font-bold border-l-4 border-teal-600'
                     : 'text-slate-700 hover:bg-slate-50'
                 }`}
               >
                 <div className="flex items-center gap-3">
-                  <Share2 className="w-4 h-4 text-teal-600" />
+                  <Share2 className="w-4 h-4 text-teal-600 shrink-0" />
                   <div>
                     <span className="block font-bold">Share & Earn</span>
                     <span className="text-[10px] text-slate-400 font-normal">আইডি শেয়ার করে আয় করুন</span>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
+                <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
 
-              {/* 9. Manage Addresses */}
+              {/* 11. Log Out */}
               <button
-                onClick={() => setActiveTab('addresses')}
-                className={`w-full px-4 py-3 text-left flex items-center justify-between transition-colors ${
-                  activeTab === 'addresses'
-                    ? 'bg-sky-50 text-sky-800 font-bold border-l-4 border-sky-600'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <MapPin className="w-4 h-4 text-sky-600" />
-                  <div>
-                    <span className="block font-bold">Manage Addresses</span>
-                    <span className="text-[10px] text-slate-400 font-normal">সংরক্ষিত ডেলিভারি ঠিকানা</span>
-                  </div>
-                </div>
-                <ChevronRight className="w-4 h-4 text-slate-400" />
-              </button>
-
-              {/* 10. Log Out */}
-              <button
+                type="button"
                 onClick={() => {
                   if (confirm(lang === 'bn' ? 'আপনি কি নিশ্চিত যে লগআউট করতে চান?' : 'Are you sure you want to log out?')) {
                     customerLogout();
@@ -671,18 +727,18 @@ export const ProfileModal: React.FC = () => {
                 className="w-full px-4 py-3.5 text-left flex items-center justify-between text-rose-600 hover:bg-rose-50 transition-colors font-bold cursor-pointer"
               >
                 <div className="flex items-center gap-3">
-                  <LogOut className="w-4 h-4 text-rose-600" />
+                  <LogOut className="w-4 h-4 text-rose-600 shrink-0" />
                   <span>লগ আউট (Log Out)</span>
                 </div>
-                <ChevronRight className="w-4 h-4 text-rose-400" />
+                <ChevronRight className="w-4 h-4 text-rose-400 shrink-0" />
               </button>
 
             </div>
 
-          </div>
+          </aside>
 
-          {/* RIGHT COLUMN: Main Content Area matching કાષ્ટমার আইডি1.png (8 cols on desktop) */}
-          <div className="lg:col-span-8 space-y-6">
+          {/* RIGHT COLUMN: Main Content Area - Independent Scroll (ডান পাশে মাউস রেখে স্ক্রল করা যাবে, বাম পাশ স্থির থাকবে) */}
+          <main className="flex-1 min-w-0 h-full overflow-y-auto custom-scrollbar space-y-6 pr-1 pb-16">
             
             {/* TAB: MANAGE ACCOUNT (Exact match to કાષ્ટমার আইডি1.png) */}
             {activeTab === 'manage_account' && (
@@ -1484,9 +1540,7 @@ export const ProfileModal: React.FC = () => {
               </div>
             )}
 
-          </div>
-
-        </div>
+          </main>
       </div>
 
       {/* MODAL 1: EDIT USER INFORMATION (Requirement B-03 - Mobile Responsive) */}
@@ -1632,38 +1686,70 @@ export const ProfileModal: React.FC = () => {
             <form onSubmit={handlePasswordChange} className="p-5 space-y-3 text-xs">
               <div>
                 <label className="text-slate-700 font-bold block mb-1">বর্তমান পাসওয়ার্ড</label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    tabIndex={-1}
+                  >
+                    {showCurrentPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="text-slate-700 font-bold block mb-1">নতুন পাসওয়ার্ড</label>
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="কমপক্ষে ৬ অক্ষর"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="কমপক্ষে ৬ অক্ষর"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    title={showNewPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                    tabIndex={-1}
+                  >
+                    {showNewPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="text-slate-700 font-bold block mb-1">নতুন পাসওয়ার্ড নিশ্চিত করুন</label>
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="আবার টাইপ করুন"
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="আবার টাইপ করুন"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-lg pr-9"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    title={showConfirmPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                    tabIndex={-1}
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                  </button>
+                </div>
               </div>
 
               {passwordSuccess && (

@@ -55,6 +55,8 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
   const [mobileOrEmail, setMobileOrEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showRegPassword, setShowRegPassword] = useState(false);
+  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [feedbackSuccess, setFeedbackSuccess] = useState<string | null>(null);
@@ -948,14 +950,26 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     নতুন পাসওয়ার্ড
                   </label>
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Enter new password"
-                    className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="নতুন পাসওয়ার্ড দিন"
+                      className="w-full px-3.5 py-2.5 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] focus:ring-1 focus:ring-[#007460] pr-10"
+                      required
+                      autoFocus
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                      title={showPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="flex gap-2 pt-2">
                   <button
@@ -1099,28 +1113,50 @@ export const AuthView: React.FC<AuthViewProps> = ({ onBackToHome }) => {
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     পাসওয়ার্ড (Password)
                   </label>
-                  <input
-                    type="password"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    placeholder="কমপক্ষে ৪-৬ অক্ষর"
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegPassword ? 'text' : 'password'}
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="কমপক্ষে ৪-৬ অক্ষর"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegPassword(!showRegPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                      title={showRegPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                      tabIndex={-1}
+                    >
+                      {showRegPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">
                     কনফার্ম পাসওয়ার্ড
                   </label>
-                  <input
-                    type="password"
-                    value={regConfirmPassword}
-                    onChange={(e) => setRegConfirmPassword(e.target.value)}
-                    placeholder="একই পাসওয়ার্ড দিন"
-                    className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460]"
-                    required
-                  />
+                  <div className="relative">
+                    <input
+                      type={showRegConfirmPassword ? 'text' : 'password'}
+                      value={regConfirmPassword}
+                      onChange={(e) => setRegConfirmPassword(e.target.value)}
+                      placeholder="একই পাসওয়ার্ড দিন"
+                      className="w-full px-3 py-2 text-sm bg-white border border-slate-300 rounded-lg outline-none focus:border-[#007460] pr-10"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                      title={showRegConfirmPassword ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখুন'}
+                      tabIndex={-1}
+                    >
+                      {showRegConfirmPassword ? <EyeOff className="w-4 h-4 text-[#007460]" /> : <Eye className="w-4 h-4 text-slate-500" />}
+                    </button>
+                  </div>
                 </div>
 
                 <div>

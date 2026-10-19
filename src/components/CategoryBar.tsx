@@ -28,7 +28,7 @@ export const CategoryBar: React.FC = () => {
   const { lang, selectedCategory, setSelectedCategory, ads } = useApp();
 
   return (
-    <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 relative z-20 mb-8">
+    <section className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 -mt-6 relative z-20 mb-8">
       <div className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-4">
         
         <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2">

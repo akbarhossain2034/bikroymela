@@ -135,11 +135,11 @@ const MainMarketplace: React.FC = () => {
       <CategoryBar />
 
       {/* Main Content Area */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-24 flex-1 w-full">
+      <main className="max-w-[1720px] 2xl:max-w-[1880px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 pb-24 flex-1 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           
-          {/* Left Filter Sidebar (3 cols on desktop) */}
-          <aside className="lg:col-span-3 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs space-y-5">
+          {/* Left Filter Sidebar (3 cols on desktop, 2 cols on 2xl) */}
+          <aside className="lg:col-span-3 xl:col-span-3 2xl:col-span-2 bg-white p-4 rounded-xl border border-slate-200/90 shadow-2xs space-y-5">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
               <div className="flex items-center gap-2 font-bold text-sm text-slate-800">
                 <SlidersHorizontal className="w-4 h-4 text-[#007460]" />
@@ -225,8 +225,8 @@ const MainMarketplace: React.FC = () => {
 
           </aside>
 
-          {/* Right Product Grid (9 cols on desktop) */}
-          <section className="lg:col-span-9 space-y-5">
+          {/* Right Product Grid (9 cols on desktop, 10 cols on 2xl) */}
+          <section className="lg:col-span-9 xl:col-span-9 2xl:col-span-10 space-y-5 min-w-0">
             
             {/* Sort & Count Header */}
             <div className="bg-white p-3.5 rounded-xl border border-slate-200/90 shadow-2xs flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -243,7 +243,7 @@ const MainMarketplace: React.FC = () => {
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-600"
+                  className="px-2.5 py-1.5 text-xs border border-slate-300 rounded-md bg-white font-semibold text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-600 cursor-pointer"
                 >
                   <option value="newest">{t.newest}</option>
                   <option value="priceLowHigh">{t.priceLowHigh}</option>
@@ -262,13 +262,13 @@ const MainMarketplace: React.FC = () => {
                 <p className="text-xs text-slate-500 max-w-sm mx-auto">{t.tryAdjustingFilters}</p>
                 <button
                   onClick={resetFilters}
-                  className="px-4 py-2 bg-[#007460] text-white text-xs font-semibold rounded-lg hover:bg-[#005e4e] transition-colors"
+                  className="px-4 py-2 bg-[#007460] text-white text-xs font-semibold rounded-lg hover:bg-[#005e4e] transition-colors cursor-pointer"
                 >
                   {lang === 'bn' ? 'সব ফিল্টার মুছুন' : 'Clear All Filters'}
                 </button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-4 sm:gap-5">
                 {sortedAds.map(ad => (
                   <AdCard key={ad.id} ad={ad} />
                 ))}
