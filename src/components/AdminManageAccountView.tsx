@@ -357,7 +357,7 @@ export const AdminManageAccountView: React.FC<AdminManageAccountViewProps> = ({ 
       {/* 1. TOP HEADER (BRAND THEME #007460)                            */}
       {/* ============================================================== */}
       <header className="bg-[#007460] text-white w-full sticky top-0 z-40 shadow-xs">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-4">
+        <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-10 py-2.5 flex items-center justify-between gap-4">
           
           {/* Left: Back to Dashboard & Logo */}
           <div className="flex items-center gap-3 sm:gap-4 shrink-0">
@@ -423,8 +423,8 @@ export const AdminManageAccountView: React.FC<AdminManageAccountViewProps> = ({ 
       {/* ============================================================== */}
       {/* 2. SUB-HEADER BREADCRUMB & RETURN SHORTCUT                    */}
       {/* ============================================================== */}
-      <div className="bg-white border-b border-slate-200 py-3 px-4 sm:px-6 shadow-2xs">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2 flex-wrap">
+      <div className="bg-white border-b border-slate-200 py-3 px-4 sm:px-6 lg:px-8 xl:px-10 shadow-2xs">
+        <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto flex items-center justify-between gap-2 flex-wrap">
           <div className="flex items-center gap-2 text-xs text-slate-500">
             <button onClick={onBackToDashboard} className="hover:text-[#007460] font-medium cursor-pointer">
               এডমিন প্যানেল
@@ -450,7 +450,7 @@ export const AdminManageAccountView: React.FC<AdminManageAccountViewProps> = ({ 
       {/* ============================================================== */}
       {/* 3. MAIN CONTENT: Split Layout (Sidebar + Details)              */}
       {/* ============================================================== */}
-      <main className="max-w-7xl mx-auto w-full p-4 sm:p-6 lg:p-8 flex-1">
+      <main className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto w-full p-4 sm:p-6 lg:p-8 xl:p-10 flex-1">
         {successToast && (
           <div className="mb-5 p-3.5 bg-emerald-50 border border-emerald-300 text-[#007460] rounded-xl text-xs sm:text-sm font-bold flex items-center gap-2 shadow-xs animate-in fade-in">
             <CheckCircle className="w-4 h-4 text-[#007460] shrink-0" />

@@ -123,6 +123,8 @@ export const PostAdModal: React.FC = () => {
     isPaidAd: boolean;
     paymentStatus: 'paid' | 'free' | 'unpaid';
     paidAmount: number;
+    expectedPackageAmount?: number;
+    paymentMatchStatus?: 'matched' | 'mismatched' | 'pending_review';
     paymentGateway?: 'bKash' | 'Nagad' | 'Rocket' | 'Wallet';
     paymentTrxId?: string;
     paidAt?: string;
@@ -130,6 +132,7 @@ export const PostAdModal: React.FC = () => {
       extraPhotosFee: number;
       promotionFee: number;
       packageName: string;
+      expectedAmount?: number;
     };
   }) => {
     const numericPrice = parseFloat(price.replace(/,/g, '')) || 0;
@@ -181,6 +184,8 @@ export const PostAdModal: React.FC = () => {
       isPaidAd: paymentData.isPaidAd,
       paymentStatus: paymentData.paymentStatus,
       paidAmount: paymentData.paidAmount,
+      expectedPackageAmount: paymentData.expectedPackageAmount ?? (paymentData.isPaidAd ? totalAdFee : 0),
+      paymentMatchStatus: paymentData.paymentMatchStatus ?? (paymentData.isPaidAd ? (paymentData.paidAmount >= totalAdFee ? 'matched' : 'mismatched') : 'matched'),
       paymentGateway: paymentData.paymentGateway,
       paymentTrxId: paymentData.paymentTrxId,
       paidAt: paymentData.paidAt,
@@ -224,7 +229,15 @@ export const PostAdModal: React.FC = () => {
     executePostAd({
       isPaidAd: false,
       paymentStatus: 'free',
-      paidAmount: 0
+      paidAmount: 0,
+      expectedPackageAmount: 0,
+      paymentMatchStatus: 'matched',
+      paymentBreakdown: {
+        extraPhotosFee: 0,
+        promotionFee: 0,
+        packageName: 'সাধারণ বিজ্ঞাপন (ফ্রি কোটা ৳০)',
+        expectedAmount: 0
+      }
     });
 
     setActiveModal(null);
@@ -283,13 +296,16 @@ export const PostAdModal: React.FC = () => {
         isPaidAd: true,
         paymentStatus: 'paid',
         paidAmount: totalAdFee,
+        expectedPackageAmount: totalAdFee,
+        paymentMatchStatus: 'matched',
         paymentGateway: selectedGateway,
         paymentTrxId: finalTrxId,
         paidAt: nowTime,
         paymentBreakdown: {
           extraPhotosFee: extraPhotoFee,
           promotionFee,
-          packageName
+          packageName,
+          expectedAmount: totalAdFee
         }
       });
 
@@ -1232,9 +1248,9 @@ export const PostAdModal: React.FC = () => {
             </div>
 
             <div className="space-y-1">
-              <h3 className="text-lg font-bold text-slate-900">🎉 পেমেন্ট সফল হয়েছে ও বিজ্ঞাপন প্রকাশিত হয়েছে!</h3>
+              <h3 className="text-lg font-bold text-slate-900">🎉 পেমেন্ট সফল হয়েছে ও বিজ্ঞাপন অনুমোদনের জন্য পাঠানো হয়েছে!</h3>
               <p className="text-xs text-slate-600 max-w-md mx-auto">
-                আপনার বিজ্ঞাপন ফি সফলভাবে পরিশোধ হয়েছে। বিজ্ঞাপনটি সিস্টেমে ভেরিফাইড হিসেবে অন্তর্ভুক্ত হয়েছে।
+                আপনার নির্বাচিত প্যাকেজের বিজ্ঞাপন ফি সফলভাবে পরিশোধিত হয়েছে। এডমিন টাকা প্রাপ্তি ও নীতিমালা যাচাই করে অল্প সময়ের মধ্যেই বিজ্ঞাপনটি সাইটে লাইভ করবেন।
               </p>
             </div>
 

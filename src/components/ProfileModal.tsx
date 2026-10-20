@@ -1123,6 +1123,29 @@ export const ProfileModal: React.FC = () => {
                                 </span>
                               </div>
 
+                              {/* Paid Package & Transaction Voucher Info */}
+                              {ad.isPaidAd && (
+                                <div className="p-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg text-xs space-y-1 my-1.5">
+                                  <div className="flex items-center justify-between text-emerald-950 font-bold text-[11px]">
+                                    <span className="flex items-center gap-1">
+                                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                                      <span>প্যাকেজ: {ad.paymentBreakdown?.packageName || (ad.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}</span>
+                                    </span>
+                                    <span className="font-mono text-emerald-900 bg-emerald-200/80 px-1.5 py-0.2 rounded text-[10px] font-bold">
+                                      ৳ {ad.paidAmount} ({ad.paymentGateway || 'bKash'})
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-emerald-800 flex items-center justify-between flex-wrap gap-1">
+                                    <span>TrxID: <strong className="font-mono text-emerald-950">{ad.paymentTrxId || 'TRX-VERIFIED'}</strong></span>
+                                    <span className={`font-bold px-1.5 py-0.2 rounded text-[9px] ${
+                                      isAdActive ? 'bg-emerald-600 text-white' : 'bg-amber-100 text-amber-900 border border-amber-300'
+                                    }`}>
+                                      {isAdActive ? '✓ পেমেন্ট অনুমোদিত ও লাইভ' : '⏳ পেমেন্ট সম্পন্ন • এডমিন অনুমোদনের অপেক্ষায়'}
+                                    </span>
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Status Specific Description & Notes */}
                               {isAdActive && (
                                 <div className="pt-1 flex items-center gap-2 text-xs text-emerald-800">
@@ -1135,13 +1158,13 @@ export const ProfileModal: React.FC = () => {
                                 <div className="pt-1 space-y-1">
                                   <div className="flex items-center gap-1.5 text-xs text-amber-800 font-medium">
                                     <Clock className="w-3.5 h-3.5 text-amber-600 shrink-0 animate-spin" />
-                                    <span>এডমিন ডাটা ভেলিডেশন ও পর্যালোচনায় অপেক্ষামান ({ad.validationStatus || 'Received'})</span>
+                                    <span>{ad.isPaidAd ? 'পেমেন্ট প্রাপ্তি ও ডাটা ভেলিডেশন শেষে এডমিন লাইভ করবেন' : `এডমিন ডাটা ভেলিডেশন ও পর্যালোচনায় অপেক্ষামান (${ad.validationStatus || 'Received'})`}</span>
                                   </div>
                                   <div className="flex items-center gap-1 text-[10px] text-slate-500 font-mono">
                                     <span>অগ্রগতি:</span>
-                                    <span className="bg-emerald-100 text-emerald-800 px-1 rounded">১. সাবমিট হয়েছে</span>
+                                    <span className="bg-emerald-100 text-emerald-800 px-1 rounded">১. {ad.isPaidAd ? 'পেমেন্ট ও সাবমিট' : 'সাবমিট'}</span>
                                     <span>➔</span>
-                                    <span className="bg-amber-100 text-amber-900 font-bold px-1 rounded">২. ভেলিডেশন যাচাই</span>
+                                    <span className="bg-amber-100 text-amber-900 font-bold px-1 rounded">২. এডমিন ভেলিডেশন</span>
                                     <span>➔</span>
                                     <span className="text-slate-400">৩. সাইটে লাইভ অনুমোদন</span>
                                   </div>

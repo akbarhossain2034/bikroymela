@@ -127,6 +127,7 @@ interface AppContextType {
   generateNextStaffId: () => string;
   toggleAdminApproval: (adminId: string, approved: boolean) => void;
   updateAdminProfile: (adminId: string, updatedData: Partial<AdminUser>) => { success: boolean; message: string };
+  deleteStaff: (staffId: string) => { success: boolean; message: string };
   adminLogout: () => void;
   verifyOwnerPin: (pin: string) => boolean;
   isOwnerUnlocked: boolean;
@@ -170,9 +171,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   const [ads, setAds] = useState<Ad[]>(() => {
-    const saved = localStorage.getItem('bikroy_ads');
-    return saved ? JSON.parse(saved) : INITIAL_ADS;
+    const saved = localStorage.getItem('bikroy_ads_v30');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length >= 30) {
+          return parsed;
+        }
+      } catch {}
+    }
+    const oldSaved = localStorage.getItem('bikroy_ads');
+    if (oldSaved) {
+      try {
+        const parsed = JSON.parse(oldSaved);
+        if (Array.isArray(parsed) && parsed.length >= 30) {
+          return parsed;
+        }
+      } catch {}
+    }
+    return INITIAL_ADS;
   });
+
+  useEffect(() => {
+    localStorage.setItem('bikroy_ads_v30', JSON.stringify(ads));
+    localStorage.setItem('bikroy_ads', JSON.stringify(ads));
+  }, [ads]);
 
   const [favorites, setFavorites] = useState<string[]>(() => {
     const saved = localStorage.getItem('bikroy_favorites');
@@ -504,51 +527,46 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const [adminAdToDelete, setAdminAdToDelete] = useState<Ad | null>(null);
   const [adminList, setAdminList] = useState<AdminUser[]>(() => {
-    const saved = localStorage.getItem('bikroy_admin_list');
+    const saved = localStorage.getItem('bikroy_admin_list_v4');
     if (saved) {
       try {
         const parsed: AdminUser[] = JSON.parse(saved);
-        return parsed.map(a => {
-          if (a.isOwner || a.role === 'Super Admin' || a.id === 'ADM-101') {
-            return {
-              ...a,
-              id: a.id === 'ADM-101' ? 'ID-00009' : (a.id || 'ID-00009'),
-              name: a.name || 'Md. Akbar Hossain',
-              phone: a.phone === '01332520826' ? '+8801851554333' : (a.phone || '+8801851554333'),
-              email: a.email === 'akbar.office10@gmail.com' ? '' : (a.email ?? ''),
-              password: a.password || 'admin',
-              isOwner: true,
-              isApprovedByOwner: true
-            };
-          }
-          return a;
-        });
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
       } catch {}
     }
+    // Delete all previous employees as requested by user, keep only 1 owner
+    try {
+      localStorage.removeItem('bikroy_admin_list');
+      localStorage.removeItem('bikroy_admin_list_v2');
+      localStorage.removeItem('bikroy_admin_list_v3');
+    } catch {}
     return INITIAL_ADMIN_USERS;
   });
+
   const [activeAdmin, setActiveAdmin] = useState<AdminUser>(() => {
     const saved = localStorage.getItem('bikroy_active_admin');
     if (saved) {
       try {
         const parsed: AdminUser = JSON.parse(saved);
-        if (parsed.isOwner || parsed.role === 'Super Admin' || parsed.id === 'ADM-101') {
+        if (parsed.isOwner || parsed.role === 'Super Admin' || parsed.id === 'ID-00009') {
           return {
             ...parsed,
-            id: parsed.id === 'ADM-101' ? 'ID-00009' : (parsed.id || 'ID-00009'),
+            id: 'ID-00009',
             name: parsed.name || 'Md. Akbar Hossain',
-            phone: parsed.phone === '01332520826' ? '+8801851554333' : (parsed.phone || '+8801851554333'),
-            email: parsed.email === 'akbar.office10@gmail.com' ? '' : (parsed.email ?? ''),
+            phone: parsed.phone || '+8801851554333',
+            email: parsed.email ?? 'Akbarhossain2044@gmail.com',
             password: parsed.password || 'admin',
             isOwner: true,
             isApprovedByOwner: true
           };
         }
-        return parsed;
       } catch {}
     }
     return INITIAL_ADMIN_USERS[0];
   });
+
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem('bikroy_admin_auth') === 'true';
@@ -563,6 +581,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
+    localStorage.setItem('bikroy_admin_list_v4', JSON.stringify(adminList));
     localStorage.setItem('bikroy_admin_list', JSON.stringify(adminList));
   }, [adminList]);
 
@@ -753,18 +772,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const updateAdminProfile = (adminId: string, updatedData: Partial<AdminUser>) => {
+    if (!adminId) return { success: false, message: 'ভুল আইডি নম্বর' };
+
     setAdminList(prev => prev.map(a => {
-      const isTarget = a.id === adminId || 
-        (a.isOwner && (adminId === 'ID-00009' || adminId === '00009' || a.id === 'ID-00009' || adminId === activeAdmin.id));
-      if (isTarget) {
+      // Strictly match only the target admin by exact ID
+      if (a.id === adminId) {
         return { ...a, ...updatedData };
       }
       return a;
     }));
-    if (activeAdmin.id === adminId || activeAdmin.isOwner) {
-      setActiveAdmin(prev => ({ ...prev, ...updatedData }));
+
+    // ONLY update activeAdmin if the user being updated is EXACTLY the currently active admin!
+    setActiveAdmin(prev => {
+      if (prev.id === adminId) {
+        return { ...prev, ...updatedData };
+      }
+      return prev;
+    });
+
+    return { success: true, message: 'তথ্য সফলভাবে সংরক্ষণ ও হালনাগাদ করা হয়েছে!' };
+  };
+
+  const deleteStaff = (staffId: string) => {
+    const target = adminList.find(a => a.id === staffId);
+    if (!target) return { success: false, message: 'কর্মী খুঁজে পাওয়া যায়নি।' };
+    if (target.isOwner || target.role === 'Super Admin' || target.id === 'ID-00009') {
+      return { success: false, message: 'মালিক বা সুপার এডমিনের আইডি মুছে ফেলা সম্ভব নয়।' };
     }
-    return { success: true, message: 'মালিকের প্রোফাইল ও তথ্য সফলভাবে সংরক্ষণ করা হয়েছে!' };
+    setAdminList(prev => prev.filter(a => a.id !== staffId));
+    return { success: true, message: `কর্মী "${target.name}" (আইডি: ${target.id}) এর তথ্য সফলভাবে মুছে ফেলা হয়েছে!` };
   };
 
   const adminLogout = () => {
@@ -1128,6 +1164,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isPaidAd: adData.isPaidAd || false,
       paymentStatus: adData.paymentStatus || 'free',
       paidAmount: adData.paidAmount || 0,
+      expectedPackageAmount: adData.expectedPackageAmount ?? (adData.isPaidAd ? (adData.paidAmount || 0) : 0),
+      paymentMatchStatus: adData.paymentMatchStatus || (adData.isPaidAd ? 'matched' : 'matched'),
       paymentGateway: adData.paymentGateway,
       paymentTrxId: adData.paymentTrxId,
       paidAt: adData.paidAt,
@@ -1800,6 +1838,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         generateNextStaffId,
         toggleAdminApproval,
         updateAdminProfile,
+        deleteStaff,
         adminLogout,
         verifyOwnerPin,
         isOwnerUnlocked,

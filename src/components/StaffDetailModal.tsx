@@ -14,7 +14,8 @@ import {
   CheckCircle, 
   XCircle,
   Crown,
-  Edit3
+  Edit3,
+  Trash2
 } from 'lucide-react';
 
 interface StaffDetailModalProps {
@@ -23,6 +24,7 @@ interface StaffDetailModalProps {
   onClose: () => void;
   onToggleApproval?: (staffId: string, currentApproved: boolean) => void;
   onEditStaff?: (staff: AdminUser) => void;
+  onDeleteStaff?: (staffId: string) => void;
 }
 
 export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
@@ -30,21 +32,22 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
   isOpen,
   onClose,
   onToggleApproval,
-  onEditStaff
+  onEditStaff,
+  onDeleteStaff
 }) => {
   if (!isOpen || !staff) return null;
 
   const isApproved = staff.isApprovedByOwner ?? true;
-  const isOwner = staff.isOwner || staff.role === 'Super Admin';
+  const isOwner = staff.isOwner || staff.role === 'Super Admin' || staff.id === 'ID-00009';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto animate-in fade-in">
-      <div className="bg-white w-full max-w-2xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-950/70 backdrop-blur-xs overflow-hidden animate-in fade-in">
+      <div className="bg-white w-full max-w-2xl max-h-[88vh] rounded-2xl shadow-2xl border border-slate-200 flex flex-col overflow-hidden">
         
         {/* Top Header */}
-        <div className="bg-gradient-to-r from-[#007460] to-[#005e4e] text-white p-5 sm:p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-xl bg-white/20 text-white font-black text-xl flex items-center justify-center border border-white/20 shadow-md">
+        <div className="bg-gradient-to-r from-[#007460] to-[#005e4e] text-white px-4 sm:px-5 py-3 flex items-center justify-between shrink-0 shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white/20 text-white font-black text-lg flex items-center justify-center border border-white/20 shadow-xs shrink-0">
               {staff.name ? staff.name.charAt(0) : 'U'}
             </div>
             <div>
@@ -243,25 +246,43 @@ export const StaffDetailModal: React.FC<StaffDetailModalProps> = ({
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 sm:p-5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
-          {onEditStaff && !isOwner && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onEditStaff(staff);
-              }}
-              className="px-3.5 py-2 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-xl border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
-            >
-              <Edit3 className="w-3.5 h-3.5 text-slate-600" />
-              <span>তথ্য সম্পাদনা / পরিবর্তন করুন</span>
-            </button>
-          )}
+        <div className="px-4 sm:px-5 py-2.5 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+          <div className="flex items-center gap-2">
+            {onEditStaff && !isOwner && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onEditStaff(staff);
+                }}
+                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-800 font-bold rounded-lg border border-slate-300 transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
+              >
+                <Edit3 className="w-3.5 h-3.5 text-slate-600" />
+                <span>তথ্য পরিবর্তন করুন</span>
+              </button>
+            )}
+
+            {onDeleteStaff && !isOwner && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`আপনি কি নিশ্চিত যে কর্মী "${staff.name}" (আইডি: ${staff.id}) এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+                    onClose();
+                    onDeleteStaff(staff.id);
+                  }
+                }}
+                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded-lg border border-rose-200 transition-colors flex items-center gap-1.5 cursor-pointer text-xs"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                <span>কর্মী অপসারণ</span>
+              </button>
+            )}
+          </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="px-5 py-2 bg-[#007460] hover:bg-[#005e4e] text-white font-bold rounded-xl transition-all shadow-sm cursor-pointer ml-auto"
+            className="px-4 py-1.5 bg-[#007460] hover:bg-[#005e4e] text-white font-bold rounded-lg transition-all shadow-xs text-xs cursor-pointer ml-auto"
           >
             বন্ধ করুন
           </button>

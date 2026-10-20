@@ -13,7 +13,10 @@ import {
   Share2,
   Calendar,
   Eye,
-  Star
+  Star,
+  Check,
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 
 export const AdDetailModal: React.FC = () => {
@@ -25,7 +28,9 @@ export const AdDetailModal: React.FC = () => {
     favorites, 
     toggleFavorite, 
     setActiveModal, 
-    setChatRecipient 
+    setChatRecipient,
+    isAdminMode,
+    updateAdValidationStatus
   } = useApp();
 
   const [showPhone, setShowPhone] = useState(false);
@@ -197,23 +202,66 @@ export const AdDetailModal: React.FC = () => {
 
                 {/* Paid Promotion & Verified Voucher */}
                 {selectedAd.isPaidAd && (selectedAd.paidAmount || 0) > 0 && (
-                  <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 rounded-lg text-xs space-y-1.5 shadow-2xs">
+                  <div className="mt-3 p-3 bg-gradient-to-r from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-xl text-xs space-y-2 shadow-2xs">
                     <div className="flex items-center justify-between font-bold text-emerald-950">
                       <span className="flex items-center gap-1.5">
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>অনুমোদিত প্রিমিয়াম বিজ্ঞাপন (Paid & Verified)</span>
+                        <span>{selectedAd.validationStatus === 'Approved' ? 'অনুমোদিত পেইড বিজ্ঞাপন (Paid & Live)' : 'পেমেন্ট সম্পন্ন • এডমিন অনুমোদনের অপেক্ষায়'}</span>
                       </span>
                       <span className="font-mono bg-emerald-200/90 text-emerald-950 px-2 py-0.5 rounded text-[11px] font-extrabold uppercase">
                         ৳ {selectedAd.paidAmount} ({selectedAd.paymentGateway || 'bKash'})
                       </span>
                     </div>
-                    <div className="text-[11px] text-emerald-800 flex items-center justify-between font-medium">
-                      <span>প্যাকেজ: {selectedAd.paymentBreakdown?.packageName || (selectedAd.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}</span>
-                      <span className="font-mono text-[10px] text-emerald-900 font-bold">TrxID: {selectedAd.paymentTrxId}</span>
+
+                    <div className="space-y-1 text-[11px] text-emerald-900 bg-white/70 p-2 rounded-lg border border-emerald-200">
+                      <div className="flex items-center justify-between font-medium">
+                        <span>নির্বাচিত প্যাক:</span>
+                        <strong className="text-emerald-950">{selectedAd.paymentBreakdown?.packageName || (selectedAd.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}</strong>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>প্যাকের নির্ধারিত ফি:</span>
+                        <span className="font-mono font-bold text-slate-800">৳ {selectedAd.expectedPackageAmount || selectedAd.paidAmount}</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>গ্রাহকের পরিশোধিত টাকা:</span>
+                        <span className="font-mono font-bold text-emerald-700">৳ {selectedAd.paidAmount} ({selectedAd.paymentGateway || 'bKash'})</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span>সিস্টেম অডিট স্ট্যাটাস:</span>
+                        <span className="font-bold text-emerald-800 bg-emerald-100 px-1.5 py-0.2 rounded text-[10px]">
+                          {(selectedAd.paidAmount || 0) >= (selectedAd.expectedPackageAmount || selectedAd.paidAmount || 0) ? '✓ নির্ধারিত টাকা সফলভাবে ম্যাচ করেছে' : '⚠️ টাকা অমিল'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between font-mono pt-0.5 border-t border-emerald-100">
+                        <span className="text-slate-500 font-sans">ট্রানজেকশন আইডি:</span>
+                        <strong className="text-emerald-950">{selectedAd.paymentTrxId}</strong>
+                      </div>
                     </div>
+
                     {selectedAd.paidAt && (
-                      <div className="text-[10px] text-emerald-600 border-t border-emerald-200/70 pt-1">
+                      <div className="text-[10px] text-emerald-700">
                         পরিশোধের সময়: {selectedAd.paidAt}
+                      </div>
+                    )}
+
+                    {/* Admin Immediate Action: Verify & Approve Button */}
+                    {isAdminMode && (selectedAd.status !== 'active' || selectedAd.validationStatus !== 'Approved') && (
+                      <div className="pt-1 border-t border-emerald-200">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            updateAdValidationStatus(selectedAd.id, 'Approved');
+                            setSelectedAd({
+                              ...selectedAd,
+                              status: 'active',
+                              validationStatus: 'Approved'
+                            });
+                          }}
+                          className="w-full py-2 bg-[#007460] hover:bg-[#005e4e] text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Check className="w-4 h-4 text-amber-300" />
+                          <span>টাকা প্রাপ্তি নিশ্চিত — এখনই বিজ্ঞাপন লাইভ অনুমোদন করুন</span>
+                        </button>
                       </div>
                     )}
                   </div>

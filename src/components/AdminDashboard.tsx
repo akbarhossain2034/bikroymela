@@ -116,6 +116,7 @@ export const AdminDashboard: React.FC = () => {
     adminList,
     toggleAdminApproval,
     updateAdminProfile,
+    deleteStaff,
     isOwnerUnlocked,
     setIsOwnerUnlocked
   } = useApp();
@@ -713,8 +714,8 @@ export const AdminDashboard: React.FC = () => {
         </div>
 
         {/* Row 2: ভাসমান এডমিন মূল বিষয়সমূহ নেভিগেশন বার (Floating 11 Admin Key Modules Bar) */}
-        <div className="bg-[#005646]/95 backdrop-blur-md px-3 sm:px-6 py-1.5 border-t border-emerald-800/40">
-          <div className="max-w-7xl mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
+        <div className="bg-[#005646]/95 backdrop-blur-md px-3 sm:px-6 lg:px-8 xl:px-10 py-1.5 border-t border-emerald-800/40">
+          <div className="max-w-[1780px] 2xl:max-w-[1920px] mx-auto flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
             
             {/* Tag / Label */}
             <div className="flex items-center gap-1.5 shrink-0 pr-2 border-r border-emerald-700/80 text-[11px] font-bold text-amber-300">
@@ -791,7 +792,7 @@ export const AdminDashboard: React.FC = () => {
       </header>
 
       {/* Admin Dashboard: 2-Column Responsive Layout - Left Sidebar is 100% Fixed, Right Side scrolls */}
-      <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4 flex flex-col lg:flex-row gap-5 overflow-hidden">
+      <div className="flex-1 min-h-0 w-full max-w-[1780px] 2xl:max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 xl:px-10 py-3 sm:py-4 flex flex-col lg:flex-row gap-5 overflow-hidden">
         
         {/* LEFT SIDE: Serialized Main Navigation (বাম পাশে সিরিয়াল অনুযায়ী বিষয়সমূহ - স্ক্রল করলে স্থির থাকবে) */}
         <aside className="w-full lg:w-80 shrink-0 h-auto lg:h-full max-h-[35vh] lg:max-h-full overflow-y-auto custom-scrollbar space-y-4 pr-1">
@@ -1489,32 +1490,42 @@ export const AdminDashboard: React.FC = () => {
                           {/* Package & Payment Proof Cell */}
                           <td className="p-3">
                             {ad.isPaidAd && (ad.paidAmount || 0) > 0 ? (
-                              <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2 max-w-[200px] shadow-2xs space-y-1">
+                              <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-2.5 max-w-[220px] shadow-2xs space-y-1.5">
                                 <div className="flex items-center justify-between text-xs font-bold text-emerald-950">
                                   <span className="flex items-center gap-1">
                                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                                    <span>পেইড: ৳ {ad.paidAmount}</span>
+                                    <span>পরিশোধিত: ৳ {ad.paidAmount}</span>
                                   </span>
                                   <span className="font-mono text-[9px] bg-emerald-200 text-emerald-950 px-1.5 py-0.2 rounded font-bold uppercase">
                                     {ad.paymentGateway || 'bKash'}
                                   </span>
                                 </div>
-                                <div className="text-[10px] text-emerald-800 font-mono font-semibold truncate" title={ad.paymentTrxId}>
+                                <div className="flex items-center justify-between text-[10px] text-slate-600 border-t border-emerald-200/70 pt-1 font-medium">
+                                  <span>প্যাক ফি: <strong className="font-mono text-slate-800">৳ {ad.expectedPackageAmount || ad.paidAmount}</strong></span>
+                                  <span className="text-[9px] font-bold text-emerald-800 bg-emerald-100 px-1 rounded">
+                                    {(ad.paidAmount || 0) >= (ad.expectedPackageAmount || ad.paidAmount || 0) ? '✓ ফি ম্যাচ করেছে' : '⚠️ ফি অমিল'}
+                                  </span>
+                                </div>
+                                <div className="text-[10px] text-emerald-900 font-mono font-semibold truncate" title={ad.paymentTrxId}>
                                   TrxID: {ad.paymentTrxId || 'TRX-VERIFIED'}
                                 </div>
-                                <div className="text-[9px] text-emerald-700 font-medium truncate" title={ad.paymentBreakdown?.packageName}>
+                                <div className="text-[9px] text-emerald-800 font-semibold truncate bg-white/70 px-1 py-0.5 rounded border border-emerald-200/50" title={ad.paymentBreakdown?.packageName}>
                                   {ad.paymentBreakdown?.packageName || (ad.urgent ? 'জরুরি বিক্রি' : 'ফিচার্ড')}
                                 </div>
                               </div>
                             ) : ad.paymentStatus === 'unpaid' ? (
-                              <span className="bg-rose-50 text-rose-800 border border-rose-300 px-2 py-1 rounded-md text-[10px] font-bold inline-flex items-center gap-1">
-                                <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
-                                <span>বকেয়া ফি (আটকে আছে)</span>
-                              </span>
+                              <div className="bg-rose-50 text-rose-800 border border-rose-300 px-2.5 py-1.5 rounded-md text-[10px] font-bold space-y-1 max-w-[200px]">
+                                <div className="flex items-center gap-1 text-rose-950">
+                                  <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>বকেয়া ফি: ৳ {ad.expectedPackageAmount || 30}</span>
+                                </div>
+                                <p className="text-[9px] text-rose-700 font-normal leading-tight">পেমেন্ট না করায় বিজ্ঞাপন আটকে আছে</p>
+                              </div>
                             ) : (
-                              <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2 py-1 rounded-md text-[10px] font-medium inline-flex items-center gap-1">
-                                <span>ফ্রি বিজ্ঞাপন (৳ ০)</span>
-                              </span>
+                              <div className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 py-1.5 rounded-md text-[10px] font-medium space-y-0.5">
+                                <div className="font-bold text-slate-700">ফ্রি বিজ্ঞাপন কোটা (৳ ০)</div>
+                                <div className="text-[9px] text-slate-500">৩টি ছবি • সাধারণ প্যাক</div>
+                              </div>
                             )}
                           </td>
 
@@ -1695,18 +1706,33 @@ export const AdminDashboard: React.FC = () => {
                           <td className="p-3 text-right">
                             <div className="flex items-center justify-end gap-1.5">
                               {currentVal !== 'Approved' && (
-                                <button
-                                  onClick={() => {
-                                    updateAdValidationStatus(ad.id, 'Approved');
-                                    setValidationToast(`বিজ্ঞাপন #${ad.id} 'Approved' করা হয়েছে`);
-                                    setTimeout(() => setValidationToast(null), 3000);
-                                  }}
-                                  className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold transition-colors flex items-center gap-1 shadow-2xs"
-                                  title="দ্রুত অনুমোদন করুন"
-                                >
-                                  <Check className="w-3 h-3" />
-                                  <span>লাইভ</span>
-                                </button>
+                                ad.isPaidAd ? (
+                                  <button
+                                    onClick={() => {
+                                      updateAdValidationStatus(ad.id, 'Approved');
+                                      setValidationToast(`বিজ্ঞাপন #${ad.id} এর পেমেন্ট (৳${ad.paidAmount}) যাচাই সম্পন্ন — সফলভাবে লাইভ করা হয়েছে!`);
+                                      setTimeout(() => setValidationToast(null), 3500);
+                                    }}
+                                    className="px-2.5 py-1 bg-[#007460] hover:bg-[#005e4e] text-white rounded text-[11px] font-bold transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+                                    title="নির্ধারিত প্যাকের টাকা প্রাপ্তি নিশ্চিত করে বিজ্ঞাপনটি সাইটে লাইভ অনুমোদন করুন"
+                                  >
+                                    <Check className="w-3.5 h-3.5 text-amber-300" />
+                                    <span>টাকা যাচাই ও অনুমোদন</span>
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => {
+                                      updateAdValidationStatus(ad.id, 'Approved');
+                                      setValidationToast(`ফ্রি বিজ্ঞাপন #${ad.id} লাইভ অনুমোদন করা হয়েছে`);
+                                      setTimeout(() => setValidationToast(null), 3000);
+                                    }}
+                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-[11px] font-semibold transition-colors flex items-center gap-1 shadow-2xs cursor-pointer"
+                                    title="ফ্রি বিজ্ঞাপন অনুমোদন করুন"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                    <span>অনুমোদন</span>
+                                  </button>
+                                )
                               )}
                               {currentVal !== 'Rejected' && (
                                 <button
@@ -2357,6 +2383,24 @@ export const AdminDashboard: React.FC = () => {
                                   <Edit3 className="w-3 h-3" />
                                   <span>তথ্য পরিবর্তন</span>
                                 </button>
+
+                                {!isOwnerStaff && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (window.confirm(`আপনি কি নিশ্চিত যে কর্মী "${staff.name}" (আইডি: ${staff.id}) এর তথ্য স্থায়ীভাবে মুছে ফেলতে চান?`)) {
+                                        const res = deleteStaff(staff.id);
+                                        setStaffToast(res.message);
+                                        setTimeout(() => setStaffToast(null), 4000);
+                                      }
+                                    }}
+                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold rounded text-[10px] border border-rose-200 transition-colors flex items-center gap-1 cursor-pointer"
+                                    title="কর্মী অপসারণ / মুছে ফেলুন"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    <span>মুছে ফেলুন</span>
+                                  </button>
+                                )}
                               </div>
                             </td>
                           </tr>
@@ -4224,6 +4268,11 @@ export const AdminDashboard: React.FC = () => {
         onEditStaff={(s) => {
           setStaffToEdit(s);
           setIsRecruitModalOpen(true);
+        }}
+        onDeleteStaff={(staffId) => {
+          const res = deleteStaff(staffId);
+          setStaffToast(res.message);
+          setTimeout(() => setStaffToast(null), 4000);
         }}
       />
 

@@ -59,6 +59,8 @@ export interface Ad {
   isPaidAd?: boolean;
   paymentStatus?: 'paid' | 'unpaid' | 'free';
   paidAmount?: number;
+  expectedPackageAmount?: number;
+  paymentMatchStatus?: 'matched' | 'mismatched' | 'pending_review';
   paymentGateway?: 'bKash' | 'Nagad' | 'Rocket' | 'Wallet';
   paymentTrxId?: string;
   paidAt?: string;
@@ -66,6 +68,7 @@ export interface Ad {
     extraPhotosFee: number;
     promotionFee: number;
     packageName: string;
+    expectedAmount?: number;
   };
   views: number;
   specs?: Record<string, string>;
